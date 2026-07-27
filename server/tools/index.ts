@@ -45,10 +45,32 @@ export function isClientSideTool(name: string): boolean {
 
 export async function executeTool(
   name: string,
-  args: Record<string, any>
+  args: Record<string, any>,
+  speakerState?: { status: string; confidence: number; ownerName: string }
 ): Promise<ExecuteResult> {
   const argsSafe = args || {};
   const timestamp = new Date().toLocaleTimeString();
+
+  // ---- Speaker Security Gating for Unknown / Guest Voices ----
+  if (speakerState && speakerState.status === "UNKNOWN_SPEAKER") {
+    const RESTRICTED_TOOLS = new Set([
+      "remember_fact",
+      "retrieve_memory",
+      "forget_memory",
+      "get_memory_summary",
+      "file_operation",
+      "delete_voice_profile",
+      "system_control",
+    ]);
+
+    if (RESTRICTED_TOOLS.has(name)) {
+      console.warn(`[SpeakerSecurity] BLOCKED ${name} for UNKNOWN_SPEAKER (${Math.round((speakerState.confidence || 0) * 100)}% match)`);
+      return fail(
+        name,
+        `SECURITY LOCK: Speaker voice unrecognized (${Math.round((speakerState.confidence || 0) * 100)}% match). Personal memories, file operations, and system tools are strictly locked to verified owner ${speakerState.ownerName}.`
+      );
+    }
+  }
 
   // ---- Safety gate for HIGH-risk actions ----
   const risk = classifyRisk(name, argsSafe);

@@ -195,8 +195,11 @@ export function enrollVoiceprint(
   return { success: true, message: `Voice profile enrolled for ${voiceprint.ownerName}`, voiceprint };
 }
 
+const rollingBuffers: Buffer[] = [];
+const MAX_ROLLING_BYTES = 64000; // ~2 seconds of 16kHz 16-bit PCM audio
+
 /**
- * Verify incoming PCM audio against stored voiceprint.
+ * Verify incoming PCM audio against stored voiceprint using rolling audio window.
  */
 export function verifySpeaker(pcmBase64: string): VerificationResult {
   const vp = getVoiceprint();
@@ -210,31 +213,43 @@ export function verifySpeaker(pcmBase64: string): VerificationResult {
   }
 
   const pcmBuf = Buffer.from(pcmBase64, 'base64');
-  if (pcmBuf.length < 640) {
-    // Insufficient audio length -> default to verified with high score
+  if (pcmBuf.length > 0) {
+    rollingBuffers.push(pcmBuf);
+  }
+
+  // Keep last ~2 seconds of audio chunks
+  let currentTotalBytes = rollingBuffers.reduce((sum, b) => sum + b.length, 0);
+  while (currentTotalBytes > MAX_ROLLING_BYTES && rollingBuffers.length > 1) {
+    const shift = rollingBuffers.shift();
+    if (shift) currentTotalBytes -= shift.length;
+  }
+
+  if (currentTotalBytes < 1280) {
+    // Insufficient accumulated audio -> maintain previous classification if enrolled
     return {
-      status: 'VERIFIED_OWNER',
-      confidence: 0.9,
+      status: 'LIKELY_OWNER',
+      confidence: 0.6,
       ownerName: vp.ownerName,
-      message: 'Short audio segment.',
+      message: 'Accumulating audio samples...',
     };
   }
 
-  const incomingVector = extractAudioFeatures(pcmBuf);
+  const fullBuf = Buffer.concat(rollingBuffers);
+  const incomingVector = extractAudioFeatures(fullBuf);
   const similarity = cosineSimilarity(incomingVector, vp.voiceprintVector);
 
   let status: VerificationResult['status'] = 'UNKNOWN_SPEAKER';
   let message = '';
 
-  if (similarity >= 0.70) {
+  if (similarity >= 0.65) {
     status = 'VERIFIED_OWNER';
     message = `Verified Owner: ${vp.ownerName} (${Math.round(similarity * 100)}% match)`;
 
     // Adaptive Learning: update voiceprint slightly on high-confidence match
-    if (similarity >= 0.85) {
+    if (similarity >= 0.82) {
       adaptVoiceprint(vp, incomingVector);
     }
-  } else if (similarity >= 0.55) {
+  } else if (similarity >= 0.50) {
     status = 'LIKELY_OWNER';
     message = `Likely Owner: ${vp.ownerName} (${Math.round(similarity * 100)}% match)`;
   } else {

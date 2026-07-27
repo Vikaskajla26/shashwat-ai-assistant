@@ -63,6 +63,9 @@ async function startServer() {
     }
 
     let liveSession: any = null;
+    let currentSpeakerState = getVoiceprint()
+      ? { status: "LIKELY_OWNER", confidence: 0.6, ownerName: getVoiceprint()!.ownerName, message: "Awaiting audio..." }
+      : { status: "UNENROLLED", confidence: 1.0, ownerName: "Guest", message: "Open mode" };
 
     try {
       const ai = new GoogleGenAI({
@@ -151,8 +154,8 @@ async function startServer() {
                       continue;
                     }
 
-                    // Real tools → execute server-side
-                    const result = await executeTool(name, args || {});
+                    // Real tools → execute server-side (gated by speaker verification)
+                    const result = await executeTool(name, args || {}, currentSpeakerState);
 
                     // Send tool result directly to Gemini (no client round-trip)
                     responses.push({
@@ -273,16 +276,16 @@ async function startServer() {
           if (msg.type === "setup" && msg.tools) {
             // Client tool declarations are ignored — server owns the tool list.
           } else if (msg.type === "audio" && msg.data && liveSession) {
-            // Periodically verify speaker identity on audio frames
-            if (Math.random() < 0.15) {
-              const vResult = verifySpeaker(msg.data);
-              clientWs.send(
-                JSON.stringify({
-                  type: "speaker_verification",
-                  result: vResult,
-                })
-              );
-            }
+            // Continuously verify speaker identity on audio input
+            const vResult = verifySpeaker(msg.data);
+            currentSpeakerState = vResult;
+
+            clientWs.send(
+              JSON.stringify({
+                type: "speaker_verification",
+                result: vResult,
+              })
+            );
 
             liveSession.sendRealtimeInput({
               audio: {
