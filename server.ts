@@ -11,6 +11,7 @@ import { createServer as createViteServer } from "vite";
 import { TOOL_DECLARATIONS } from "./server/tools/declarations";
 import { executeTool, isClientSideTool } from "./server/tools";
 import { SYSTEM_INSTRUCTION } from "./server/systemInstruction";
+import { enrollVoiceprint, verifySpeaker, getVoiceprint, deleteVoiceprint } from "./server/voice/speakerVerification";
 
 async function startServer() {
   const app = express();
@@ -272,12 +273,51 @@ async function startServer() {
           if (msg.type === "setup" && msg.tools) {
             // Client tool declarations are ignored — server owns the tool list.
           } else if (msg.type === "audio" && msg.data && liveSession) {
+            // Periodically verify speaker identity on audio frames
+            if (Math.random() < 0.15) {
+              const vResult = verifySpeaker(msg.data);
+              clientWs.send(
+                JSON.stringify({
+                  type: "speaker_verification",
+                  result: vResult,
+                })
+              );
+            }
+
             liveSession.sendRealtimeInput({
               audio: {
                 data: msg.data,
                 mimeType: "audio/pcm;rate=16000",
               },
             });
+          } else if (msg.type === "voice_enroll_samples" && msg.samples) {
+            const result = enrollVoiceprint(msg.ownerName || "Registered Owner", msg.samples);
+            clientWs.send(
+              JSON.stringify({
+                type: "voice_enroll_result",
+                ...result,
+              })
+            );
+          } else if (msg.type === "voice_delete") {
+            const success = deleteVoiceprint();
+            clientWs.send(
+              JSON.stringify({
+                type: "voice_delete_result",
+                success,
+                message: success ? "Voice profile deleted." : "Failed to delete profile.",
+              })
+            );
+          } else if (msg.type === "voice_get_status") {
+            const vp = getVoiceprint();
+            clientWs.send(
+              JSON.stringify({
+                type: "voice_status",
+                enrolled: !!vp,
+                ownerName: vp?.ownerName || "Guest",
+                enrolledAt: vp?.enrolledAt,
+                samplesCount: vp?.samplesCount,
+              })
+            );
           } else if (msg.type === "text" && msg.text && liveSession) {
             liveSession.sendRealtimeInput({
               text: msg.text,

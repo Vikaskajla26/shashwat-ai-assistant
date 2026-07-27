@@ -6,6 +6,7 @@ import { fileOperation } from "./files";
 import { mouseInput, keyboardInput } from "./input";
 import { browserNavigate, sandboxExec } from "./browser";
 import { getSystemInfo } from "./systemInfo";
+import { getVoiceprint, deleteVoiceprint, enrollVoiceprint } from "../voice/speakerVerification";
 
 /**
  * Central tool executor. Runs REAL actions on the OS, applies the safety
@@ -32,7 +33,11 @@ export interface ExecuteResult {
   event: ToolEvent;
 }
 
-const CLIENT_SIDE_TOOLS = new Set(["changeAssistantMood", "showVisualCard"]);
+const CLIENT_SIDE_TOOLS = new Set([
+  "changeAssistantMood",
+  "showVisualCard",
+  "enroll_voice_profile",
+]);
 
 export function isClientSideTool(name: string): boolean {
   return CLIENT_SIDE_TOOLS.has(name);
@@ -257,6 +262,40 @@ export async function executeTool(
       case "getSystemInfo": {
         const info = await getSystemInfo();
         return ok(info, "Retrieved system info");
+      }
+
+      // ---------------- Voice Identity & Biometrics ----------------
+      case "get_voice_status": {
+        const vp = getVoiceprint();
+        if (vp) {
+          return ok(
+            { enrolled: true, ownerName: vp.ownerName, enrolledAt: vp.enrolledAt, samplesCount: vp.samplesCount },
+            `Voice Profile Active: Registered to ${vp.ownerName}`,
+            { title: "Voice Profile Active", content: `**Registered Owner:** ${vp.ownerName}\n**Enrolled:** ${vp.enrolledAt.slice(0, 10)}\n**Samples:** ${vp.samplesCount}`, category: "Voice Identity" }
+          );
+        } else {
+          return ok(
+            { enrolled: false, message: "No voice profile enrolled yet. System open access." },
+            "Voice Profile: Unenrolled",
+            { title: "Voice Profile Status", content: "No voiceprint enrolled. Click **Enroll Voice** in Settings to set up your voice identity.", category: "Voice Identity" }
+          );
+        }
+      }
+      case "enroll_voice_profile": {
+        return ok(
+          { action: "open_enrollment_ui", message: "Launching Guided Voice Enrollment UI..." },
+          "Guided Voice Enrollment Launched",
+          { title: "Voice Enrollment", content: "Follow the on-screen steps to record your 4 voice phrases.", category: "Voice Identity" },
+          true
+        );
+      }
+      case "delete_voice_profile": {
+        const deleted = deleteVoiceprint();
+        return ok(
+          { deleted, message: deleted ? "Voice profile deleted." : "Failed to delete voice profile." },
+          deleted ? "Voice Profile Reset" : "Voice Profile Reset Failed",
+          { title: "Voice Profile Reset", content: "Your stored voiceprint vector has been permanently deleted.", category: "Voice Identity" }
+        );
       }
 
       // ---------------- UI tools (executed on client) ----------------

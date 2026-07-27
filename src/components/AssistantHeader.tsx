@@ -1,15 +1,17 @@
 import React from 'react';
-import { Settings, Monitor, MonitorOff, PhoneOff } from 'lucide-react';
+import { Settings, Monitor, MonitorOff, PhoneOff, ShieldCheck } from 'lucide-react';
 import { AssistantState, AssistantMood } from '../types';
 
 interface AssistantHeaderProps {
   state: AssistantState;
   mood: AssistantMood;
+  speakerStatus?: { status: string; confidence: number; ownerName: string };
   isScreenSharing?: boolean;
   onToggleScreenShare?: () => void;
   onDisconnect?: () => void;
   onOpenTranscript: () => void;
   onOpenSettings: () => void;
+  onOpenEnrollment?: () => void;
 }
 
 const moodLabels: Record<AssistantMood, string> = {
@@ -23,10 +25,12 @@ const moodLabels: Record<AssistantMood, string> = {
 export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
   state,
   mood,
+  speakerStatus,
   isScreenSharing = false,
   onToggleScreenShare,
   onDisconnect,
   onOpenSettings,
+  onOpenEnrollment,
 }) => {
   const moodLabel = moodLabels[mood] || 'Witty & Charming System';
 
@@ -38,6 +42,24 @@ export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
       : state === 'listening'
       ? 'LISTENING_MODE'
       : 'TRANSMITTING_VOICE';
+
+  const voiceBadgeColor =
+    speakerStatus?.status === 'VERIFIED_OWNER'
+      ? 'text-emerald-400 border-emerald-500/40 bg-emerald-500/10'
+      : speakerStatus?.status === 'LIKELY_OWNER'
+      ? 'text-blue-400 border-blue-500/40 bg-blue-500/10'
+      : speakerStatus?.status === 'UNKNOWN_SPEAKER'
+      ? 'text-amber-400 border-amber-500/40 bg-amber-500/10'
+      : 'text-zinc-400 border-white/10 bg-white/5';
+
+  const voiceText =
+    speakerStatus?.status === 'VERIFIED_OWNER'
+      ? `OWNER: ${speakerStatus.ownerName.toUpperCase()}`
+      : speakerStatus?.status === 'LIKELY_OWNER'
+      ? `LIKELY: ${speakerStatus.ownerName.toUpperCase()}`
+      : speakerStatus?.status === 'UNKNOWN_SPEAKER'
+      ? 'GUEST_MODE (LOCKED)'
+      : 'VOICE_ID: OPEN';
 
   return (
     <header className="w-full z-30 px-6 py-6 sm:px-12 flex items-center justify-between bg-gradient-to-b from-black/80 to-transparent pointer-events-auto">
@@ -76,6 +98,15 @@ export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
           <span className="text-blue-300 font-semibold flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping" />
             "शाश्वत / SHASHWAT"
+          </span>
+        </div>
+
+        {/* Voice Biometrics Identity Indicator */}
+        <div className="hidden lg:flex flex-col gap-0.5">
+          <span className="text-zinc-500 font-normal">SPEAKER_ID</span>
+          <span className={`font-semibold flex items-center gap-1.5 ${voiceBadgeColor.split(' ')[0]}`}>
+            <span className="w-1.5 h-1.5 rounded-full bg-current" />
+            {voiceText}
           </span>
         </div>
       </div>
@@ -124,6 +155,19 @@ export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
         <div className="hidden lg:block px-3.5 py-1.5 rounded-[2px] border border-blue-500/80 bg-blue-500/10 text-[10px] font-bold tracking-[0.1em] text-blue-400 uppercase font-mono">
           {moodLabel}
         </div>
+
+        {/* Enroll Voice Profile Button */}
+        {onOpenEnrollment && (
+          <button
+            id="shashwat-enroll-voice-header-button"
+            onClick={onOpenEnrollment}
+            className="px-3 py-2 rounded text-[10px] font-mono font-bold tracking-wider uppercase border border-blue-500/60 bg-blue-600/20 text-blue-300 hover:bg-blue-600/40 hover:border-blue-400 transition-all flex items-center gap-1.5 cursor-pointer shadow-[0_0_15px_rgba(59,130,246,0.3)]"
+            title="Enroll / Manage Voice Identity"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+            <span className="hidden sm:inline">VOICE ID</span>
+          </button>
+        )}
 
         <button
           id="shashwat-settings-toggle"

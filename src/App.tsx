@@ -10,6 +10,7 @@ import { TranscriptDrawer } from './components/TranscriptDrawer';
 import { SettingsModal } from './components/SettingsModal';
 import { openExternalUrl } from './utils/browser';
 import { AISandboxBrowser } from './components/AISandboxBrowser';
+import { VoiceEnrollmentModal } from './components/VoiceEnrollmentModal';
 import {
   AssistantState,
   AssistantMood,
@@ -33,10 +34,17 @@ export default function App() {
 
   const [isTranscriptOpen, setIsTranscriptOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [isEnrollmentOpen, setIsEnrollmentOpen] = useState<boolean>(false);
   const [isScreenSharing, setIsScreenSharing] = useState<boolean>(false);
   const [isSandboxOpen, setIsSandboxOpen] = useState<boolean>(false);
   const [activePlan, setActivePlan] = useState<TaskExecutionPlan | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const [speakerStatus, setSpeakerStatus] = useState<{
+    status: string;
+    confidence: number;
+    ownerName: string;
+  }>({ status: 'UNENROLLED', confidence: 1.0, ownerName: 'Guest' });
 
   const liveSessionRef = useRef<LiveSession | null>(null);
   const persistentWindowRef = useRef<Window | null>(null);
@@ -75,6 +83,16 @@ export default function App() {
       },
       onScreenShareChange: (active) => {
         setIsScreenSharing(active);
+      },
+      onSpeakerVerification: (res) => {
+        setSpeakerStatus({ status: res.status, confidence: res.confidence, ownerName: res.ownerName });
+      },
+      onVoiceStatus: (status) => {
+        if (!status.enrolled) {
+          setSpeakerStatus({ status: 'UNENROLLED', confidence: 1.0, ownerName: 'Guest' });
+        } else {
+          setSpeakerStatus((prev) => ({ ...prev, ownerName: status.ownerName }));
+        }
       },
       onError: (err) => {
         console.error('Session Error:', err);
@@ -221,11 +239,13 @@ export default function App() {
       <AssistantHeader
         state={state}
         mood={mood}
+        speakerStatus={speakerStatus}
         isScreenSharing={isScreenSharing}
         onToggleScreenShare={handleToggleScreenShare}
         onDisconnect={handleToggleMic}
         onOpenTranscript={() => setIsTranscriptOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenEnrollment={() => setIsEnrollmentOpen(true)}
       />
 
       {/* HUD Navigation / Event Log Box */}
@@ -376,6 +396,23 @@ export default function App() {
         onClose={() => setIsSandboxOpen(false)}
         activePlan={activePlan}
         onExecutePrompt={handleSendMessage}
+      />
+
+      {/* Voice Identity Enrollment Modal */}
+      <VoiceEnrollmentModal
+        isOpen={isEnrollmentOpen}
+        onClose={() => setIsEnrollmentOpen(false)}
+        onEnrollComplete={(name, samplesList) => {
+          if (liveSessionRef.current) {
+            if (state === 'disconnected') {
+              liveSessionRef.current.connect().then(() => {
+                setTimeout(() => liveSessionRef.current?.sendVoiceEnrollSamples(name, samplesList), 600);
+              });
+            } else {
+              liveSessionRef.current.sendVoiceEnrollSamples(name, samplesList);
+            }
+          }
+        }}
       />
     </div>
   );

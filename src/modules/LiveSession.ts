@@ -12,6 +12,8 @@ export interface LiveSessionOptions {
   onToolEvent: (event: ToolExecutionEvent) => void;
   onTranscriptMessage?: (msg: TranscriptMessage) => void;
   onScreenShareChange?: (isSharing: boolean) => void;
+  onSpeakerVerification?: (res: { status: string; confidence: number; ownerName: string; message: string }) => void;
+  onVoiceStatus?: (status: { enrolled: boolean; ownerName: string }) => void;
   onError: (errorMsg: string) => void;
 }
 
@@ -181,6 +183,18 @@ export class LiveSession {
                 timestamp: new Date().toLocaleTimeString(),
               });
             }
+          } else if (msg.type === 'speaker_verification') {
+            if (this.options.onSpeakerVerification && msg.result) {
+              this.options.onSpeakerVerification(msg.result);
+            }
+          } else if (msg.type === 'voice_status') {
+            if (this.options.onVoiceStatus) {
+              this.options.onVoiceStatus({ enrolled: msg.enrolled, ownerName: msg.ownerName });
+            }
+          } else if (msg.type === 'voice_enroll_result') {
+            if (msg.success) {
+              this.sendGetVoiceStatus();
+            }
           } else if (msg.type === 'status') {
             if (msg.message) {
               console.log('Session Status:', msg.message);
@@ -302,5 +316,29 @@ export class LiveSession {
 
   public getState(): AssistantState {
     return this.currentState;
+  }
+
+  public sendVoiceEnrollSamples(ownerName: string, samples: string[]) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(
+        JSON.stringify({
+          type: 'voice_enroll_samples',
+          ownerName,
+          samples,
+        })
+      );
+    }
+  }
+
+  public sendDeleteVoiceProfile() {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({ type: 'voice_delete' }));
+    }
+  }
+
+  public sendGetVoiceStatus() {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({ type: 'voice_get_status' }));
+    }
   }
 }

@@ -335,6 +335,33 @@ export const TOOL_DECLARATIONS = [
     parameters: { type: Type.OBJECT, properties: {} },
   },
 
+  // ---------------- Voice Identity & Biometrics ----------------
+  {
+    name: "get_voice_status",
+    description: "Returns the current voice identity enrollment status, registered owner name, and verification state.",
+    parameters: { type: Type.OBJECT, properties: {} },
+  },
+  {
+    name: "enroll_voice_profile",
+    description: "Guides the user to enroll their voice identity or launches the voice enrollment interface.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        owner_name: { type: Type.STRING, description: "Name of the voice profile owner e.g. Vikas" },
+      },
+    },
+  },
+  {
+    name: "delete_voice_profile",
+    description: "Deletes the enrolled owner voice profile. Requires explicit user confirmation.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        confirmed: { type: Type.BOOLEAN, description: "Set true ONLY after explicit user confirmation." },
+      },
+    },
+  },
+
   // ---------------- UI tools (executed on client) ----------------
   {
     name: "changeAssistantMood",

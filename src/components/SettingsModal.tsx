@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Bot, Wrench, Sparkles, Brain, Plus, Trash2, RefreshCw, Bookmark, FolderGit2, User, Sliders } from 'lucide-react';
+import { X, Bot, Wrench, Sparkles, Brain, Plus, Trash2, RefreshCw, Bookmark, FolderGit2, User, Sliders, ShieldCheck } from 'lucide-react';
 import { AssistantMood, AssistantState } from '../types';
 import { MemoryManager, MemoryFact, MemoryCategory } from '../modules/MemoryManager';
 
@@ -223,6 +223,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                   </div>
 
+                  {/* Voice Identity & Biometrics Status */}
+                  <div className="p-3.5 rounded-2xl bg-zinc-900 border border-blue-500/30 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2 text-blue-400 font-bold uppercase text-[10px] tracking-widest">
+                        <ShieldCheck className="w-4 h-4 text-blue-400" />
+                        <span>Voice Identity & Speaker Biometrics</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-emerald-400 uppercase bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded">
+                        Active Protection
+                      </span>
+                    </div>
+                    <p className="text-zinc-400 text-[11px] leading-relaxed">
+                      Speaker recognition checks incoming audio features to recognize the registered owner and protect private memory from unknown speakers.
+                    </p>
+                  </div>
+
                   {/* Technical Specifications */}
                   <div className="p-3.5 rounded-2xl bg-zinc-900 border border-white/10 space-y-1.5 text-[10px] font-mono tracking-wider text-zinc-400 uppercase">
                     <div className="flex justify-between">
@@ -232,6 +248,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <div className="flex justify-between">
                       <span>Memory System:</span>
                       <span className="text-purple-400 font-bold">SHAASHVAT Persistent v1</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Voice Identity:</span>
+                      <span className="text-blue-400 font-bold">Biometrics Engined (24-Band MFCC)</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Voice Avatar:</span>
