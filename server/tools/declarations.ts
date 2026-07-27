@@ -361,6 +361,56 @@ export const TOOL_DECLARATIONS = [
       },
     },
   },
+  // ---------------- Document Intelligence & AI Research ----------------
+  {
+    name: "query_knowledge_base",
+    description: "Searches uploaded workspace documents (PDFs, code, spreadsheets, notes) using semantic indexing and returns detailed answers with page and section citations.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        query: { type: Type.STRING, description: "The research question or topic to search across workspace documents" },
+        doc_id: { type: Type.STRING, description: "Optional specific document ID to target" },
+      },
+      required: ["query"],
+    },
+  },
+  {
+    name: "analyze_document",
+    description: "Performs deep thinking analysis, executive summary, or structural breakdown on a specific uploaded document.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        doc_id: { type: Type.STRING, description: "Document ID or filename to analyze" },
+        focus_area: { type: Type.STRING, description: "Optional focus area e.g. summary, methodology, conclusions, tables, formulas, bugs" },
+      },
+    },
+  },
+  {
+    name: "generate_study_materials",
+    description: "Auto-generates MCQs, flashcards, mind maps, viva questions, or revision sheets from uploaded workspace documents.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        material_type: { type: Type.STRING, enum: ["mcqs", "flashcards", "mindmap", "viva", "all"], description: "Type of study material to generate" },
+        doc_id: { type: Type.STRING, description: "Optional target document ID" },
+      },
+    },
+  },
+  {
+    name: "compare_documents",
+    description: "Performs multi-document cross-reasoning, comparing similarities, contradictions, and syntheses across multiple uploaded files.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        doc_ids: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of document IDs or filenames to compare" },
+      },
+    },
+  },
+  {
+    name: "open_document_workspace",
+    description: "Launches the Document Intelligence & Research Workspace modal on the user screen.",
+    parameters: { type: Type.OBJECT, properties: {} },
+  },
 
   // ---------------- UI tools (executed on client) ----------------
   {

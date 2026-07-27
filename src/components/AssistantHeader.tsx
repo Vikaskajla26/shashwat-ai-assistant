@@ -1,5 +1,5 @@
 import React from 'react';
-import { Settings, Monitor, MonitorOff, PhoneOff, ShieldCheck } from 'lucide-react';
+import { Settings, Monitor, MonitorOff, PhoneOff, ShieldCheck, FileSearch } from 'lucide-react';
 import { AssistantState, AssistantMood } from '../types';
 
 interface AssistantHeaderProps {
@@ -12,6 +12,7 @@ interface AssistantHeaderProps {
   onOpenTranscript: () => void;
   onOpenSettings: () => void;
   onOpenEnrollment?: () => void;
+  onOpenDocWorkspace?: () => void;
 }
 
 const moodLabels: Record<AssistantMood, string> = {
@@ -31,6 +32,7 @@ export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
   onDisconnect,
   onOpenSettings,
   onOpenEnrollment,
+  onOpenDocWorkspace,
 }) => {
   const moodLabel = moodLabels[mood] || 'Witty & Charming System';
 
@@ -155,6 +157,19 @@ export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
         <div className="hidden lg:block px-3.5 py-1.5 rounded-[2px] border border-blue-500/80 bg-blue-500/10 text-[10px] font-bold tracking-[0.1em] text-blue-400 uppercase font-mono">
           {moodLabel}
         </div>
+
+        {/* Document Intelligence Workspace Button */}
+        {onOpenDocWorkspace && (
+          <button
+            id="shashwat-doc-workspace-header-button"
+            onClick={onOpenDocWorkspace}
+            className="px-3 py-2 rounded text-[10px] font-mono font-bold tracking-wider uppercase border border-cyan-500/60 bg-cyan-600/20 text-cyan-300 hover:bg-cyan-600/40 hover:border-cyan-400 transition-all flex items-center gap-1.5 cursor-pointer shadow-[0_0_15px_rgba(6,182,212,0.3)]"
+            title="Open Document Intelligence & AI Research Workspace"
+          >
+            <FileSearch className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="hidden sm:inline">DOC INTEL</span>
+          </button>
+        )}
 
         {/* Enroll Voice Profile Button */}
         {onOpenEnrollment && (

@@ -14,6 +14,7 @@ export interface LiveSessionOptions {
   onScreenShareChange?: (isSharing: boolean) => void;
   onSpeakerVerification?: (res: { status: string; confidence: number; ownerName: string; message: string }) => void;
   onVoiceStatus?: (status: { enrolled: boolean; ownerName: string }) => void;
+  onOpenDocWorkspace?: () => void;
   onError: (errorMsg: string) => void;
 }
 
@@ -57,6 +58,7 @@ export class LiveSession {
       onMoodChange: (mood) => this.options.onMoodChange(mood),
       onVisualCard: (card) => this.options.onVisualCard(card),
       onToolEvent: (event) => this.options.onToolEvent(event),
+      onOpenDocWorkspace: () => this.options.onOpenDocWorkspace?.(),
     });
 
     this.screenStreamer = new ScreenStreamer({

@@ -7,6 +7,8 @@ import { mouseInput, keyboardInput } from "./input";
 import { browserNavigate, sandboxExec } from "./browser";
 import { getSystemInfo } from "./systemInfo";
 import { getVoiceprint, deleteVoiceprint, enrollVoiceprint } from "../voice/speakerVerification";
+import { KnowledgeIndex } from "../docIntel/knowledgeIndex";
+import { StudyGenerator } from "../docIntel/studyGenerator";
 
 /**
  * Central tool executor. Runs REAL actions on the OS, applies the safety
@@ -37,6 +39,7 @@ const CLIENT_SIDE_TOOLS = new Set([
   "changeAssistantMood",
   "showVisualCard",
   "enroll_voice_profile",
+  "open_document_workspace",
 ]);
 
 export function isClientSideTool(name: string): boolean {
@@ -139,6 +142,59 @@ export async function executeTool(
       case "get_memory_summary": {
         const all = memory.getAllMemories();
         return ok({ total: all.length, memories: all }, `Memory summary (${all.length} items)`);
+      }
+
+      // ---------------- Document Intelligence & AI Research ----------------
+      case "query_knowledge_base": {
+        const ki = KnowledgeIndex.getInstance();
+        const res = ki.queryKnowledgeBase(argsSafe.query || "", argsSafe.doc_id);
+        return ok(
+          res,
+          `Searched knowledge base: "${argsSafe.query}" (${res.citations.length} citations found)`,
+          {
+            title: `Document Research: "${argsSafe.query}"`,
+            content: `${res.answer.slice(0, 300)}...\n\n**Citations:** ${res.citations.map((c) => `[${c.docName}, Pg ${c.pageNumber}]`).join(', ')}`,
+            category: "Document Intelligence",
+          }
+        );
+      }
+      case "analyze_document": {
+        const ki = KnowledgeIndex.getInstance();
+        const res = ki.queryKnowledgeBase(argsSafe.focus_area || "executive summary", argsSafe.doc_id);
+        return ok(
+          res,
+          `Analyzed document ${argsSafe.doc_id || 'workspace'}`,
+          {
+            title: `Document Analysis (${argsSafe.focus_area || "Summary"})`,
+            content: res.answer.slice(0, 350) + '...',
+            category: "Document Intelligence",
+          }
+        );
+      }
+      case "generate_study_materials": {
+        const study = StudyGenerator.generateStudyMaterials(argsSafe.doc_id);
+        return ok(
+          study,
+          `Generated study materials (${study.mcqs.length} MCQs, ${study.flashcards.length} Flashcards)`,
+          {
+            title: `Study Tools Ready: ${study.docName}`,
+            content: `Generated ${study.mcqs.length} MCQs, ${study.flashcards.length} Flashcards, and Mind Map diagram for ${study.docName}.`,
+            category: "Study Intelligence",
+          }
+        );
+      }
+      case "compare_documents": {
+        const ki = KnowledgeIndex.getInstance();
+        const comp = ki.compareDocuments(argsSafe.doc_ids);
+        return ok(
+          comp,
+          `Compared ${comp.filesCompared.length} workspace documents`,
+          {
+            title: `Multi-Document Comparison (${comp.filesCompared.length} Files)`,
+            content: comp.synthesis,
+            category: "Document Research",
+          }
+        );
       }
 
       // ---------------- Browser / Web ----------------

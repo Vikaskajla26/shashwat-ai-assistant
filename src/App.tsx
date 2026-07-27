@@ -11,6 +11,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { openExternalUrl } from './utils/browser';
 import { AISandboxBrowser } from './components/AISandboxBrowser';
 import { VoiceEnrollmentModal } from './components/VoiceEnrollmentModal';
+import { DocumentWorkspaceModal } from './components/docIntel/DocumentWorkspaceModal';
 import {
   AssistantState,
   AssistantMood,
@@ -19,7 +20,7 @@ import {
   TranscriptMessage,
   TaskExecutionPlan,
 } from './types';
-import { Mic, MicOff, MessageSquare, AlertCircle, PieChart, Monitor, MonitorOff, Bot, Globe } from 'lucide-react';
+import { Mic, MicOff, MessageSquare, AlertCircle, PieChart, Monitor, MonitorOff, Bot, Globe, FileSearch } from 'lucide-react';
 
 export default function App() {
   const [state, setState] = useState<AssistantState>('disconnected');
@@ -35,6 +36,7 @@ export default function App() {
   const [isTranscriptOpen, setIsTranscriptOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isEnrollmentOpen, setIsEnrollmentOpen] = useState<boolean>(false);
+  const [isDocWorkspaceOpen, setIsDocWorkspaceOpen] = useState<boolean>(false);
   const [isScreenSharing, setIsScreenSharing] = useState<boolean>(false);
   const [isSandboxOpen, setIsSandboxOpen] = useState<boolean>(false);
   const [activePlan, setActivePlan] = useState<TaskExecutionPlan | null>(null);
@@ -93,6 +95,9 @@ export default function App() {
         } else {
           setSpeakerStatus((prev) => ({ ...prev, ownerName: status.ownerName }));
         }
+      },
+      onOpenDocWorkspace: () => {
+        setIsDocWorkspaceOpen(true);
       },
       onError: (err) => {
         console.error('Session Error:', err);
@@ -246,6 +251,7 @@ export default function App() {
         onOpenTranscript={() => setIsTranscriptOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenEnrollment={() => setIsEnrollmentOpen(true)}
+        onOpenDocWorkspace={() => setIsDocWorkspaceOpen(true)}
       />
 
       {/* HUD Navigation / Event Log Box */}
@@ -346,6 +352,20 @@ export default function App() {
           <Globe className="w-5 h-5 text-blue-400" />
         </button>
 
+        {/* Document Intelligence & AI Research Workspace Button */}
+        <button
+          id="shashwat-doc-intel-toggle"
+          onClick={() => setIsDocWorkspaceOpen((prev) => !prev)}
+          className={`action-btn cursor-pointer transition-all ${
+            isDocWorkspaceOpen
+              ? '!border-cyan-400 !bg-cyan-600/30 text-cyan-200 shadow-[0_0_25px_rgba(6,182,212,0.5)] ring-1 ring-cyan-400/50'
+              : 'hover:border-cyan-400/50'
+          }`}
+          title="Document Intelligence & AI Researcher Workspace"
+        >
+          <FileSearch className="w-5 h-5 text-cyan-400" />
+        </button>
+
         {/* Primary Action Button */}
         <button
           onClick={handleToggleMic}
@@ -413,6 +433,13 @@ export default function App() {
             }
           }
         }}
+      />
+
+      {/* Document Intelligence & AI Research Workspace Modal */}
+      <DocumentWorkspaceModal
+        isOpen={isDocWorkspaceOpen}
+        onClose={() => setIsDocWorkspaceOpen(false)}
+        onSendMessage={handleSendMessage}
       />
     </div>
   );

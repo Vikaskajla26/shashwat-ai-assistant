@@ -25,15 +25,18 @@ export class ToolManager {
   private onMoodChange?: (mood: AssistantMood) => void;
   private onVisualCard?: (card: VisualCardData) => void;
   private onToolEvent?: (event: ToolExecutionEvent) => void;
+  private onOpenDocWorkspace?: () => void;
 
   constructor(handlers: {
     onMoodChange?: (mood: AssistantMood) => void;
     onVisualCard?: (card: VisualCardData) => void;
     onToolEvent?: (event: ToolExecutionEvent) => void;
+    onOpenDocWorkspace?: () => void;
   } = {}) {
     this.onMoodChange = handlers.onMoodChange;
     this.onVisualCard = handlers.onVisualCard;
     this.onToolEvent = handlers.onToolEvent;
+    this.onOpenDocWorkspace = handlers.onOpenDocWorkspace;
   }
 
   /**
@@ -95,6 +98,21 @@ export class ToolManager {
             toolName: name,
             status: 'success',
             message: `Displayed card: ${cardData.title}`,
+            timestamp,
+          });
+          break;
+        }
+
+        case 'open_document_workspace': {
+          if (this.onOpenDocWorkspace) {
+            this.onOpenDocWorkspace();
+          }
+          result = { workspaceOpened: true, message: 'Document Intelligence & Research Workspace launched' };
+          this.notifyEvent({
+            id: callId,
+            toolName: name,
+            status: 'success',
+            message: 'Launched Document Intelligence Workspace',
             timestamp,
           });
           break;

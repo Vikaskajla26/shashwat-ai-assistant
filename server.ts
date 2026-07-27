@@ -11,14 +11,18 @@ import { createServer as createViteServer } from "vite";
 import { TOOL_DECLARATIONS } from "./server/tools/declarations";
 import { executeTool, isClientSideTool } from "./server/tools";
 import { SYSTEM_INSTRUCTION } from "./server/systemInstruction";
+import fs from "fs";
 import { enrollVoiceprint, verifySpeaker, getVoiceprint, deleteVoiceprint } from "./server/voice/speakerVerification";
+import { KnowledgeIndex } from "./server/docIntel/knowledgeIndex";
+import { StudyGenerator } from "./server/docIntel/studyGenerator";
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
   const HOST = "0.0.0.0";
 
-  app.use(express.json());
+  app.use(express.json({ limit: "50mb" }));
+  app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
   // Health check endpoint
   app.get("/api/health", (_req, res) => {
@@ -28,6 +32,62 @@ async function startServer() {
       model: "gemini-3.1-flash-live-preview",
       time: new Date().toISOString(),
     });
+  });
+
+  // Document Intelligence REST APIs
+  app.get("/api/documents", (_req, res) => {
+    const ki = KnowledgeIndex.getInstance();
+    res.json({ success: true, documents: ki.listDocuments() });
+  });
+
+  app.post("/api/documents/upload", async (req, res) => {
+    try {
+      const { fileName, mimeType, base64 } = req.body || {};
+      if (!fileName || !base64) {
+        return res.status(400).json({ success: false, message: "fileName and base64 required" });
+      }
+
+      const tempDir = path.join(process.cwd(), "scratch");
+      if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+
+      const tempPath = path.join(tempDir, `upload_${Date.now()}_${path.basename(fileName)}`);
+      fs.writeFileSync(tempPath, Buffer.from(base64, "base64"));
+
+      const ki = KnowledgeIndex.getInstance();
+      const meta = await ki.addDocument(tempPath, fileName, mimeType || "application/octet-stream");
+
+      try { fs.unlinkSync(tempPath); } catch (_) {}
+      res.json({ success: true, document: meta });
+    } catch (err: any) {
+      console.error("[DocUpload] Error:", err);
+      res.status(500).json({ success: false, message: err?.message || "Upload failed" });
+    }
+  });
+
+  app.delete("/api/documents/:id", (req, res) => {
+    const ki = KnowledgeIndex.getInstance();
+    const ok = ki.deleteDocument(req.params.id);
+    res.json({ success: ok, message: ok ? "Document deleted" : "Document not found" });
+  });
+
+  app.post("/api/documents/query", (req, res) => {
+    const { query, docId } = req.body || {};
+    const ki = KnowledgeIndex.getInstance();
+    const result = ki.queryKnowledgeBase(query || "summary", docId);
+    res.json({ success: true, result });
+  });
+
+  app.post("/api/documents/study", (req, res) => {
+    const { docId } = req.body || {};
+    const study = StudyGenerator.generateStudyMaterials(docId);
+    res.json({ success: true, study });
+  });
+
+  app.post("/api/documents/compare", (req, res) => {
+    const { docIds } = req.body || {};
+    const ki = KnowledgeIndex.getInstance();
+    const comparison = ki.compareDocuments(docIds);
+    res.json({ success: true, comparison });
   });
 
   const server = http.createServer(app);
