@@ -315,6 +315,7 @@ export default function App() {
         onToggleDocWorkspace={() => setIsDocWorkspaceOpen((prev) => !prev)}
         onOpenLeftDrawer={() => setIsLeftDrawerOpen(true)}
         onOpenRightDrawer={() => setIsRightDrawerOpen(true)}
+        onSendTypedText={handleSendMessage}
       />
 
       {/* Power Shutdown Confirmation Modal */}
