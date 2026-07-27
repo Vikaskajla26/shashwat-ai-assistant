@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Mic, CheckCircle2, ShieldCheck, RefreshCw, X, Sparkles, Volume2 } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Mic, CheckCircle2, ShieldCheck, X, Volume2, Square, AlertCircle } from 'lucide-react';
 import { float32ToInt16Base64 } from '../utils/pcm';
 
 interface VoiceEnrollmentModalProps {
@@ -27,12 +27,14 @@ export const VoiceEnrollmentModal: React.FC<VoiceEnrollmentModalProps> = ({
   const [countdown, setCountdown] = useState<number>(4);
   const [volume, setVolume] = useState<number>(0);
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const processorRef = useRef<ScriptProcessorNode | null>(null);
   const recordingBuffersRef = useRef<Float32Array[]>([]);
   const timerRef = useRef<any>(null);
+  const isRecordingRef = useRef<boolean>(false);
 
   useEffect(() => {
     if (!isOpen) {
@@ -44,8 +46,10 @@ export const VoiceEnrollmentModal: React.FC<VoiceEnrollmentModalProps> = ({
     setStep(0);
     setSamples([]);
     setIsRecording(false);
+    isRecordingRef.current = false;
     setCountdown(4);
     setIsCompleted(false);
+    setErrorMsg(null);
     cleanupAudio();
   };
 
@@ -70,11 +74,45 @@ export const VoiceEnrollmentModal: React.FC<VoiceEnrollmentModalProps> = ({
     recordingBuffersRef.current = [];
   };
 
-  const startRecordingSample = async () => {
+  const stopRecordingSample = useCallback(() => {
+    if (!isRecordingRef.current) return;
+    isRecordingRef.current = false;
+    setIsRecording(false);
+
+    const chunks = recordingBuffersRef.current;
+    let totalLength = 0;
+    for (const chunk of chunks) totalLength += chunk.length;
+
+    if (totalLength === 0) {
+      setErrorMsg('No audio detected. Please try recording again.');
+      cleanupAudio();
+      return;
+    }
+
+    const merged = new Float32Array(totalLength);
+    let offset = 0;
+    for (const chunk of chunks) {
+      merged.set(chunk, offset);
+      offset += chunk.length;
+    }
+
+    const base64Pcm = float32ToInt16Base64(merged);
     cleanupAudio();
-    setIsRecording(true);
-    setCountdown(4);
-    recordingBuffersRef.current = [];
+
+    setSamples((prev) => {
+      const next = [...prev, base64Pcm];
+      if (next.length >= ENROLLMENT_PHRASES.length) {
+        setIsCompleted(true);
+      } else {
+        setStep(next.length);
+      }
+      return next;
+    });
+  }, []);
+
+  const startRecordingSample = async () => {
+    setErrorMsg(null);
+    cleanupAudio();
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -88,11 +126,16 @@ export const VoiceEnrollmentModal: React.FC<VoiceEnrollmentModalProps> = ({
       const processor = audioCtx.createScriptProcessor(4096, 1, 1);
       processorRef.current = processor;
 
+      recordingBuffersRef.current = [];
+      isRecordingRef.current = true;
+      setIsRecording(true);
+      setCountdown(4);
+
       processor.onaudioprocess = (e) => {
+        if (!isRecordingRef.current) return;
         const inputData = e.inputBuffer.getChannelData(0);
         recordingBuffersRef.current.push(new Float32Array(inputData));
 
-        // Volume calculation for visualizer
         let sum = 0;
         for (let i = 0; i < inputData.length; i++) {
           sum += Math.abs(inputData[i]);
@@ -103,7 +146,6 @@ export const VoiceEnrollmentModal: React.FC<VoiceEnrollmentModalProps> = ({
       source.connect(processor);
       processor.connect(audioCtx.destination);
 
-      // Countdown 4s
       let timeLeft = 4;
       timerRef.current = setInterval(() => {
         timeLeft -= 1;
@@ -115,40 +157,17 @@ export const VoiceEnrollmentModal: React.FC<VoiceEnrollmentModalProps> = ({
       }, 1000);
     } catch (err: any) {
       console.error('Failed to start microphone for enrollment:', err);
+      setErrorMsg('Microphone access failed. Please allow mic permissions in your browser.');
       setIsRecording(false);
-    }
-  };
-
-  const stopRecordingSample = () => {
-    if (!isRecording) return;
-    setIsRecording(false);
-
-    // Merge buffers into 16kHz PCM Base64
-    const chunks = recordingBuffersRef.current;
-    let totalLength = 0;
-    for (const chunk of chunks) totalLength += chunk.length;
-
-    const merged = new Float32Array(totalLength);
-    let offset = 0;
-    for (const chunk of chunks) {
-      merged.set(chunk, offset);
-      offset += chunk.length;
-    }
-
-    const base64Pcm = float32ToInt16Base64(merged);
-    cleanupAudio();
-
-    const newSamples = [...samples, base64Pcm];
-    setSamples(newSamples);
-
-    if (step < ENROLLMENT_PHRASES.length - 1) {
-      setStep((prev) => prev + 1);
-    } else {
-      setIsCompleted(true);
+      isRecordingRef.current = false;
     }
   };
 
   const handleFinishEnrollment = () => {
+    if (samples.length === 0) {
+      setErrorMsg('At least 1 voice sample is required.');
+      return;
+    }
     onEnrollComplete(ownerName.trim() || 'Vikas Kajla', samples);
     onClose();
   };
@@ -174,6 +193,13 @@ export const VoiceEnrollmentModal: React.FC<VoiceEnrollmentModalProps> = ({
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {errorMsg && (
+          <div className="mb-4 p-3 rounded-lg bg-rose-500/20 border border-rose-500/40 text-rose-200 text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
 
         {!isCompleted ? (
           <div>
@@ -217,9 +243,9 @@ export const VoiceEnrollmentModal: React.FC<VoiceEnrollmentModalProps> = ({
               </p>
             </div>
 
-            {/* Visualizer / Status */}
+            {/* Visualizer / Actions */}
             {isRecording ? (
-              <div className="flex flex-col items-center justify-center gap-3 py-4">
+              <div className="flex flex-col items-center justify-center gap-4 py-3">
                 <div className="flex items-center gap-1.5 h-10">
                   {Array.from({ length: 16 }).map((_, i) => {
                     const h = Math.max(8, Math.sin(i * 0.4 + Date.now() * 0.01) * (volume * 0.8));
@@ -236,6 +262,13 @@ export const VoiceEnrollmentModal: React.FC<VoiceEnrollmentModalProps> = ({
                   <Volume2 className="w-4 h-4 animate-pulse" />
                   <span>Recording... {countdown}s remaining</span>
                 </div>
+                <button
+                  onClick={stopRecordingSample}
+                  className="px-4 py-2 rounded-lg bg-rose-600/30 border border-rose-500/50 hover:bg-rose-600/50 text-rose-200 text-xs font-mono font-semibold flex items-center gap-2 cursor-pointer transition-all"
+                >
+                  <Square className="w-3.5 h-3.5 fill-current" />
+                  <span>STOP & SAVE SAMPLE</span>
+                </button>
               </div>
             ) : (
               <div className="flex justify-center py-4">
