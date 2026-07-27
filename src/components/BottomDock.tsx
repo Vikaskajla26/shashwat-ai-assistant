@@ -1,15 +1,12 @@
 import React from 'react';
 import {
-  Mic,
-  MicOff,
+  Power,
   Monitor,
   MonitorOff,
   Globe,
   FileSearch,
   Brain,
   Sliders,
-  Sparkles,
-  Volume2,
 } from 'lucide-react';
 import { AssistantState } from '../types';
 
@@ -38,10 +35,31 @@ export const BottomDock: React.FC<BottomDockProps> = ({
   onOpenLeftDrawer,
   onOpenRightDrawer,
 }) => {
+  // Crystal Glass Power State Indicator Styling
+  const powerStateStyles =
+    state === 'disconnected'
+      ? 'border-white/10 text-zinc-400 bg-white/5 hover:border-[#00E0FF] hover:text-[#00E0FF] hover:bg-[#00E0FF]/10 hover:shadow-[0_0_25px_rgba(0,224,255,0.4)]'
+      : state === 'connecting'
+      ? 'border-amber-400/80 text-amber-300 bg-amber-500/10 shadow-[0_0_25px_rgba(245,158,11,0.5)] animate-pulse'
+      : state === 'listening'
+      ? 'border-[#38BDF8] text-[#38BDF8] bg-[#38BDF8]/15 shadow-[0_0_25px_rgba(56,189,248,0.6)] animate-pulse'
+      : state === 'speaking'
+      ? 'border-[#FF4D8D] text-[#FF4D8D] bg-[#FF4D8D]/15 shadow-[0_0_25px_rgba(255,77,141,0.6)] animate-pulse'
+      : 'border-[#00E0FF] text-[#00E0FF] bg-[#00E0FF]/15 shadow-[0_0_25px_rgba(0,224,255,0.5)]';
+
+  const powerTooltip =
+    state === 'disconnected'
+      ? 'Awaken शाश्वt Consciousness'
+      : state === 'listening'
+      ? 'Listening... Click to Power Off'
+      : state === 'speaking'
+      ? 'Speaking... Click to Power Off'
+      : 'Power Control & Session';
+
   return (
     <footer className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
       <div className="flex items-center gap-3 sm:gap-4 p-2.5 px-5 rounded-full bg-[#05070D]/80 border border-white/14 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] ring-1 ring-white/10">
-        {/* Left Workspace & History Drawer Toggle */}
+        {/* Left Workspace Drawer Toggle */}
         <button
           onClick={onOpenLeftDrawer}
           className="p-3 rounded-full bg-white/5 border border-white/10 text-zinc-300 hover:text-[#00E0FF] hover:border-[#00E0FF]/50 hover:bg-[#00E0FF]/15 transition-all cursor-pointer"
@@ -76,24 +94,20 @@ export const BottomDock: React.FC<BottomDockProps> = ({
           <Globe className="w-5 h-5 text-blue-400" />
         </button>
 
-        {/* Primary AI Connection Orb Control */}
+        {/* REDESIGNED CRYSTAL GLASS POWER CONTROL BUTTON */}
         <button
+          id="shashwat-power-control-button"
           onClick={onToggleMic}
-          className={`p-4 rounded-full transition-all cursor-pointer shadow-[0_0_30px_rgba(0,224,255,0.6)] ${
-            state !== 'disconnected'
-              ? 'bg-gradient-to-r from-rose-600 to-rose-500 border border-rose-400 text-white animate-pulse'
-              : 'bg-gradient-to-r from-[#00E0FF] to-blue-600 border border-[#00E0FF] text-white hover:scale-105'
-          }`}
-          title={state === 'disconnected' ? 'Awaken शाश्वत' : 'End Session'}
+          className={`p-4 rounded-full border backdrop-blur-xl transition-all duration-300 hover:scale-105 cursor-pointer relative group ${powerStateStyles}`}
+          title={powerTooltip}
         >
-          {state === 'disconnected' ? (
-            <Mic className="w-6 h-6 text-white" />
-          ) : (
-            <MicOff className="w-6 h-6 text-white" />
-          )}
+          <Power className="w-6 h-6" />
+
+          {/* Micro-Interaction Ambient Halo Ring */}
+          <span className="absolute -inset-1 rounded-full border border-current opacity-30 group-hover:opacity-60 transition-opacity" />
         </button>
 
-        {/* Document Intelligence & AI Research Workspace Button */}
+        {/* Document Intelligence Research Workspace Button */}
         <button
           onClick={onToggleDocWorkspace}
           className={`p-3 rounded-full transition-all cursor-pointer ${

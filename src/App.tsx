@@ -24,6 +24,8 @@ import {
 } from './types';
 import { AlertCircle } from 'lucide-react';
 
+import { PowerShutdownModal } from './components/PowerShutdownModal';
+
 export default function App() {
   const [state, setState] = useState<AssistantState>('disconnected');
   const [mood, setMood] = useState<AssistantMood>('witty');
@@ -43,6 +45,7 @@ export default function App() {
   const [isSandboxOpen, setIsSandboxOpen] = useState<boolean>(false);
   const [isLeftDrawerOpen, setIsLeftDrawerOpen] = useState<boolean>(false);
   const [isRightDrawerOpen, setIsRightDrawerOpen] = useState<boolean>(false);
+  const [isPowerModalOpen, setIsPowerModalOpen] = useState<boolean>(false);
   const [activePlan, setActivePlan] = useState<TaskExecutionPlan | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -300,12 +303,26 @@ export default function App() {
         isScreenSharing={isScreenSharing}
         isSandboxOpen={isSandboxOpen}
         isDocWorkspaceOpen={isDocWorkspaceOpen}
-        onToggleMic={handleToggleMic}
+        onToggleMic={() => {
+          if (state === 'disconnected') {
+            handleToggleMic();
+          } else {
+            setIsPowerModalOpen(true);
+          }
+        }}
         onToggleScreenShare={handleToggleScreenShare}
         onToggleSandbox={() => setIsSandboxOpen((prev) => !prev)}
         onToggleDocWorkspace={() => setIsDocWorkspaceOpen((prev) => !prev)}
         onOpenLeftDrawer={() => setIsLeftDrawerOpen(true)}
         onOpenRightDrawer={() => setIsRightDrawerOpen(true)}
+      />
+
+      {/* Power Shutdown Confirmation Modal */}
+      <PowerShutdownModal
+        isOpen={isPowerModalOpen}
+        onClose={() => setIsPowerModalOpen(false)}
+        onConfirmShutdown={handleToggleMic}
+        onPauseAssistant={() => setIsMuted(true)}
       />
 
       {/* Slide-out Drawers */}

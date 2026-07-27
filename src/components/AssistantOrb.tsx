@@ -1,6 +1,4 @@
 import React, { useEffect, useRef } from 'react';
-import { motion } from 'motion/react';
-import { Mic, Radio, Volume2, Power } from 'lucide-react';
 import { AssistantState, AssistantMood } from '../types';
 
 interface AssistantOrbProps {
@@ -81,7 +79,6 @@ function rand(a = 1, b: number | null = null): number {
 export const AssistantOrb: React.FC<AssistantOrbProps> = ({
   state,
   volume = 0,
-  onToggleConnection,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -240,7 +237,6 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({
         const x = Math.cos(ang) * rr;
         const y = Math.sin(ang) * rr + Math.sin(t * 2 + node.phase) * 6;
 
-        // Fade based on z-depth perspective
         const depthAlpha = 0.35 + 0.55 * Math.sin(ang);
         const pulseGlow = state === 'speaking' ? 0.3 * Math.sin(t * 10 + node.phase) : 0;
 
@@ -307,67 +303,15 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({
     };
   }, [state, volume]);
 
-  const scaleBoost = Math.min(0.35, (volume / 100) * 0.4);
-
   return (
-    <div className="relative flex items-center justify-center w-[540px] h-[540px] max-w-full select-none">
-      {/* Hologram Core Canvas Engine */}
+    <div className="relative flex items-center justify-center w-[560px] h-[560px] max-w-full select-none">
+      {/* Pure Hologram Consciousness Canvas Engine (Hero View) */}
       <canvas
         ref={canvasRef}
-        width={540}
-        height={540}
+        width={560}
+        height={560}
         className="absolute inset-0 pointer-events-none z-0"
       />
-
-      {/* Central Interactive Consciousness Button */}
-      <motion.button
-        id="shashwat-orb-button"
-        onClick={onToggleConnection}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        animate={{ scale: 1 + scaleBoost }}
-        transition={{ duration: 0.15 }}
-        className="central-control cursor-pointer focus:outline-none relative group z-20"
-        title={state === 'disconnected' ? 'Connect to शाश्वत' : 'Click to Disconnect'}
-      >
-        <div className="flex flex-col items-center justify-center space-y-2 text-white">
-          {state === 'disconnected' && (
-            <>
-              <Power className="w-9 h-9 text-white drop-shadow-md" />
-              <span className="control-label">Connect</span>
-            </>
-          )}
-
-          {state === 'connecting' && (
-            <>
-              <Radio className="w-9 h-9 text-cyan-300 animate-pulse" />
-              <span className="control-label">Connecting</span>
-            </>
-          )}
-
-          {state === 'listening' && (
-            <>
-              <Mic className="w-9 h-9 text-blue-400 drop-shadow-md animate-pulse group-hover:hidden" />
-              <Power className="w-9 h-9 text-rose-400 drop-shadow-md hidden group-hover:block" />
-              <span className="control-label group-hover:text-rose-300">
-                <span className="group-hover:hidden font-mono text-xs uppercase tracking-widest">Listening</span>
-                <span className="hidden group-hover:inline font-mono text-xs uppercase tracking-widest">Disconnect</span>
-              </span>
-            </>
-          )}
-
-          {state === 'speaking' && (
-            <>
-              <Volume2 className="w-9 h-9 text-cyan-300 animate-bounce group-hover:hidden" />
-              <Power className="w-9 h-9 text-rose-400 drop-shadow-md hidden group-hover:block" />
-              <span className="control-label group-hover:text-rose-300">
-                <span className="group-hover:hidden font-mono text-xs uppercase tracking-widest">Speaking</span>
-                <span className="hidden group-hover:inline font-mono text-xs uppercase tracking-widest">Disconnect</span>
-              </span>
-            </>
-          )}
-        </div>
-      </motion.button>
     </div>
   );
 };
