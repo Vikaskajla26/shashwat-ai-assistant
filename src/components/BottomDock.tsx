@@ -9,7 +9,6 @@ import {
   Sliders,
   Send,
   Mic,
-  MicOff,
 } from 'lucide-react';
 import { AssistantState } from '../types';
 
@@ -62,7 +61,7 @@ export const BottomDock: React.FC<BottomDockProps> = ({
       : 'border-[#9B5DE5] text-[#9B5DE5] bg-[#9B5DE5]/15 shadow-[0_0_25px_rgba(155,93,229,0.5)]';
 
   return (
-    <footer className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-auto w-full max-w-2xl px-4">
+    <footer className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-auto w-full max-w-2xl px-4 breathing-dock">
       {/* Glassmorphic Floating Input Bar (Apple HIG Style) */}
       <div className="flex items-center gap-2 p-2 px-3 rounded-3xl bg-[#05070D]/85 border border-white/14 backdrop-blur-3xl shadow-[0_25px_60px_rgba(0,0,0,0.8)] ring-1 ring-white/10">
         {/* Left Workspace Drawer Toggle */}
