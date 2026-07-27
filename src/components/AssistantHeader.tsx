@@ -1,5 +1,5 @@
 import React from 'react';
-import { Settings, Monitor, MonitorOff, PhoneOff, ShieldCheck, FileSearch } from 'lucide-react';
+import { Settings, Monitor, MonitorOff, PhoneOff, ShieldCheck, FileSearch, Sparkles } from 'lucide-react';
 import { AssistantState, AssistantMood } from '../types';
 
 interface AssistantHeaderProps {
@@ -16,11 +16,11 @@ interface AssistantHeaderProps {
 }
 
 const moodLabels: Record<AssistantMood, string> = {
-  witty: 'Witty & Charming System',
-  playful: 'Playful & Fun System',
-  focused: 'Focused & Smart System',
-  charming: 'Charming Companion System',
-  energetic: 'High Energy System',
+  witty: 'Witty & Charming',
+  playful: 'Playful & Energetic',
+  focused: 'Focused & Analytical',
+  charming: 'Warm Companion',
+  energetic: 'High Octane Mode',
 };
 
 export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
@@ -34,22 +34,22 @@ export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
   onOpenEnrollment,
   onOpenDocWorkspace,
 }) => {
-  const moodLabel = moodLabels[mood] || 'Witty & Charming System';
+  const moodLabel = moodLabels[mood] || 'Witty & Charming';
 
   const statusText =
     state === 'disconnected'
-      ? 'STANDBY_MODE'
+      ? 'STANDBY'
       : state === 'connecting'
-      ? 'CONNECTING_NODE'
+      ? 'CONNECTING'
       : state === 'listening'
-      ? 'LISTENING_MODE'
-      : 'TRANSMITTING_VOICE';
+      ? 'LISTENING'
+      : 'ACTIVE';
 
   const voiceBadgeColor =
     speakerStatus?.status === 'VERIFIED_OWNER'
       ? 'text-emerald-400 border-emerald-500/40 bg-emerald-500/10'
       : speakerStatus?.status === 'LIKELY_OWNER'
-      ? 'text-blue-400 border-blue-500/40 bg-blue-500/10'
+      ? 'text-cyan-400 border-cyan-500/40 bg-cyan-500/10'
       : speakerStatus?.status === 'UNKNOWN_SPEAKER'
       ? 'text-amber-400 border-amber-500/40 bg-amber-500/10'
       : 'text-zinc-400 border-white/10 bg-white/5';
@@ -61,51 +61,41 @@ export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
       ? `LIKELY: ${speakerStatus.ownerName.toUpperCase()}`
       : speakerStatus?.status === 'UNKNOWN_SPEAKER'
       ? 'GUEST_MODE (LOCKED)'
-      : 'VOICE_ID: OPEN';
+      : 'UNENROLLED';
 
   return (
-    <header className="w-full z-30 px-6 py-6 sm:px-12 flex items-center justify-between bg-gradient-to-b from-black/80 to-transparent pointer-events-auto">
-      {/* Status Container */}
-      <div className="flex items-center space-x-6 font-mono text-[11px] tracking-[0.2em] uppercase">
+    <header className="w-full z-30 px-6 py-5 sm:px-10 flex items-center justify-between bg-gradient-to-b from-[#05070D]/90 via-[#0B0F1A]/50 to-transparent pointer-events-auto border-b border-white/5 backdrop-blur-md">
+      {/* Top Status Bar (System Intelligence Panel) */}
+      <div className="flex items-center space-x-6 font-mono text-[11px] tracking-[0.18em] uppercase">
         <div className="flex flex-col gap-0.5">
-          <span className="text-zinc-500 font-normal">OBJECT.ID</span>
-          <span className="text-blue-400 font-semibold">SHASHWAT_01</span>
+          <span className="text-zinc-500 font-normal">OBJECT ID</span>
+          <span className="text-[#00E0FF] font-bold">SHAASHVAT-NODE-9</span>
         </div>
+
         <div className="flex flex-col gap-0.5">
           <span className="text-zinc-500 font-normal">STATUS</span>
           <span className="text-white font-semibold flex items-center gap-1.5">
             <span
-              className={`w-1.5 h-1.5 rounded-full ${
-                state === 'disconnected' ? 'bg-zinc-600' : 'bg-emerald-400 animate-pulse'
+              className={`w-2 h-2 rounded-full ${
+                state === 'disconnected' ? 'bg-zinc-600' : 'bg-[#00E0FF] shadow-[0_0_10px_#00E0FF] animate-pulse'
               }`}
             />
             {statusText}
           </span>
         </div>
 
-        {/* Screen Share Active Indicator */}
-        {isScreenSharing && (
-          <div className="hidden md:flex flex-col gap-0.5 animate-pulse">
-            <span className="text-emerald-500 font-normal">VISION</span>
-            <span className="text-emerald-400 font-semibold flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              SCREEN_SHARE_ACTIVE
-            </span>
-          </div>
-        )}
-
-        {/* Wake Word Hands-Free Active Indicator */}
+        {/* Wake Word Indicator */}
         <div className="hidden sm:flex flex-col gap-0.5">
           <span className="text-zinc-500 font-normal">WAKE WORD</span>
-          <span className="text-blue-300 font-semibold flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping" />
-            "शाश्वत / SHASHWAT"
+          <span className="text-[#A78BFA] font-semibold flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#A78BFA] animate-ping" />
+            "SHASHWAT"
           </span>
         </div>
 
-        {/* Voice Biometrics Identity Indicator */}
+        {/* Speaker Verification Badge */}
         <div className="hidden lg:flex flex-col gap-0.5">
-          <span className="text-zinc-500 font-normal">SPEAKER_ID</span>
+          <span className="text-zinc-500 font-normal">SPEAKER ID</span>
           <span className={`font-semibold flex items-center gap-1.5 ${voiceBadgeColor.split(' ')[0]}`}>
             <span className="w-1.5 h-1.5 rounded-full bg-current" />
             {voiceText}
@@ -113,88 +103,75 @@ export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
         </div>
       </div>
 
-      {/* Controls & Badges */}
-      <div className="flex items-center gap-3 sm:gap-4">
-        {/* Screen Share Toggle Button */}
+      {/* Top Right Controls (Pill-shaped Glowing Buttons) */}
+      <div className="flex items-center gap-2.5 sm:gap-3">
+        {/* Share Screen Pill */}
         {onToggleScreenShare && (
           <button
-            id="shashwat-screenshare-toggle"
             onClick={onToggleScreenShare}
-            className={`px-3 py-2 rounded text-[10px] font-mono font-bold tracking-wider uppercase border flex items-center gap-2 transition-all cursor-pointer ${
-              isScreenSharing
-                ? 'bg-rose-500/20 border-rose-500/80 text-rose-300 hover:bg-rose-500/30 shadow-[0_0_15px_rgba(244,63,94,0.3)]'
-                : 'bg-white/5 border-white/10 text-zinc-300 hover:border-blue-400/50 hover:bg-white/10'
-            }`}
+            className={`pill-btn ${isScreenSharing ? 'active !border-emerald-400 !text-emerald-300' : ''}`}
             title={isScreenSharing ? 'Stop Screen Share' : 'Start Screen Share (Visual Assistant)'}
           >
-            {isScreenSharing ? (
-              <>
-                <MonitorOff className="w-3.5 h-3.5 text-rose-400" />
-                <span className="inline">STOP SCREEN SHARE</span>
-              </>
-            ) : (
-              <>
-                <Monitor className="w-3.5 h-3.5 text-blue-400" />
-                <span className="hidden sm:inline">SHARE SCREEN</span>
-              </>
-            )}
+            {isScreenSharing ? <MonitorOff className="w-3.5 h-3.5 text-emerald-400" /> : <Monitor className="w-3.5 h-3.5 text-[#00E0FF]" />}
+            <span className="hidden sm:inline">{isScreenSharing ? 'STOP SHARE' : 'SHARE SCREEN'}</span>
           </button>
         )}
 
-        {/* Explicit Session Disconnect Button in Header when connected */}
+        {/* System Mode (Mood) Pill */}
+        <button
+          onClick={onOpenSettings}
+          className="pill-btn !border-[#A78BFA]/40 !text-[#A78BFA] hover:!bg-[#A78BFA]/20"
+          title="Change Assistant Mood & System Settings"
+        >
+          <Sparkles className="w-3.5 h-3.5 text-[#A78BFA]" />
+          <span className="hidden lg:inline">{moodLabel}</span>
+        </button>
+
+        {/* Docs / Intelligence Workspace Pill */}
+        {onOpenDocWorkspace && (
+          <button
+            onClick={onOpenDocWorkspace}
+            className="pill-btn !border-[#22D3EE]/40 !text-[#22D3EE] hover:!bg-[#22D3EE]/20"
+            title="Open Document Intelligence & AI Research Workspace"
+          >
+            <FileSearch className="w-3.5 h-3.5 text-[#22D3EE]" />
+            <span className="hidden sm:inline">DOCS INTEL</span>
+          </button>
+        )}
+
+        {/* Voice ID Pill */}
+        {onOpenEnrollment && (
+          <button
+            onClick={onOpenEnrollment}
+            className="pill-btn !border-[#FF4D8D]/40 !text-[#FF4D8D] hover:!bg-[#FF4D8D]/20"
+            title="Voice Biometrics & Enrollment"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-[#FF4D8D]" />
+            <span className="hidden sm:inline">VOICE ID</span>
+          </button>
+        )}
+
+        {/* Settings Icon Pill */}
+        <button
+          onClick={onOpenSettings}
+          className="p-2.5 rounded-full bg-white/5 border border-white/10 hover:border-[#00E0FF] hover:bg-[#00E0FF]/15 text-zinc-300 hover:text-[#00E0FF] transition-all cursor-pointer"
+          title="Settings"
+        >
+          <Settings className="w-4 h-4" />
+        </button>
+
+        {/* Disconnect Pill */}
         {state !== 'disconnected' && onDisconnect && (
           <button
-            id="shashwat-disconnect-header-button"
             onClick={onDisconnect}
-            className="px-3 py-2 rounded text-[10px] font-mono font-bold tracking-wider uppercase border border-rose-500/80 bg-rose-600/30 text-rose-200 hover:bg-rose-600/50 hover:border-rose-400 transition-all flex items-center gap-2 cursor-pointer shadow-[0_0_20px_rgba(225,29,72,0.4)] animate-pulse"
+            className="pill-btn !border-rose-500 !bg-rose-600/30 !text-rose-200 animate-pulse hover:!bg-rose-600/50"
             title="Disconnect Live Session"
           >
             <PhoneOff className="w-3.5 h-3.5 text-rose-300" />
             <span className="inline">DISCONNECT</span>
           </button>
         )}
-
-        <div className="hidden lg:block px-3.5 py-1.5 rounded-[2px] border border-blue-500/80 bg-blue-500/10 text-[10px] font-bold tracking-[0.1em] text-blue-400 uppercase font-mono">
-          {moodLabel}
-        </div>
-
-        {/* Document Intelligence Workspace Button */}
-        {onOpenDocWorkspace && (
-          <button
-            id="shashwat-doc-workspace-header-button"
-            onClick={onOpenDocWorkspace}
-            className="px-3 py-2 rounded text-[10px] font-mono font-bold tracking-wider uppercase border border-cyan-500/60 bg-cyan-600/20 text-cyan-300 hover:bg-cyan-600/40 hover:border-cyan-400 transition-all flex items-center gap-1.5 cursor-pointer shadow-[0_0_15px_rgba(6,182,212,0.3)]"
-            title="Open Document Intelligence & AI Research Workspace"
-          >
-            <FileSearch className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="hidden sm:inline">DOC INTEL</span>
-          </button>
-        )}
-
-        {/* Enroll Voice Profile Button */}
-        {onOpenEnrollment && (
-          <button
-            id="shashwat-enroll-voice-header-button"
-            onClick={onOpenEnrollment}
-            className="px-3 py-2 rounded text-[10px] font-mono font-bold tracking-wider uppercase border border-blue-500/60 bg-blue-600/20 text-blue-300 hover:bg-blue-600/40 hover:border-blue-400 transition-all flex items-center gap-1.5 cursor-pointer shadow-[0_0_15px_rgba(59,130,246,0.3)]"
-            title="Enroll / Manage Voice Identity"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
-            <span className="hidden sm:inline">VOICE ID</span>
-          </button>
-        )}
-
-        <button
-          id="shashwat-settings-toggle"
-          onClick={onOpenSettings}
-          className="w-10 h-10 rounded bg-white/5 border border-white/10 hover:border-white/40 hover:bg-white/10 text-zinc-300 hover:text-white transition-all flex items-center justify-center cursor-pointer"
-          title="Settings & Tools"
-        >
-          <Settings className="w-4 h-4" />
-        </button>
       </div>
     </header>
   );
 };
-
-

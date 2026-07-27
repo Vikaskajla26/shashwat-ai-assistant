@@ -235,10 +235,10 @@ export default function App() {
 
   return (
     <div className="relative w-screen h-screen bg-[#030303] text-white flex flex-col items-center justify-between overflow-hidden font-sans select-none">
-      {/* Ambient Void Background with Starfield */}
-      <div className="ambient-void">
-        <div className="starfield" />
-      </div>
+      {/* Ambient Radial Halos & Particles */}
+      <div className="ambient-halo-1" />
+      <div className="ambient-halo-2" />
+      <div className="ambient-halo-3" />
 
       {/* Header */}
       <AssistantHeader
@@ -254,19 +254,73 @@ export default function App() {
         onOpenDocWorkspace={() => setIsDocWorkspaceOpen(true)}
       />
 
-      {/* HUD Navigation / Event Log Box */}
-      <div className="hidden lg:block absolute top-28 left-10 w-96 p-5 bg-white/[0.03] border-l-2 border-blue-500 backdrop-blur-2xl z-20 font-sans shadow-2xl rounded-r-lg">
-        <div className="flex justify-between items-center text-[10px] font-mono text-blue-400 mb-1.5 uppercase tracking-widest">
-          <span>EVENT_LOG</span>
+      {/* LEFT PANEL: Glassmorphic Cyberpunk Event Log */}
+      <div className="hidden xl:block absolute top-28 left-8 w-80 glass-panel p-5 z-20 font-sans shadow-2xl">
+        <div className="flex justify-between items-center text-[10px] font-mono text-[#00E0FF] mb-2 uppercase tracking-[0.2em] border-b border-white/10 pb-2">
+          <span className="flex items-center gap-1.5 font-bold">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#00E0FF] animate-pulse" />
+            EVENT_LOG
+          </span>
           <span>{latestEvent ? latestEvent.timestamp : '18:25:04'}</span>
         </div>
-        <div className="text-xs font-semibold text-white mb-1 uppercase font-mono tracking-wider">
-          {latestEvent ? latestEvent.toolName : 'BROWSER_NAVIGATE'}
+        <div className="text-xs font-bold text-white mb-1 uppercase font-mono tracking-wider">
+          {latestEvent ? latestEvent.toolName : 'NEURAL_SYSTEM_ACTIVE'}
         </div>
-        <div className="text-xs text-zinc-400 leading-relaxed font-sans">
+        <p className="text-xs text-zinc-300 leading-relaxed font-sans">
           {latestEvent
             ? latestEvent.message
-            : 'Action successful: Close tab and redirecting focus to primary interface node. Neural buffers clear.'}
+            : 'Neural memory pipeline initialized. Real-time audio biometrics & live session ready.'}
+        </p>
+      </div>
+
+      {/* RIGHT PANEL: Health-App Style Quick Intelligence Widgets */}
+      <div className="hidden xl:flex flex-col gap-3.5 absolute top-28 right-8 w-72 z-20">
+        {/* Widget 1: AI Confidence % */}
+        <div className="glass-panel widget-card-cyan p-4 flex items-center justify-between">
+          <div>
+            <div className="text-[10px] font-mono font-bold text-[#00E0FF] uppercase tracking-wider mb-0.5">AI CONFIDENCE</div>
+            <div className="text-xl font-bold text-white font-mono">98.4%</div>
+            <div className="text-[10px] text-zinc-400">High Precision Model</div>
+          </div>
+          <div className="w-10 h-10 rounded-full border-2 border-[#00E0FF] flex items-center justify-center text-[#00E0FF] shadow-[0_0_15px_#00E0FF]">
+            <span className="text-xs font-bold">98%</span>
+          </div>
+        </div>
+
+        {/* Widget 2: Voice Clarity */}
+        <div className="glass-panel widget-card-purple p-4 flex items-center justify-between">
+          <div>
+            <div className="text-[10px] font-mono font-bold text-[#A78BFA] uppercase tracking-wider mb-0.5">VOICE CLARITY</div>
+            <div className="text-xl font-bold text-white font-mono">96.8%</div>
+            <div className="text-[10px] text-zinc-400">16kHz Int16 Stream</div>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-[#A78BFA]/20 border border-[#A78BFA]/40 flex items-center justify-center text-[#A78BFA]">
+            <span className="text-xs font-bold font-mono">HD</span>
+          </div>
+        </div>
+
+        {/* Widget 3: Response Speed */}
+        <div className="glass-panel widget-card-pink p-4 flex items-center justify-between">
+          <div>
+            <div className="text-[10px] font-mono font-bold text-[#FF4D8D] uppercase tracking-wider mb-0.5">RESPONSE SPEED</div>
+            <div className="text-xl font-bold text-white font-mono">180 ms</div>
+            <div className="text-[10px] text-zinc-400">Ultra-Low Latency</div>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-[#FF4D8D]/20 border border-[#FF4D8D]/40 flex items-center justify-center text-[#FF4D8D]">
+            <span className="text-xs font-bold font-mono">⚡</span>
+          </div>
+        </div>
+
+        {/* Widget 4: System Load */}
+        <div className="glass-panel widget-card-blue p-4 flex items-center justify-between">
+          <div>
+            <div className="text-[10px] font-mono font-bold text-[#22D3EE] uppercase tracking-wider mb-0.5">SYSTEM LOAD</div>
+            <div className="text-xl font-bold text-white font-mono">14.2%</div>
+            <div className="text-[10px] text-zinc-400">Optimal Runtime</div>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-[#22D3EE]/20 border border-[#22D3EE]/40 flex items-center justify-center text-[#22D3EE]">
+            <span className="text-xs font-bold font-mono">OK</span>
+          </div>
         </div>
       </div>
 
