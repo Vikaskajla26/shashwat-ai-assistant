@@ -1,0 +1,10 @@
+{
+  "name": "शाश्वत AI Assistant",
+  "description": "Real-time, voice-to-voice AI assistant web app powered by Gemini Live API",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

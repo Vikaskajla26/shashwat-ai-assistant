@@ -1,0 +1,83 @@
+export type AssistantState = 'disconnected' | 'connecting' | 'listening' | 'speaking';
+
+export type AssistantMood = 'witty' | 'playful' | 'focused' | 'charming' | 'energetic';
+
+export type SandboxMode = 'general' | 'research' | 'shopping' | 'email' | 'calendar';
+
+export interface SandboxTab {
+  id: string;
+  title: string;
+  url: string;
+  favicon?: string;
+  active: boolean;
+  isLoading?: boolean;
+  contentSummary?: string;
+  domNodesCount?: number;
+  extractedData?: Record<string, any>;
+}
+
+export interface TaskStep {
+  id: string;
+  label: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'self_healing' | 'failed';
+  detail?: string;
+}
+
+export interface TaskExecutionPlan {
+  id: string;
+  goal: string;
+  mode: SandboxMode;
+  steps: TaskStep[];
+  currentStepIndex: number;
+  status: 'planning' | 'executing' | 'verifying' | 'completed' | 'needs_confirmation';
+  findingsSummary?: string;
+  requiresUserConfirmation?: boolean;
+  confirmationAction?: string;
+}
+
+export interface SandboxDownload {
+  id: string;
+  filename: string;
+  size: string;
+  progress: number;
+  status: 'downloading' | 'completed' | 'failed';
+  url: string;
+}
+
+export interface VisualCardData {
+  id: string;
+  title: string;
+  content: string;
+  category?: string;
+  timestamp: string;
+  url?: string;
+}
+
+export interface ToolCallPayload {
+  id: string;
+  name: string;
+  args: Record<string, any>;
+}
+
+export interface ToolExecutionEvent {
+  id: string;
+  toolName: string;
+  status: 'executing' | 'success' | 'failed';
+  message: string;
+  timestamp: string;
+  actionUrl?: string;
+  plan?: TaskExecutionPlan;
+}
+
+export interface TranscriptMessage {
+  id: string;
+  role: 'user' | 'model' | 'system';
+  text: string;
+  timestamp: string;
+}
+
+export interface AudioVolumeEvent {
+  inputVolume: number;  // 0 - 100
+  outputVolume: number; // 0 - 100
+}
+
