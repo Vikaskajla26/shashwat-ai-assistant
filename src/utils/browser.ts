@@ -1,3 +1,12 @@
+declare global {
+  interface Window {
+    electronAPI?: {
+      openExternal: (url: string) => Promise<void>;
+      getVersion?: () => Promise<string>;
+    };
+  }
+}
+
 export function openExternalUrl(url: string, targetName = '_blank'): boolean {
   if (!url) return false;
 
@@ -6,7 +15,17 @@ export function openExternalUrl(url: string, targetName = '_blank'): boolean {
     formattedUrl = 'https://' + formattedUrl;
   }
 
-  // 1. Primary fast window.open call
+  // 1. Native Electron Shell Handler (for .exe Desktop App)
+  if (typeof window !== 'undefined' && window.electronAPI && typeof window.electronAPI.openExternal === 'function') {
+    try {
+      window.electronAPI.openExternal(formattedUrl);
+      return true;
+    } catch (err) {
+      console.warn('[openExternalUrl] Electron openExternal fallback:', err);
+    }
+  }
+
+  // 2. Primary Web window.open call (for Browser Web App)
   try {
     const win = window.open(formattedUrl, targetName, 'noopener,noreferrer');
     if (win && !win.closed) {
@@ -21,7 +40,7 @@ export function openExternalUrl(url: string, targetName = '_blank'): boolean {
     console.warn('window.open blocked or throttled:', e);
   }
 
-  // 2. Single anchor fallback if window.open was blocked by popup settings
+  // 3. Single anchor fallback if window.open was blocked by popup settings
   try {
     const a = document.createElement('a');
     a.href = formattedUrl;
@@ -36,7 +55,7 @@ export function openExternalUrl(url: string, targetName = '_blank'): boolean {
     console.warn('Anchor fallback failed:', e);
   }
 
-  // 3. Absolute direct location fallback
+  // 4. Absolute direct location fallback
   try {
     window.location.href = formattedUrl;
     return true;

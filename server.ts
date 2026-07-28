@@ -15,6 +15,10 @@ import fs from "fs";
 import { enrollVoiceprint, verifySpeaker, getVoiceprint, deleteVoiceprint } from "./server/voice/speakerVerification";
 import { KnowledgeIndex } from "./server/docIntel/knowledgeIndex";
 import { StudyGenerator } from "./server/docIntel/studyGenerator";
+import { runHealthChecks } from "./server/registry/selfTest";
+import { getRegistry, getTaskMeta, validateConsistency } from "./server/registry/taskRegistry";
+import { getAggregateStats, getAllStats } from "./server/registry/metricsStore";
+import { getFourSystemsState } from "./server/selfLearningEngine";
 
 async function startServer() {
   const app = express();
@@ -24,7 +28,7 @@ async function startServer() {
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-  // Health check endpoint
+  // Health check endpoint (static, backward-compatible)
   app.get("/api/health", (_req, res) => {
     res.json({
       status: "ok",
@@ -32,6 +36,39 @@ async function startServer() {
       model: "gemini-3.1-flash-live-preview",
       time: new Date().toISOString(),
     });
+  });
+
+  // Detailed health — real probe results from the Self-Test Engine
+  app.get("/api/health/detailed", async (_req, res) => {
+    try {
+      const report = await runHealthChecks();
+      res.json({ success: true, ...report });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || "Health check failed" });
+    }
+  });
+
+  // Task Registry — the single source of truth for every declared tool
+  app.get("/api/registry", (_req, res) => {
+    const registry = getRegistry();
+    const aggregate = getAggregateStats();
+    const consistency = validateConsistency(registry.map((t) => t.name));
+    res.json({ success: true, registry, aggregate, consistency });
+  });
+
+  // Task Stats — per-tool and aggregate metrics (success rate, confidence, timing)
+  app.get("/api/stats", (_req, res) => {
+    res.json({ success: true, aggregate: getAggregateStats(), tasks: getAllStats() });
+  });
+
+  // Four Systems Learning State — live (real metrics, not seed data)
+  app.get("/api/learning", (_req, res) => {
+    try {
+      const state = getFourSystemsState();
+      res.json({ success: true, ...state });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || "Learning state failed" });
+    }
   });
 
   // Document Intelligence REST APIs
@@ -476,6 +513,24 @@ async function startServer() {
 
   server.listen(PORT, HOST, () => {
     console.log(`शाश्वत AI Assistant server running on http://${HOST}:${PORT}`);
+
+    // Fire-and-forget startup self-test. Never blocks boot; results appear in
+    // GET /api/health/detailed and are logged to the console.
+    runHealthChecks()
+      .then((report) => {
+        const { passed, failed, warned, skipped, score } = report.summary;
+        const pct = Math.round(score * 100);
+        console.log(
+          `[SelfTest] ${passed} pass, ${failed} fail, ${warned} warn, ${skipped} skip — ${pct}% score`
+        );
+        // Log individual warnings/failures for quick diagnosis.
+        for (const c of report.checks) {
+          if (c.status === "warn" || c.status === "fail") {
+            console.log(`  [${c.status.toUpperCase()}] ${c.name}: ${c.detail}`);
+          }
+        }
+      })
+      .catch((err) => console.warn("[SelfTest] health checks failed:", err));
   });
 }
 
