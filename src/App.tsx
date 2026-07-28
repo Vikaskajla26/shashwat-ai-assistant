@@ -11,7 +11,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { openExternalUrl } from './utils/browser';
 import { AISandboxBrowser } from './components/AISandboxBrowser';
 import { VoiceEnrollmentModal } from './components/VoiceEnrollmentModal';
-import { DocumentWorkspaceModal } from './components/docIntel/DocumentWorkspaceModal';
+import { StudyStudioModal } from './components/docIntel/StudyStudioModal';
 import { LeftDrawer, RightDrawer } from './components/CinematicPanels';
 import { BottomDock } from './components/BottomDock';
 import {
@@ -401,8 +401,8 @@ export default function App() {
         }}
       />
 
-      {/* Document Intelligence & AI Research Workspace Modal */}
-      <DocumentWorkspaceModal
+      {/* 🎓 Study Studio Learning Ecosystem Modal */}
+      <StudyStudioModal
         isOpen={isDocWorkspaceOpen}
         onClose={() => setIsDocWorkspaceOpen(false)}
         onSendMessage={handleSendMessage}
