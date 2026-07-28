@@ -266,7 +266,7 @@ export const TOOL_DECLARATIONS = [
   {
     name: "browser_navigate",
     description:
-      "Drives शाश्वत's autonomous sandbox browser (Playwright Chromium) for real DOM operations: navigate, click, scroll, fill_form, read_page, summarize_page, compare_products, research_topic, switch_tab, close_tab, download_file, video_control. Returns REAL page text/data.",
+      "Drives शाश्वत's autonomous SANDBOX browser (an isolated Playwright Chromium window, separate from the user's real browser) for real DOM operations: navigate, click, scroll, fill_form, read_page, summarize_page, compare_products, research_topic, switch_tab, close_tab, download_file, video_control. Returns REAL page text/data. Do NOT use this for ordinary opening/searching (use open_website/search_web/searchGoogle instead) — only for autonomous multi-step automation, scraping, form-filling, testing, or when the user explicitly asks for the sandbox/AI browser.",
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -296,7 +296,7 @@ export const TOOL_DECLARATIONS = [
   {
     name: "browser_sandbox_exec",
     description:
-      "Runs an autonomous multi-tab research/comparison task in शाश्वत's sandbox browser and returns real structured findings.",
+      "Runs an autonomous multi-tab research/comparison task in शाश्वत's isolated SANDBOX browser (separate from the user's real browser) and returns real structured findings. Only use for genuinely autonomous multi-step research/comparison across multiple sites, or when the user explicitly asks for the sandbox/AI browser — a single plain search still goes through search_web/searchGoogle.",
     parameters: {
       type: Type.OBJECT,
       properties: {

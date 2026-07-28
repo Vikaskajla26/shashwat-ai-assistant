@@ -355,7 +355,7 @@ export async function executeTool(
         // window). Other Google-owned engines just open the default browser — no scraping.
         let directAnswer = "";
         let summaryText = "";
-        let openedIn: "sandbox" | "default_browser" = "default_browser";
+        let openedIn: "default_browser" = "default_browser";
         if (engine === "google") {
           const live = await liveGoogleSearch(queryStr, url);
           directAnswer = live.directAnswer;
@@ -584,53 +584,40 @@ export async function executeTool(
 }
 
 /**
- * Live Google search with a SINGLE visible window.
+ * Live Google search — ALWAYS opens in the user's REAL default system browser.
  *
- * Previously this opened the user's default browser AND a visible Playwright
- * Chromium window for the same query (double window). Now:
- *   - Try the Playwright sandbox first (it both shows results AND extracts text).
- *   - If Playwright succeeds, the sandbox IS the visible window — do NOT also
- *     open the default browser.
- *   - If Playwright is unavailable or returns nothing, fall back to the HTTP
- *     live-search fetcher and open the default browser so the user still sees
- *     results.
+ * INTELLIGENT BROWSER ROUTING: ordinary user-facing browsing/search must
+ * never open the Playwright sandbox. The sandbox is a separate, explicit
+ * tool (browser_navigate / browser_sandbox_exec) reserved for autonomous
+ * multi-step automation, scraping, or a direct user request like "search
+ * Google in sandbox". searchGoogle/search_web are plain, everyday search —
+ * they must behave exactly like the user typing into their own browser.
  *
- * Returns which surface ended up visible so the response to Gemini is honest.
+ * The live text (for the spoken answer) comes from a plain background HTTP
+ * fetch that never opens any window of its own — the ONLY visible window
+ * that appears is the real default browser tab opened below.
  */
 async function liveGoogleSearch(
   queryStr: string,
   url: string
-): Promise<{ directAnswer: string; summaryText: string; openedIn: "sandbox" | "default_browser" }> {
-  let summaryText = "";
+): Promise<{ directAnswer: string; summaryText: string; openedIn: "default_browser" }> {
+  // 1. Always launch the real default browser immediately — this is the
+  //    single visible surface the user sees, exactly like a normal search.
+  await openInDefaultBrowser(url);
+
+  // 2. Fetch live snippets in the background (no visible window) purely to
+  //    ground the spoken/voice response in current facts.
   let directAnswer = "";
-  let playwrightOk = false;
-
-  // 1. Try Playwright sandbox (visible Chromium) to scrape the Google DOM.
+  let summaryText = "";
   try {
-    const pwResult = await sandboxExec({ action: "research_topic", target: queryStr } as any);
-    if (pwResult && pwResult.data) {
-      directAnswer = pwResult.data.directAnswer || "";
-      summaryText = pwResult.data.summaryText || "";
-      playwrightOk = Boolean(directAnswer || summaryText);
-    }
-  } catch (pwErr) {
-    console.warn("[liveGoogleSearch] Playwright search notice:", pwErr);
-  }
-
-  // 2. If Playwright gave no text, fall back to the HTTP fetcher.
-  if (!summaryText) {
     const liveSearch = await fetchLiveSearchResults(queryStr);
     directAnswer = liveSearch.directAnswer || "";
     summaryText = liveSearch.summaryText || "";
+  } catch (err) {
+    console.warn("[liveGoogleSearch] HTTP live-search fetch notice:", err);
   }
 
-  // 3. Single-window rule: open the default browser ONLY if the sandbox never
-  //    surfaced results — otherwise the sandbox is already the visible window.
-  if (!playwrightOk) {
-    await openInDefaultBrowser(url);
-    return { directAnswer, summaryText, openedIn: "default_browser" };
-  }
-  return { directAnswer, summaryText, openedIn: "sandbox" };
+  return { directAnswer, summaryText, openedIn: "default_browser" };
 }
 
 /** Productivity actions — open real sites/apps, persist reminders to memory. */
