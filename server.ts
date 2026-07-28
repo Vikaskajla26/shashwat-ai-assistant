@@ -18,8 +18,18 @@ import { runHealthChecks } from "./server/registry/selfTest";
 import { getRegistry, getTaskMeta, validateConsistency } from "./server/registry/taskRegistry";
 import { getAggregateStats, getAllStats } from "./server/registry/metricsStore";
 import { getFourSystemsState } from "./server/selfLearningEngine";
+import { REGISTERED_COMMANDS, processStudyCommand } from "./server/docIntel/commandProcessor";
+import { getDB, closeDB } from "./server/db/database";
 
 async function startServer() {
+  // Initialize database on startup
+  try {
+    await getDB();
+    console.log('[Database] SQLite database initialized successfully');
+  } catch (err) {
+    console.error('[Database] Failed to initialize database:', err);
+  }
+
   const app = express();
   const PORT = 3000;
   const HOST = "0.0.0.0";
@@ -144,14 +154,12 @@ async function startServer() {
 
   // Slash Command Execution Endpoints
   app.get("/api/study/commands", (_req, res) => {
-    const { REGISTERED_COMMANDS } = require("./server/docIntel/commandProcessor");
     res.json({ success: true, commands: REGISTERED_COMMANDS });
   });
 
   app.post("/api/study/command", async (req, res) => {
     try {
       const { command, docId } = req.body || {};
-      const { processStudyCommand } = require("./server/docIntel/commandProcessor");
       const result = await processStudyCommand(command || "/notes", docId);
       res.json({ success: true, result });
     } catch (err: any) {
@@ -165,6 +173,285 @@ async function startServer() {
     const ki = KnowledgeIndex.getInstance();
     const comparison = ki.compareDocuments(docIds);
     res.json({ success: true, comparison });
+  });
+
+  // Database API endpoints for offline-first storage
+  // User Memory
+  app.get("/api/memory", async (_req, res) => {
+    try {
+      const db = await getDB();
+      const memories = await db.all('SELECT key, value FROM user_memory');
+      const result: Record<string, string> = {};
+      memories.forEach(m => { result[m.key] = m.value; });
+      res.json({ success: true, memories: result });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || 'Failed to load memory' });
+    }
+  });
+
+  app.post("/api/memory", async (req, res) => {
+    try {
+      const { key, value } = req.body || {};
+      if (!key || value === undefined) {
+        return res.status(400).json({ success: false, message: 'key and value required' });
+      }
+      const db = await getDB();
+      await db.run(
+        'INSERT INTO user_memory (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP',
+        [key, value]
+      );
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || 'Failed to save memory' });
+    }
+  });
+
+  app.delete("/api/memory/:key", async (req, res) => {
+    try {
+      const db = await getDB();
+      await db.run('DELETE FROM user_memory WHERE key = ?', [req.params.key]);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || 'Failed to delete memory' });
+    }
+  });
+
+  // Settings
+  app.get("/api/settings", async (_req, res) => {
+    try {
+      const db = await getDB();
+      const settings = await db.all('SELECT key, value FROM settings');
+      const result: Record<string, string> = {};
+      settings.forEach(s => { result[s.key] = s.value; });
+      res.json({ success: true, settings: result });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || 'Failed to load settings' });
+    }
+  });
+
+  app.post("/api/settings", async (req, res) => {
+    try {
+      const { key, value } = req.body || {};
+      if (!key || value === undefined) {
+        return res.status(400).json({ success: false, message: 'key and value required' });
+      }
+      const db = await getDB();
+      await db.run(
+        'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP',
+        [key, value]
+      );
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || 'Failed to save setting' });
+    }
+  });
+
+  // Conversation History
+  app.get("/api/conversations/:sessionId", async (req, res) => {
+    try {
+      const db = await getDB();
+      const conversations = await db.all(
+        'SELECT role, content, timestamp FROM conversation_history WHERE session_id = ? ORDER BY timestamp ASC',
+        [req.params.sessionId]
+      );
+      res.json({ success: true, conversations });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || 'Failed to load conversations' });
+    }
+  });
+
+  app.post("/api/conversations", async (req, res) => {
+    try {
+      const { sessionId, role, content } = req.body || {};
+      if (!sessionId || !role || !content) {
+        return res.status(400).json({ success: false, message: 'sessionId, role, and content required' });
+      }
+      const db = await getDB();
+      await db.run(
+        'INSERT INTO conversation_history (session_id, role, content) VALUES (?, ?, ?)',
+        [sessionId, role, content]
+      );
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || 'Failed to save conversation' });
+    }
+  });
+
+  // Bookmarks
+  app.get("/api/bookmarks", async (_req, res) => {
+    try {
+      const db = await getDB();
+      const bookmarks = await db.all('SELECT * FROM bookmarks ORDER BY created_at DESC');
+      res.json({ success: true, bookmarks });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || 'Failed to load bookmarks' });
+    }
+  });
+
+  app.post("/api/bookmarks", async (req, res) => {
+    try {
+      const { title, url, description } = req.body || {};
+      if (!title || !url) {
+        return res.status(400).json({ success: false, message: 'title and url required' });
+      }
+      const db = await getDB();
+      await db.run('INSERT INTO bookmarks (title, url, description) VALUES (?, ?, ?)', [title, url, description || '']);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || 'Failed to save bookmark' });
+    }
+  });
+
+  app.delete("/api/bookmarks/:id", async (req, res) => {
+    try {
+      const db = await getDB();
+      await db.run('DELETE FROM bookmarks WHERE id = ?', [req.params.id]);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || 'Failed to delete bookmark' });
+    }
+  });
+
+  // Study Workspace
+  app.get("/api/study-workspace", async (_req, res) => {
+    try {
+      const db = await getDB();
+      const items = await db.all('SELECT * FROM study_workspace ORDER BY updated_at DESC');
+      res.json({ success: true, items });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || 'Failed to load study workspace' });
+    }
+  });
+
+  app.post("/api/study-workspace", async (req, res) => {
+    try {
+      const { title, content, subject } = req.body || {};
+      if (!title) {
+        return res.status(400).json({ success: false, message: 'title required' });
+      }
+      const db = await getDB();
+      await db.run(
+        'INSERT INTO study_workspace (title, content, subject) VALUES (?, ?, ?)',
+        [title, content || '', subject || '']
+      );
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || 'Failed to save study item' });
+    }
+  });
+
+  app.put("/api/study-workspace/:id", async (req, res) => {
+    try {
+      const { title, content, subject } = req.body || {};
+      const db = await getDB();
+      await db.run(
+        'UPDATE study_workspace SET title = ?, content = ?, subject = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [title, content || '', subject || '', req.params.id]
+      );
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || 'Failed to update study item' });
+    }
+  });
+
+  app.delete("/api/study-workspace/:id", async (req, res) => {
+    try {
+      const db = await getDB();
+      await db.run('DELETE FROM study_workspace WHERE id = ?', [req.params.id]);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || 'Failed to delete study item' });
+    }
+  });
+
+  // Task History
+  app.get("/api/task-history", async (_req, res) => {
+    try {
+      const db = await getDB();
+      const tasks = await db.all('SELECT * FROM task_history ORDER BY started_at DESC LIMIT 100');
+      res.json({ success: true, tasks });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || 'Failed to load task history' });
+    }
+  });
+
+  app.post("/api/task-history", async (req, res) => {
+    try {
+      const { taskName, status, result } = req.body || {};
+      if (!taskName || !status) {
+        return res.status(400).json({ success: false, message: 'taskName and status required' });
+      }
+      const db = await getDB();
+      await db.run(
+        'INSERT INTO task_history (task_name, status, started_at, completed_at, result) VALUES (?, ?, ?, ?, ?)',
+        [taskName, status, new Date().toISOString(), status === 'completed' ? new Date().toISOString() : null, result || '']
+      );
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || 'Failed to save task history' });
+    }
+  });
+
+  // Automation History
+  app.get("/api/automation-history", async (_req, res) => {
+    try {
+      const db = await getDB();
+      const history = await db.all('SELECT * FROM automation_history ORDER BY executed_at DESC LIMIT 100');
+      res.json({ success: true, history });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || 'Failed to load automation history' });
+    }
+  });
+
+  app.post("/api/automation-history", async (req, res) => {
+    try {
+      const { action, target, parameters, success, result } = req.body || {};
+      if (!action) {
+        return res.status(400).json({ success: false, message: 'action required' });
+      }
+      const db = await getDB();
+      await db.run(
+        'INSERT INTO automation_history (action, target, parameters, success, result) VALUES (?, ?, ?, ?, ?)',
+        [action, target || '', JSON.stringify(parameters || {}), success ? 1 : 0, result || '']
+      );
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || 'Failed to save automation history' });
+    }
+  });
+
+  // Logs
+  app.get("/api/logs", async (req, res) => {
+    try {
+      const { level, limit = 100 } = req.query;
+      const db = await getDB();
+      let query = 'SELECT * FROM logs';
+      const params: any[] = [];
+      if (level) {
+        query += ' WHERE level = ?';
+        params.push(level);
+      }
+      query += ' ORDER BY timestamp DESC LIMIT ?';
+      params.push(parseInt(limit as string) || 100);
+      const logs = await db.all(query, params);
+      res.json({ success: true, logs });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || 'Failed to load logs' });
+    }
+  });
+
+  app.post("/api/logs", async (req, res) => {
+    try {
+      const { level, message, module } = req.body || {};
+      if (!level || !message) {
+        return res.status(400).json({ success: false, message: 'level and message required' });
+      }
+      const db = await getDB();
+      await db.run('INSERT INTO logs (level, message, module) VALUES (?, ?, ?)', [level, message, module || '']);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || 'Failed to save log' });
+    }
   });
 
   const server = http.createServer(app);
@@ -540,6 +827,19 @@ async function startServer() {
         }
       })
       .catch((err) => console.warn("[SelfTest] health checks failed:", err));
+  });
+
+  // Graceful shutdown
+  process.on('SIGINT', async () => {
+    console.log('[Server] Received SIGINT, shutting down gracefully...');
+    await closeDB();
+    process.exit(0);
+  });
+
+  process.on('SIGTERM', async () => {
+    console.log('[Server] Received SIGTERM, shutting down gracefully...');
+    await closeDB();
+    process.exit(0);
   });
 }
 

@@ -326,8 +326,6 @@ export async function executeTool(
         const map: Record<string, string> = {
           google: `https://www.google.com/search?q=${q}`,
           youtube: `https://www.youtube.com/results?search_query=${q}`,
-          wikipedia: `https://en.wikipedia.org/wiki/Special:Search?search=${q}`,
-          stackoverflow: `https://stackoverflow.com/search?q=${q}`,
           images: `https://www.google.com/search?tbm=isch&q=${q}`,
           news: `https://news.google.com/search?q=${q}`,
         };

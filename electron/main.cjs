@@ -198,7 +198,11 @@ function createSystemTray() {
   }
 }
 
+const { registerAllIPCHandlers } = require('./ipcHandlers.cjs');
+
 function registerIPCHandlers() {
+  registerAllIPCHandlers();
+
   ipcMain.handle('app:get-version', () => app.getVersion());
 
   ipcMain.on('app:notification', (_event, { title, body }) => {

@@ -79,14 +79,14 @@ export const TOOL_DECLARATIONS = [
   {
     name: "search_web",
     description:
-      "Searches Google, YouTube, Wikipedia, Stack Overflow, Images, or News in the real default browser and opens the results page.",
+      "Searches Google, YouTube, Google Images, or Google News in the real default browser and opens the results page.",
     parameters: {
       type: Type.OBJECT,
       properties: {
         query: { type: Type.STRING },
         engine: {
           type: Type.STRING,
-          enum: ["google", "youtube", "wikipedia", "stackoverflow", "images", "news"],
+          enum: ["google", "youtube", "images", "news"],
         },
       },
       required: ["query"],
