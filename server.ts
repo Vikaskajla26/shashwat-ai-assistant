@@ -6,8 +6,7 @@ import path from "path";
 dotenv.config();
 dotenv.config({ path: ".env.local" });
 import { WebSocketServer, WebSocket } from "ws";
-import { GoogleGenAI, LiveServerMessage, Modality } from "@google/genai";
-import { createServer as createViteServer } from "vite";
+import { GoogleGenAI } from "@google/genai";
 import { TOOL_DECLARATIONS } from "./server/tools/declarations";
 import { executeTool, isClientSideTool } from "./server/tools";
 import { SYSTEM_INSTRUCTION } from "./server/systemInstruction";
@@ -512,51 +511,14 @@ async function startServer() {
     }
   });
 
-  // Serve frontend static assets (production) or mount Vite dev middleware (development)
+  // Serve compiled production frontend directly from dist/
   const distPath = path.resolve(process.cwd(), "dist");
-  const isProd = process.env.NODE_ENV === "production";
-
-  if (!isProd) {
-    console.log("[ViteDev] Mounting Vite live development middleware");
-    const vite = await createViteServer({
-      server: {
-        middlewareMode: true,
-        watch: {
-          ignored: ["**/bin/**", "**/data/**"],
-        },
-      },
-      appType: "custom",
-    });
-    app.use(vite.middlewares);
-
-    app.use("*", async (req, res, next) => {
-      const url = req.originalUrl;
-      if (url.startsWith("/api/")) return next();
-
-      // Only serve index.html for HTML navigation requests (skip asset files with extensions)
-      const acceptHeader = req.headers.accept || "";
-      const hasExtension = path.extname(url.split("?")[0]).length > 0;
-      if (hasExtension && !acceptHeader.includes("text/html")) {
-        return next();
-      }
-
-      try {
-        const indexPath = path.resolve(process.cwd(), "index.html");
-        let template = fs.readFileSync(indexPath, "utf-8");
-        template = await vite.transformIndexHtml(url, template);
-        res.status(200).set({ "Content-Type": "text/html" }).end(template);
-      } catch (e: any) {
-        vite.ssrFixStacktrace(e);
-        next(e);
-      }
-    });
-  } else {
-    console.log("[StaticServer] Serving compiled production frontend from dist/");
-    app.use(express.static(distPath));
-    app.get("*", (_req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
-    });
-  }
+  console.log("[StaticServer] Serving compiled frontend from dist/");
+  app.use(express.static(distPath));
+  app.get("*", (req, res, next) => {
+    if (req.originalUrl.startsWith("/api/")) return next();
+    res.sendFile(path.join(distPath, "index.html"));
+  });
 
   server.listen(PORT, () => {
     console.log(`शाश्वत AI Assistant server running on http://localhost:${PORT} and http://127.0.0.1:${PORT}`);
