@@ -512,11 +512,12 @@ async function startServer() {
     }
   });
 
-  // Serve frontend static assets (production/built dist) or mount Vite dev middleware
+  // Serve frontend static assets (production) or mount Vite dev middleware (development)
   const distPath = path.resolve(process.cwd(), "dist");
-  const isProd = process.env.NODE_ENV === "production" || fs.existsSync(path.join(distPath, "index.html"));
+  const isProd = process.env.NODE_ENV === "production";
 
   if (!isProd) {
+    console.log("[ViteDev] Mounting Vite live development middleware");
     const vite = await createViteServer({
       server: {
         middlewareMode: true,
