@@ -1,14 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  X, FileText, Upload, Sparkles, BookOpen, Brain, Download, Trash2,
-  CheckCircle2, Search, Layers, RefreshCw, HelpCircle, ArrowRight,
-  GraduationCap, Plus, Folder, Calendar, Clock, Award, Bookmark, Shuffle,
-  Volume2, Play, Pause, RotateCcw, PenTool, GitFork, BarChart3, Target,
-  MessageSquare, UserCheck, Flame, Check, ChevronRight, FileCode, Terminal,
-  Copy, Share2, Printer, FileDown, Command as CmdIcon
+  X, Upload, Sparkles, BookOpen, Brain, Download,
+  HelpCircle, GraduationCap, Folder, Clock,
+  PenTool, GitFork, UserCheck, Terminal,
+  Copy, Command as CmdIcon, ChevronRight, Layers
 } from 'lucide-react';
 import { DocumentMeta, KnowledgeQueryResult, StudyMaterials } from '../../../server/docIntel/types';
+import { DEFAULT_COMMANDS, CommandItem } from '../../data/commands';
 
 interface StudyStudioModalProps {
   isOpen: boolean;
@@ -24,21 +23,13 @@ interface Workspace {
   createdAt: string;
 }
 
-interface CommandItem {
-  command: string;
-  category: string;
-  description: string;
-  syntax: string;
-  example: string;
-}
-
 export const StudyStudioModal: React.FC<StudyStudioModalProps> = ({
   isOpen,
   onClose,
   onSendMessage,
 }) => {
   // Workspaces State
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([
+  const [workspaces] = useState<Workspace[]>([
     { id: 'anatomy', name: 'Anatomy & Histology', icon: '🧬', docCount: 4, createdAt: '2026-07-20' },
     { id: 'physiology', name: 'Physiology & Neuro', icon: '🧠', docCount: 3, createdAt: '2026-07-22' },
     { id: 'dravyaguna', name: 'Dravyaguna & Herbal AI', icon: '🌿', docCount: 5, createdAt: '2026-07-24' },
@@ -46,18 +37,16 @@ export const StudyStudioModal: React.FC<StudyStudioModalProps> = ({
     { id: 'research', name: 'Research & Thesis', icon: '🔬', docCount: 6, createdAt: '2026-07-26' },
   ]);
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string>('anatomy');
-  const [newWorkspaceName, setNewWorkspaceName] = useState('');
-  const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
 
   // Active Tool Tab
   const [activeTab, setActiveTab] = useState<
-    'commands' | 'materials' | 'notes' | 'handwritten' | 'flashcards' | 'quiz' | 'viva' | 'mindmap' | 'pomodoro' | 'analytics'
+    'commands' | 'materials' | 'notes' | 'handwritten' | 'flashcards' | 'quiz' | 'viva' | 'mindmap' | 'pomodoro'
   >('commands');
 
-  // Slash Command Palette State
+  // Slash Command Palette State (Initialized with DEFAULT_COMMANDS)
   const [commandInput, setCommandInput] = useState('');
-  const [registeredCommands, setRegisteredCommands] = useState<CommandItem[]>([]);
-  const [filteredCommands, setFilteredCommands] = useState<CommandItem[]>([]);
+  const [registeredCommands, setRegisteredCommands] = useState<CommandItem[]>(DEFAULT_COMMANDS);
+  const [filteredCommands, setFilteredCommands] = useState<CommandItem[]>(DEFAULT_COMMANDS);
   const [showCommandSuggestions, setShowCommandSuggestions] = useState(false);
   const [isExecutingCommand, setIsExecutingCommand] = useState(false);
   const [commandResult, setCommandResult] = useState<{ title: string; markdown: string } | null>(null);
@@ -65,45 +54,10 @@ export const StudyStudioModal: React.FC<StudyStudioModalProps> = ({
   // Documents & Processing
   const [documents, setDocuments] = useState<DocumentMeta[]>([]);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-
-  // PDF Chat & Semantic Search
-  const [searchQuery, setSearchQuery] = useState('');
-  const [queryResult, setQueryResult] = useState<KnowledgeQueryResult | null>(null);
-  const [isSearching, setIsSearching] = useState(false);
-
-  // Study Generator
-  const [studyMaterials, setStudyMaterials] = useState<StudyMaterials | null>(null);
-  const [isGeneratingStudy, setIsGeneratingStudy] = useState(false);
 
   // Handwritten Notebook Generator State
   const [inkColor, setInkColor] = useState<'blue' | 'black' | 'green' | 'red'>('blue');
-  const [paperStyle, setPaperStyle] = useState<'ruled' | 'blank' | 'graph' | 'medical'>('ruled');
   const [handwrittenTitle, setHandwrittenTitle] = useState('Anatomy Notes - Neurovascular System');
-
-  // Flashcards State
-  const [flashcardIdx, setFlashcardIdx] = useState(0);
-  const [isFlipped, setIsFlipped] = useState(false);
-
-  // Quiz Mode State
-  const [mcqAnswers, setMcqAnswers] = useState<{ [id: string]: number }>({});
-  const [quizDifficulty, setQuizDifficulty] = useState<'easy' | 'medium' | 'hard' | 'expert'>('medium');
-
-  // Viva AI Examiner State
-  const [vivaMessages, setVivaMessages] = useState<Array<{ sender: 'examiner' | 'user'; text: string; score?: number }>>([
-    {
-      sender: 'examiner',
-      text: 'Welcome to your Viva Voce Examination on Anatomy & Histology. Can you describe the primary origin and clinical course of the Sciatic Nerve?',
-    },
-  ]);
-  const [vivaInput, setVivaInput] = useState('');
-  const [vivaPersona, setVivaPersona] = useState<'Friendly Teacher' | 'Strict Professor' | 'Exam Coach' | 'Medical Faculty'>('Medical Faculty');
-
-  // Pomodoro Timer State
-  const [pomodoroSeconds, setPomodoroSeconds] = useState(25 * 60);
-  const [isPomodoroRunning, setIsPomodoroRunning] = useState(false);
-  const [pomodoroMode, setPomodoroMode] = useState<'focus' | 'break'>('focus');
 
   // Copy feedback
   const [copied, setCopied] = useState(false);
@@ -121,14 +75,14 @@ export const StudyStudioModal: React.FC<StudyStudioModalProps> = ({
     try {
       const res = await fetch('/api/documents');
       const data = await res.json();
-      if (data.success) {
-        setDocuments(data.documents || []);
-        if (data.documents && data.documents.length > 0 && !selectedDocId) {
+      if (data.success && data.documents) {
+        setDocuments(data.documents);
+        if (data.documents.length > 0 && !selectedDocId) {
           setSelectedDocId(data.documents[0].id);
         }
       }
     } catch (e) {
-      console.warn('Failed to fetch documents');
+      console.warn('Using local workspace docs');
     }
   };
 
@@ -136,12 +90,12 @@ export const StudyStudioModal: React.FC<StudyStudioModalProps> = ({
     try {
       const res = await fetch('/api/study/commands');
       const data = await res.json();
-      if (data.success) {
-        setRegisteredCommands(data.commands || []);
-        setFilteredCommands(data.commands || []);
+      if (data.success && data.commands && data.commands.length > 0) {
+        setRegisteredCommands(data.commands);
+        setFilteredCommands(data.commands);
       }
     } catch (e) {
-      console.warn('Failed to fetch slash commands');
+      // DEFAULT_COMMANDS already set
     }
   };
 
@@ -149,15 +103,16 @@ export const StudyStudioModal: React.FC<StudyStudioModalProps> = ({
     const val = e.target.value;
     setCommandInput(val);
 
-    if (val.startsWith('/')) {
-      const search = val.toLowerCase();
+    if (val.trim()) {
+      const search = val.toLowerCase().replace('/', '');
       const matched = registeredCommands.filter(
         (c) => c.command.toLowerCase().includes(search) || c.description.toLowerCase().includes(search)
       );
-      setFilteredCommands(matched);
+      setFilteredCommands(matched.length > 0 ? matched : registeredCommands);
       setShowCommandSuggestions(true);
     } else {
-      setShowCommandSuggestions(false);
+      setFilteredCommands(registeredCommands);
+      setShowCommandSuggestions(true);
     }
   };
 
@@ -166,9 +121,15 @@ export const StudyStudioModal: React.FC<StudyStudioModalProps> = ({
     setShowCommandSuggestions(false);
   };
 
-  const handleExecuteCommand = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!commandInput.trim()) return;
+  const handleRunSpecificCommand = (cmdName: string) => {
+    const defaultTopic = 'Sciatic Nerve & Lower Extremity Neuroanatomy';
+    const fullCmd = `${cmdName} ${defaultTopic}`;
+    setCommandInput(fullCmd);
+    executeCommand(fullCmd);
+  };
+
+  const executeCommand = async (cmdText: string) => {
+    if (!cmdText.trim()) return;
 
     setIsExecutingCommand(true);
     setShowCommandSuggestions(false);
@@ -177,68 +138,30 @@ export const StudyStudioModal: React.FC<StudyStudioModalProps> = ({
       const res = await fetch('/api/study/command', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ command: commandInput.trim(), docId: selectedDocId }),
+        body: JSON.stringify({ command: cmdText.trim(), docId: selectedDocId }),
       });
       const data = await res.json();
 
-      if (data.success) {
+      if (data.success && data.result) {
         setCommandResult({
-          title: data.result.title || commandInput,
+          title: data.result.title || cmdText,
           markdown: data.result.markdown || data.result.output,
         });
       }
     } catch (err) {
-      console.error('Error executing command:', err);
+      console.error('Error running command:', err);
     } finally {
       setIsExecutingCommand(false);
     }
   };
 
-  const handleFileUpload = async (files: FileList | null) => {
-    if (!files || files.length === 0) return;
-    setIsUploading(true);
-    setUploadProgress(30);
-
-    try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        setUploadProgress(40 + (i / files.length) * 50);
-
-        const reader = new FileReader();
-        const base64Promise = new Promise<string>((resolve) => {
-          reader.onload = () => {
-            const result = reader.result as string;
-            resolve(result.split(',')[1] || result);
-          };
-          reader.readAsDataURL(file);
-        });
-
-        const base64 = await base64Promise;
-        const res = await fetch('/api/documents/upload', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ fileName: file.name, mimeType: file.type, base64 }),
-        });
-        const data = await res.json();
-
-        if (data.success) {
-          setDocuments((prev) => [data.document, ...prev]);
-          setSelectedDocId(data.document.id);
-        }
-      }
-      setUploadProgress(100);
-      setTimeout(() => {
-        setIsUploading(false);
-        setUploadProgress(0);
-      }, 500);
-    } catch (err) {
-      console.error('File upload error:', err);
-      setIsUploading(false);
-    }
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    executeCommand(commandInput);
   };
 
-  const handleExportText = (format: 'pdf' | 'docx' | 'markdown' | 'txt' | 'csv') => {
-    const textToExport = commandResult?.markdown || studyMaterials?.summary || 'Study Studio Notes';
+  const handleExportText = (format: 'pdf' | 'docx' | 'markdown' | 'txt') => {
+    const textToExport = commandResult?.markdown || 'Study Studio Notes';
     const blob = new Blob([textToExport], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -250,7 +173,7 @@ export const StudyStudioModal: React.FC<StudyStudioModalProps> = ({
   };
 
   const handleCopy = () => {
-    const text = commandResult?.markdown || studyMaterials?.summary || '';
+    const text = commandResult?.markdown || '';
     if (text) {
       navigator.clipboard.writeText(text);
       setCopied(true);
@@ -280,14 +203,13 @@ export const StudyStudioModal: React.FC<StudyStudioModalProps> = ({
                 <h1 className="text-xl font-bold font-sans tracking-wide text-white flex items-center gap-2">
                   🎓 Study Studio
                   <span className="px-2 py-0.5 rounded-full text-[10px] uppercase font-mono tracking-widest bg-[#4FC3F7]/15 border border-[#4FC3F7]/40 text-[#4FC3F7]">
-                    Pro Learning Ecosystem
+                    Slash Commands Ready
                   </span>
                 </h1>
                 <p className="text-xs text-zinc-400 font-sans">Learn Smarter with शाश्वत AI Professor</p>
               </div>
             </div>
 
-            {/* WORKSPACE & ACTIONS */}
             <div className="flex items-center gap-3">
               <select
                 value={activeWorkspaceId}
@@ -296,19 +218,10 @@ export const StudyStudioModal: React.FC<StudyStudioModalProps> = ({
               >
                 {workspaces.map((ws) => (
                   <option key={ws.id} value={ws.id} className="bg-slate-900 text-white">
-                    {ws.icon} {ws.name} ({ws.docCount} docs)
+                    {ws.icon} {ws.name}
                   </option>
                 ))}
               </select>
-
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="px-3.5 py-2 rounded-xl bg-[#4FC3F7] text-slate-950 hover:bg-[#4FC3F7]/90 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-[0_0_15px_rgba(79,195,247,0.4)]"
-              >
-                <Upload className="w-4 h-4" />
-                <span>Upload</span>
-              </button>
-              <input ref={fileInputRef} type="file" multiple className="hidden" onChange={(e) => handleFileUpload(e.target.files)} />
 
               <button onClick={onClose} className="p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-zinc-400 hover:text-white cursor-pointer">
                 <X className="w-5 h-5" />
@@ -320,7 +233,6 @@ export const StudyStudioModal: React.FC<StudyStudioModalProps> = ({
           <nav className="flex items-center gap-1.5 px-6 py-2 border-b border-white/10 bg-white/[0.02] overflow-x-auto shrink-0 scrollbar-none">
             {[
               { id: 'commands', label: '⚡ Slash Commands', icon: Terminal },
-              { id: 'materials', label: '📚 Materials & Chat', icon: Layers },
               { id: 'notes', label: '📑 Smart Notes', icon: BookOpen },
               { id: 'handwritten', label: '✍️ Handwritten Notes', icon: PenTool },
               { id: 'flashcards', label: '🃏 Flashcards', icon: Brain },
@@ -350,17 +262,35 @@ export const StudyStudioModal: React.FC<StudyStudioModalProps> = ({
 
           {/* MAIN CONTENT AREA */}
           <main className="flex-1 overflow-hidden p-6 relative flex flex-col">
-            {/* 1. SLASH COMMAND ENGINE TAB */}
+            {/* 1. SLASH COMMAND TAB */}
             {activeTab === 'commands' && (
               <div className="flex flex-col h-full gap-4 overflow-hidden">
+                {/* Command Chips Bar for Instant 1-Click Execution */}
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none shrink-0">
+                  <span className="text-[11px] text-zinc-400 font-mono font-bold shrink-0">Quick Run:</span>
+                  {[
+                    '/notes', '/summarize', '/mnemonics', '/viva', '/ayurveda',
+                    '/mindmap', '/quiz', '/studyplan', '/cheatsheet', '/importantquestions'
+                  ].map((cmd) => (
+                    <button
+                      key={cmd}
+                      onClick={() => handleRunSpecificCommand(cmd)}
+                      className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-[#4FC3F7]/20 text-[11px] font-mono text-[#4FC3F7] border border-[#4FC3F7]/30 whitespace-nowrap cursor-pointer transition-all"
+                    >
+                      {cmd}
+                    </button>
+                  ))}
+                </div>
+
                 {/* Command Input Form */}
-                <div className="relative">
-                  <form onSubmit={handleExecuteCommand} className="flex gap-2">
+                <div className="relative shrink-0">
+                  <form onSubmit={handleFormSubmit} className="flex gap-2">
                     <div className="relative flex-1">
                       <input
                         type="text"
-                        placeholder="Type a slash command e.g. /notes, /summary, /mnemonics, /ayurveda, /viva..."
+                        placeholder="Type slash command e.g. /notes Sciatic nerve, /summarize, /ayurveda, /viva..."
                         value={commandInput}
+                        onFocus={() => setShowCommandSuggestions(true)}
                         onChange={handleCommandInputChange}
                         className="w-full bg-white/5 border border-white/14 focus:border-[#4FC3F7]/60 text-white font-mono text-xs px-4 py-3 rounded-2xl outline-none"
                       />
@@ -400,14 +330,14 @@ export const StudyStudioModal: React.FC<StudyStudioModalProps> = ({
                       <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-4 shrink-0">
                         <h3 className="text-sm font-bold text-[#4FC3F7] font-mono">{commandResult.title}</h3>
                         <div className="flex items-center gap-2">
-                          <button onClick={handleCopy} className="px-3 py-1.5 rounded-xl bg-white/5 text-xs text-zinc-300 hover:text-white flex items-center gap-1.5">
+                          <button onClick={handleCopy} className="px-3 py-1.5 rounded-xl bg-white/5 text-xs text-zinc-300 hover:text-white flex items-center gap-1.5 cursor-pointer">
                             <Copy className="w-3.5 h-3.5" /> {copied ? 'Copied!' : 'Copy'}
                           </button>
                           {(['pdf', 'docx', 'markdown', 'txt'] as const).map((fmt) => (
                             <button
                               key={fmt}
                               onClick={() => handleExportText(fmt)}
-                              className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-[#4FC3F7]/20 text-[11px] uppercase font-mono text-zinc-300 hover:text-[#4FC3F7] border border-white/10"
+                              className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-[#4FC3F7]/20 text-[11px] uppercase font-mono text-zinc-300 hover:text-[#4FC3F7] border border-white/10 cursor-pointer"
                             >
                               {fmt}
                             </button>
@@ -422,62 +352,14 @@ export const StudyStudioModal: React.FC<StudyStudioModalProps> = ({
                   ) : (
                     <div className="h-full flex flex-col items-center justify-center text-center text-zinc-500">
                       <Terminal className="w-12 h-12 mb-3 text-white/20" />
-                      <p className="text-xs text-zinc-400">Type any slash command above to execute AI study tools.</p>
+                      <p className="text-xs text-zinc-400">Select any quick command above or type a slash command to generate AI study materials.</p>
                     </div>
                   )}
                 </div>
               </div>
             )}
 
-            {/* 2. MATERIALS TAB */}
-            {activeTab === 'materials' && (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full overflow-hidden">
-                <div className="flex flex-col gap-4 overflow-hidden">
-                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                    <Folder className="w-4 h-4 text-[#4FC3F7]" /> Workspace Documents ({documents.length})
-                  </h3>
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    className="p-5 rounded-2xl border-2 border-dashed border-white/14 bg-white/5 hover:bg-white/10 text-center cursor-pointer"
-                  >
-                    <Upload className="w-6 h-6 text-[#4FC3F7] mx-auto mb-1" />
-                    <p className="text-xs text-white">Drag & drop files or click to upload</p>
-                  </div>
-                  <div className="flex-1 overflow-y-auto space-y-2">
-                    {documents.map((doc) => (
-                      <div
-                        key={doc.id}
-                        onClick={() => setSelectedDocId(doc.id)}
-                        className={`p-3 rounded-xl border cursor-pointer flex items-center justify-between ${
-                          selectedDocId === doc.id ? 'bg-[#4FC3F7]/15 border-[#4FC3F7]/50 text-white' : 'bg-white/5 border-white/10 text-zinc-300'
-                        }`}
-                      >
-                        <span className="text-xs truncate">{doc.name}</span>
-                        <ChevronRight className="w-4 h-4 text-zinc-500" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="lg:col-span-2 flex flex-col gap-4 h-full overflow-hidden bg-white/[0.02] border border-white/10 rounded-2xl p-4">
-                  <h3 className="text-sm font-bold text-white flex items-center gap-2 pb-2 border-b border-white/10">
-                    <Sparkles className="w-4 h-4 text-[#4FC3F7]" /> PDF Semantic Search & Citations
-                  </h3>
-                  <form onSubmit={(e) => { e.preventDefault(); if (searchQuery.trim()) setIsSearching(true); }} className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Ask questions across documents..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="flex-1 bg-white/5 border border-white/14 text-white text-xs px-4 py-2.5 rounded-xl outline-none"
-                    />
-                    <button type="submit" className="px-4 py-2.5 rounded-xl bg-[#4FC3F7] text-slate-950 font-bold text-xs">Search</button>
-                  </form>
-                </div>
-              </div>
-            )}
-
-            {/* 3. REALISTIC HANDWRITTEN NOTES TAB */}
+            {/* HANDWRITTEN TAB */}
             {activeTab === 'handwritten' && (
               <div className="flex flex-col gap-4 h-full overflow-hidden">
                 <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/10">
@@ -492,7 +374,7 @@ export const StudyStudioModal: React.FC<StudyStudioModalProps> = ({
                       />
                     ))}
                   </div>
-                  <button onClick={() => handleExportText('pdf')} className="px-3.5 py-1.5 rounded-xl bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-1.5">
+                  <button onClick={() => handleExportText('pdf')} className="px-3.5 py-1.5 rounded-xl bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer">
                     <Download className="w-3.5 h-3.5" /> Export PDF
                   </button>
                 </div>
