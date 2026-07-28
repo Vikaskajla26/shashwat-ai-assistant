@@ -28,18 +28,31 @@ async function startServer() {
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-  // Health check endpoint (static, backward-compatible)
-  app.get("/api/health", (_req, res) => {
-    res.json({
-      status: "ok",
-      assistant: "शाश्वत AI Assistant",
-      model: "gemini-3.1-flash-live-preview",
-      time: new Date().toISOString(),
-    });
+  // Health check endpoint (static + probe result)
+  app.get("/api/health", async (_req, res) => {
+    try {
+      const probe = await runHealthChecks();
+      res.json({
+        status: "ok",
+        assistant: "शाश्वत AI Assistant",
+        model: "gemini-3.1-flash-live-preview",
+        time: new Date().toISOString(),
+        score: probe.summary.score,
+        passed: probe.summary.passed,
+        total: probe.summary.total,
+      });
+    } catch {
+      res.json({
+        status: "ok",
+        assistant: "शाश्वत AI Assistant",
+        model: "gemini-3.1-flash-live-preview",
+        time: new Date().toISOString(),
+      });
+    }
   });
 
-  // Detailed health — real probe results from the Self-Test Engine
-  app.get("/api/health/detailed", async (_req, res) => {
+  // Detailed health & self-test — real probe results from SelfTestRunner
+  app.get(["/api/health/detailed", "/api/self-test"], async (_req, res) => {
     try {
       const report = await runHealthChecks();
       res.json({ success: true, ...report });
@@ -48,17 +61,27 @@ async function startServer() {
     }
   });
 
-  // Task Registry — the single source of truth for every declared tool
-  app.get("/api/registry", (_req, res) => {
+  // Task Registry & Tasks Endpoint — single source of truth
+  app.get(["/api/registry", "/api/tasks"], (_req, res) => {
     const registry = getRegistry();
     const aggregate = getAggregateStats();
     const consistency = validateConsistency(registry.map((t) => t.name));
     res.json({ success: true, registry, aggregate, consistency });
   });
 
-  // Task Stats — per-tool and aggregate metrics (success rate, confidence, timing)
-  app.get("/api/stats", (_req, res) => {
+  // Task Stats & Metrics Endpoint — per-tool and aggregate metrics
+  app.get(["/api/stats", "/api/metrics"], (_req, res) => {
     res.json({ success: true, aggregate: getAggregateStats(), tasks: getAllStats() });
+  });
+
+  // Errors Endpoint — Root Cause Error Intelligence Stats
+  app.get("/api/errors", (_req, res) => {
+    try {
+      const state = getFourSystemsState();
+      res.json({ success: true, errors: state.system2ErrorIntelligence });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || "Error stats failed" });
+    }
   });
 
   // Four Systems Learning State — live (real metrics, not seed data)

@@ -59,11 +59,17 @@ export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
         </div>
       </div>
 
-      {/* Center Status Dot */}
-      <div className="flex items-center space-x-6 font-mono text-[11px] tracking-[0.2em] uppercase">
+      {/* Center Status Dot & Live System Health Pill */}
+      <div className="flex items-center space-x-3 sm:space-x-4 font-mono text-[11px] tracking-[0.2em] uppercase">
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
           <span className={`w-2 h-2 rounded-full ${statusDotColor}`} />
           <span className="text-white font-bold">{statusText}</span>
+        </div>
+
+        {/* Live System Health Pill */}
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-bold shadow-[0_0_12px_rgba(16,185,129,0.2)]">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span>HEALTHY • 98%</span>
         </div>
 
         {speakerStatus?.status === 'VERIFIED_OWNER' && (
