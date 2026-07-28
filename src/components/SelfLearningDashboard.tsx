@@ -21,7 +21,7 @@ import {
   ArrowRight,
   TrendingUp
 } from 'lucide-react';
-import {
+import type {
   FourSystemsLearningState,
   TaskExperienceRecord,
   ErrorIntelligenceRecord,

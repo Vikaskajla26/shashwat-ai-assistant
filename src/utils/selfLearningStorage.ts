@@ -4,9 +4,37 @@
  * Workflow Learning, and Improvement Engine across page refreshes.
  */
 
-import { FourSystemsLearningState, INITIAL_FOUR_SYSTEMS_STATE } from '../../server/selfLearningEngine';
+import type { FourSystemsLearningState } from '../../server/selfLearningEngine';
 
 const FOUR_SYSTEMS_KEY = 'shashwat_four_systems_learning_v1';
+
+export const INITIAL_FOUR_SYSTEMS_STATE: FourSystemsLearningState = {
+  system1ExperienceMemory: {
+    totalTasksExecuted: 0,
+    averageExecutionTimeMs: 0,
+    overallSuccessRate: 1.0,
+    topSuccessfulTasks: [],
+    recentTaskRuns: [],
+  },
+  system2ErrorIntelligence: {
+    totalErrorsAnalyzed: 0,
+    groupedErrorPatternsCount: 0,
+    verifiedFixesCount: 0,
+    recentRootCauseLogs: [],
+    activeVerifiedFixes: [],
+  },
+  system3WorkflowLearning: {
+    totalWorkflowsDiscovered: 0,
+    activeMacrosCount: 0,
+    detectedSequences: [],
+  },
+  system4ImprovementEngine: {
+    overallSystemHealth: 1.0,
+    validationTestsPassed: 0,
+    validationTestsFailed: 0,
+    recentProposalReports: [],
+  },
+};
 
 export function getStoredFourSystemsState(): FourSystemsLearningState {
   try {

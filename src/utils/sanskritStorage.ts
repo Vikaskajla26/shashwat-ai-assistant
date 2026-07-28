@@ -4,7 +4,7 @@
  * and learned voice profiles across page refreshes and browser restarts.
  */
 
-import { SanskritVoiceProfile, AudioImportVerificationResult } from '../../server/sanskritEngine';
+import type { SanskritVoiceProfile, AudioImportVerificationResult } from '../../server/sanskritEngine';
 
 const PROFILE_KEY = 'shashwat_sanskrit_profile_v1';
 const FILES_KEY = 'shashwat_sanskrit_files_v1';

@@ -6,7 +6,7 @@ import {
   PenTool, GitFork, UserCheck, Terminal,
   Copy, Command as CmdIcon, ChevronRight, Layers
 } from 'lucide-react';
-import { DocumentMeta, KnowledgeQueryResult, StudyMaterials } from '../../../server/docIntel/types';
+import type { DocumentMeta, KnowledgeQueryResult, StudyMaterials } from '../../../server/docIntel/types';
 import { DEFAULT_COMMANDS, CommandItem } from '../../data/commands';
 
 interface StudyStudioModalProps {
