@@ -94,11 +94,21 @@ Return a clear, highly structured, beautifully formatted Markdown response appro
     let resultText = '';
 
     if (ai) {
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-live-preview',
-        contents: `${systemPrompt}\n\nTask: Execute ${cmdName} command thoroughly for: ${userQuery}`,
-      });
-      resultText = response.text || '';
+      const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+      for (const m of modelsToTry) {
+        try {
+          const response = await ai.models.generateContent({
+            model: m,
+            contents: `${systemPrompt}\n\nTask: Execute ${cmdName} command thoroughly for topic: ${userQuery}`,
+          });
+          if (response.text) {
+            resultText = response.text;
+            break;
+          }
+        } catch (mErr: any) {
+          console.warn(`[CommandProcessor] Model ${m} warning:`, mErr?.message || mErr);
+        }
+      }
     }
 
     if (!resultText) {
@@ -134,34 +144,76 @@ Return a clear, highly structured, beautifully formatted Markdown response appro
 }
 
 function generateFallbackCommandOutput(cmd: string, query: string): string {
+  const isAyurveda = query.toLowerCase().includes('jwara') || query.toLowerCase().includes('dosha') || query.toLowerCase().includes('ayurveda') || cmd === '/ayurveda' || cmd === '/shloka';
+
+  if (isAyurveda) {
+    return `# 🌿 ${cmd.toUpperCase()} — Ayurvedic Study Notes: ${query.toUpperCase()}
+
+## 📌 Executive Samhita Summary
+- **Topic**: ${query} (Jwara Roga / Pyrexia in Ayurveda)
+- **Primary Text Reference**: Charaka Samhita Chikitsasthana Chapter 3 (Jwara Chikitsa) & Sushruta Samhita Uttaratantra
+- **Nirukti & Paribhasha**: "Jayati shariram, tapayati iti Jwara" — That which causes distress, temperature elevation, and body burning sensation.
+
+---
+
+### 🧬 Samprapti (Pathogenesis of Jwara)
+1. **Mithya Ahara-Vihara** (Improper diet and lifestyle) leads to **Agni Mandya** (Impaired digestive fire).
+2. Accumulation of **Ama** (Undigested toxic metabolite) occurs in the **Amashaya** (Stomach).
+3. **Pitta Dosha** is displaced along with Ama and enters the **Rasa Dhatu** and **Rasa Vaha Srotas**.
+4. Srotorodha (Obstruction of sweat channels / Sweda Vaha Srotas) causes external temperature rise and absence of sweating (Swedavarodha).
+
+---
+
+### 🔑 Shloka & Core Sutra
+> **"मिथ्याहाराचाराभ्यां दोषा ह्यामाशयाश्रयाः। रसमानुगताः सर्वमनुसर्पन्ति देहिनः॥"**  
+*(Charaka Samhita Chikitsasthana 3/28)*
+
+**Meaning**: Due to faulty diet and conduct, Doshas residing in Amashaya mix with Rasa Dhatu, spread throughout the entire body, and manifest as Jwara.
+
+---
+
+### 📊 Clinical Classification (Bheda of Jwara)
+| Type | Dosha Predominance | Clinical Features |
+| :--- | :--- | :--- |
+| **Vataja Jwara** | Vata Pradhana | Irregular fever, body pain, dry skin, constipation |
+| **Pittaja Jwara** | Pitta Pradhana | High grade fever, intense burning sensation, thirst, diarrhea |
+| **Kaphaja Jwara** | Kapha Pradhana | Mild fever, heaviness, drowsiness, nausea, loss of appetite |
+| **Sannipataja Jwara** | Tridosha | Severe multisystem involvement, delirium (Tandra/Moha) |
+
+---
+
+### 💊 Chikitsa Sutra (Therapeutic Management)
+1. **Langhana** (Fasting / Light diet) at the onset of Amashaya-origin Jwara.
+2. **Pachana** (Digestive herbs e.g. Musta, Parpata, Ushira, Chandana, Shunti - Shadanga Paniya).
+3. **Swedana & Peya Kalpana** (Medicated warm rice gruel).
+4. **Shamana Yoga**: Sudarshana Churna, Amritarishta, Mahasudarshana Vati, Jayamangala Rasa.
+
+---
+
+### 📝 High-Yield Exam Checklist
+- [x] Memorize Charaka Chikitsa 3/28 Samprapti Shloka.
+- [x] Differentiate Taruna Jwara (0-7 days) vs Jirna Jwara (>21 days).
+- [x] Note prohibition of Ghrita (Ghee) administration in Taruna Jwara.`;
+  }
+
   return `# 🎓 ${cmd.toUpperCase()} — ${query}
 
 ## 📌 Executive Learning Summary
-- **Primary Topic**: ${query}
+- **Topic**: ${query}
 - **Category**: High-Yield Academic Review & Clinical Core Concepts
 - **Date**: ${new Date().toLocaleDateString()}
 
 ---
 
 ### 🔑 Key Concepts & Definitions
-1. **Definition & Scope**: ${query} represents a fundamental component of the curriculum requiring systematic understanding of anatomical structures, physiological pathways, and clinical applications.
-2. **Mechanism of Action / Structural Anatomy**:
-   - Primary pathways exit through designated foramina and nerve trunks.
-   - Innervation patterns supply anterior, lateral, and posterior compartments.
-3. **Clinical Correlations**:
-   - Compression, inflammation, or ischemia presents with radiating pain and sensory deficits.
-   - Physical examination techniques (e.g. Lasegue's Straight Leg Raise Test) confirm diagnostic hypotheses.
+1. **Definition**: ${query} is a fundamental clinical concept requiring structural & functional mastery.
+2. **Anatomical & Physiological Basis**:
+   - Primary neural pathways, vascular supply, and histological architecture.
+   - Cellular mechanisms and diagnostic signs.
 
 ---
 
 ### 💡 High-Yield Exam Notes
-- **Must-Know Rule**: Always verify root origin (L4-S3) when evaluating lower extremity motor deficits.
-- **Differential Diagnosis**: Distinguish between localized musculoskeletal sprains and true neuropathic radiculopathy.
-
----
-
-### 📝 Revision Checklist
-- [x] Memorize primary root origins and branches.
-- [x] Review clinical signs and physical examination steps.
-- [x] Practice 10 MCQ questions in Study Studio.`;
+- **Must-Know**: Memorize primary root origins, innervation, and main clinical presentations.
+- **Differential Diagnosis**: Compare signs against closely related pathological conditions.`;
 }
