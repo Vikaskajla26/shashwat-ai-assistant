@@ -512,8 +512,11 @@ async function startServer() {
     }
   });
 
-  // Serve frontend assets or mount Vite middleware
-  if (process.env.NODE_ENV !== "production") {
+  // Serve frontend static assets (production/built dist) or mount Vite dev middleware
+  const distPath = path.resolve(process.cwd(), "dist");
+  const isProd = process.env.NODE_ENV === "production" || fs.existsSync(path.join(distPath, "index.html"));
+
+  if (!isProd) {
     const vite = await createViteServer({
       server: {
         middlewareMode: true,
@@ -539,9 +542,7 @@ async function startServer() {
       }
     });
   } else {
-    const distPath = fs.existsSync(path.join(__dirname, "dist"))
-      ? path.join(__dirname, "dist")
-      : path.join(process.cwd(), "dist");
+    console.log("[StaticServer] Serving compiled production frontend from dist/");
     app.use(express.static(distPath));
     app.get("*", (_req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
