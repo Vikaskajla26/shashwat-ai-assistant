@@ -11,6 +11,7 @@ import { getVoiceprint, deleteVoiceprint, enrollVoiceprint } from "../voice/spea
 import { KnowledgeIndex } from "../docIntel/knowledgeIndex";
 import { StudyGenerator } from "../docIntel/studyGenerator";
 import { analyzeSanskritShloka, evaluateSanskritRecitation } from "./sanskritChant";
+import { generatePresentation } from "./presentations";
 import { fetchLiveSearchResults } from "./liveSearchFetcher";
 import { withRetry, logOutcome, type RecoveryFixer } from "../registry/recovery";
 import { analyzeError } from "../selfLearningEngine";
@@ -252,6 +253,23 @@ export async function executeTool(
             title: `Multi-Document Comparison (${comp.filesCompared.length} Files)`,
             content: comp.synthesis,
             category: "Document Research",
+          }
+        );
+      }
+      case "create_presentation": {
+        const res = await generatePresentation({
+          title: argsSafe.title || "Presentation",
+          subtitle: argsSafe.subtitle,
+          theme: argsSafe.theme,
+          slides: argsSafe.slides || [],
+        });
+        return ok(
+          res,
+          res.message,
+          {
+            title: `Presentation Created: ${argsSafe.title}`,
+            content: `Generated PPTX with ${(argsSafe.slides || []).length} slides.\nSaved to: ${res.filePath}`,
+            category: "Presentation",
           }
         );
       }

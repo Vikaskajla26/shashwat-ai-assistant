@@ -226,6 +226,43 @@ export const TOOL_DECLARATIONS = [
     },
   },
 
+  // ---------------- Presentation Generation ----------------
+  {
+    name: "create_presentation",
+    description:
+      "Generates a multi-slide PowerPoint presentation (.pptx) with real design, color themes, bullet points, and speaker notes, saves it to Documents, and opens it in PowerPoint.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        title: { type: Type.STRING, description: "Main title of the presentation" },
+        subtitle: { type: Type.STRING, description: "Subtitle for the title slide" },
+        theme: {
+          type: Type.STRING,
+          enum: ["modern", "corporate", "vibrant", "minimal"],
+          description: "Color palette theme",
+        },
+        slides: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              title: { type: Type.STRING, description: "Slide header title" },
+              bullets: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING },
+                description: "Bullet points for this slide",
+              },
+              notes: { type: Type.STRING, description: "Speaker notes for this slide" },
+            },
+            required: ["title"],
+          },
+          description: "Array of content slides (recommended 5-8 slides)",
+        },
+      },
+      required: ["title", "slides"],
+    },
+  },
+
   // ---------------- Input automation (real) ----------------
   {
     name: "mouse_input",
