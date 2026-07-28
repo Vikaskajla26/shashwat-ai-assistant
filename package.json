@@ -54,7 +54,7 @@
     "executableName": "Shashwat-AI-Assistant",
     "electronVersion": "33.2.1",
     "directories": {
-      "output": "dist-app"
+      "output": "release"
     },
     "files": [
       "dist/**/*",
