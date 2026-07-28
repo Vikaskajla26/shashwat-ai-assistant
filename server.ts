@@ -799,12 +799,24 @@ async function startServer() {
   });
 
   // Serve compiled production frontend directly from dist/
-  const distPath = path.resolve(process.cwd(), "dist");
-  console.log("[StaticServer] Serving compiled frontend from dist/");
+  const candidatePaths = [
+    path.resolve(process.cwd(), "dist"),
+    path.resolve(__dirname, "dist"),
+    path.resolve(__dirname, "../dist"),
+    path.resolve(process.cwd(), "resources/app/dist"),
+    path.resolve(process.cwd(), "resources/app.asar/dist")
+  ];
+  const distPath = candidatePaths.find((p) => fs.existsSync(path.join(p, "index.html"))) || path.resolve(process.cwd(), "dist");
+  console.log(`[StaticServer] Serving compiled frontend from: ${distPath}`);
   app.use(express.static(distPath));
   app.get("*", (req, res, next) => {
     if (req.originalUrl.startsWith("/api/")) return next();
-    res.sendFile(path.join(distPath, "index.html"));
+    const indexPath = path.join(distPath, "index.html");
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      res.status(404).send("Frontend build index.html not found");
+    }
   });
 
   server.listen(PORT, () => {

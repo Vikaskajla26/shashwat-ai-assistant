@@ -45,6 +45,9 @@ function startBackendServer() {
     });
   } else {
     // Production Mode: Execute bundled server directly inside Electron Node engine!
+    try {
+      process.chdir(app.getAppPath());
+    } catch (_) {}
     const bundledServer = path.join(app.getAppPath(), 'dist', 'server.cjs');
     console.log(`[Electron Main] Loading production server module: ${bundledServer}`);
     try {
@@ -107,10 +110,21 @@ function createMainWindow() {
   }
 
   const appUrl = `http://localhost:${PORT}`;
+  let retries = 0;
 
   const loadApp = () => {
     mainWindow.loadURL(appUrl).catch((err) => {
-      console.log('[Electron Main] Backend connection pending... retrying in 500ms:', err.message);
+      retries++;
+      console.log(`[Electron Main] Backend connection pending (attempt ${retries})...`, err.message);
+      if (retries > 10) {
+        const localHtmlPath = path.join(app.getAppPath(), 'dist', 'index.html');
+        const fs = require('fs');
+        if (fs.existsSync(localHtmlPath)) {
+          console.log('[Electron Main] Falling back to loading local static build:', localHtmlPath);
+          mainWindow.loadFile(localHtmlPath);
+          return;
+        }
+      }
       setTimeout(loadApp, 500);
     });
   };

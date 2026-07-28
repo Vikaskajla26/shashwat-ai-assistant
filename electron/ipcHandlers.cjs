@@ -6,7 +6,9 @@ const fs = require('fs');
 let db = null;
 
 function initDatabase() {
-  const dataDir = path.join(process.cwd(), 'data');
+  const { app } = require('electron');
+  const baseDir = app ? app.getPath('userData') : process.cwd();
+  const dataDir = path.join(baseDir, 'data');
   if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
   }
