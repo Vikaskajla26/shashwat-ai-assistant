@@ -10,6 +10,7 @@ import { getVoiceprint, deleteVoiceprint, enrollVoiceprint } from "../voice/spea
 import { KnowledgeIndex } from "../docIntel/knowledgeIndex";
 import { StudyGenerator } from "../docIntel/studyGenerator";
 import { analyzeSanskritShloka, evaluateSanskritRecitation } from "./sanskritChant";
+import { fetchLiveSearchResults } from "./liveSearchFetcher";
 
 /**
  * Central tool executor. Runs REAL actions on the OS, applies the safety
@@ -212,12 +213,28 @@ export async function executeTool(
         );
       }
       case "searchGoogle": {
-        const url = `https://www.google.com/search?q=${encodeURIComponent(argsSafe.query || "")}`;
+        const queryStr = String(argsSafe.query || "").trim();
+        const url = `https://www.google.com/search?q=${encodeURIComponent(queryStr)}`;
         await openInDefaultBrowser(url);
+
+        // Fetch live real-time search snippets so Gemini speaks fresh results
+        const liveSearch = await fetchLiveSearchResults(queryStr);
+
         return ok(
-          { searched: true, query: argsSafe.query, url },
-          `Google search: ${argsSafe.query}`,
-          { title: "Google Search", content: `Searching "${argsSafe.query}"`, category: "Web Search", url }
+          {
+            searched: true,
+            query: queryStr,
+            url,
+            liveSearchResults: liveSearch.results,
+            liveTextSummary: liveSearch.summaryText,
+          },
+          `Google search: ${queryStr}`,
+          {
+            title: "Google Live Search",
+            content: liveSearch.summaryText || `Searching "${queryStr}"`,
+            category: "Web Search",
+            url,
+          }
         );
       }
       case "searchYouTube": {
@@ -245,7 +262,8 @@ export async function executeTool(
       }
       case "search_web": {
         const engine = String(argsSafe.engine || "google").toLowerCase();
-        const q = encodeURIComponent(argsSafe.query || "");
+        const queryStr = String(argsSafe.query || "").trim();
+        const q = encodeURIComponent(queryStr);
         const map: Record<string, string> = {
           google: `https://www.google.com/search?q=${q}`,
           youtube: `https://www.youtube.com/results?search_query=${q}`,
@@ -256,10 +274,26 @@ export async function executeTool(
         };
         const url = map[engine] || map.google;
         await openInDefaultBrowser(url);
+
+        // Fetch live real-time search snippets so Gemini speaks fresh results
+        const liveSearch = await fetchLiveSearchResults(queryStr);
+
         return ok(
-          { searched: true, query: argsSafe.query, engine, url },
-          `${engine}: ${argsSafe.query}`,
-          { title: `${engine} search`, content: `Searching "${argsSafe.query}"`, category: "Web Search", url }
+          {
+            searched: true,
+            query: queryStr,
+            engine,
+            url,
+            liveSearchResults: liveSearch.results,
+            liveTextSummary: liveSearch.summaryText,
+          },
+          `${engine}: ${queryStr}`,
+          {
+            title: `${engine} Live Search`,
+            content: liveSearch.summaryText || `Searching "${queryStr}"`,
+            category: "Web Search",
+            url,
+          }
         );
       }
 
