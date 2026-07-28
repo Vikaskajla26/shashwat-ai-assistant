@@ -3,7 +3,6 @@ import { LiveSession } from './modules/LiveSession';
 import { WakeWordDetector } from './modules/WakeWordDetector';
 import { AssistantHeader } from './components/AssistantHeader';
 import { AssistantOrb } from './components/AssistantOrb';
-import { AudioVisualizer } from './components/AudioVisualizer';
 import { VisualCardOverlay } from './components/VisualCardOverlay';
 import { ToolActionBanner } from './components/ToolActionBanner';
 import { TranscriptDrawer } from './components/TranscriptDrawer';
@@ -23,7 +22,6 @@ import {
   TaskExecutionPlan,
 } from './types';
 import { AlertCircle } from 'lucide-react';
-
 import { PowerShutdownModal } from './components/PowerShutdownModal';
 
 export default function App() {
@@ -56,7 +54,6 @@ export default function App() {
   }>({ status: 'UNENROLLED', confidence: 1.0, ownerName: 'Guest' });
 
   const liveSessionRef = useRef<LiveSession | null>(null);
-  const persistentWindowRef = useRef<Window | null>(null);
 
   // Initialize LiveSession instance
   useEffect(() => {
@@ -119,7 +116,7 @@ export default function App() {
     };
   }, []);
 
-  // Initialize Wake Word Detector for hands-free "शाश्वत" or "shashwat" wake activation
+  // Initialize Wake Word Detector
   const wakeWordDetectorRef = useRef<WakeWordDetector | null>(null);
 
   useEffect(() => {
@@ -205,35 +202,6 @@ export default function App() {
       const moods: AssistantMood[] = ['witty', 'playful', 'focused', 'charming', 'energetic'];
       const nextMood = moods[Math.floor(Math.random() * moods.length)];
       setMood(nextMood);
-      setToolEvents((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          toolName: 'changeAssistantMood',
-          status: 'success',
-          message: `Changed mood to ${nextMood}`,
-          timestamp: new Date().toLocaleTimeString(),
-        },
-      ]);
-    } else if (toolName === 'showVisualCard') {
-      const newCard: VisualCardData = {
-        id: Date.now().toString(),
-        title: 'शाश्वत Wisdom Tip',
-        content: '“Confidence combined with witty warmth creates unstoppable charisma.”',
-        category: 'Assistant Quote',
-        timestamp: new Date().toLocaleTimeString(),
-      };
-      setCards((prev) => [newCard, ...prev.slice(0, 3)]);
-      setToolEvents((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          toolName: 'showVisualCard',
-          status: 'success',
-          message: 'Displayed card',
-          timestamp: new Date().toLocaleTimeString(),
-        },
-      ]);
     }
   }, []);
 
@@ -241,13 +209,11 @@ export default function App() {
   const latestEvent = toolEvents.length > 0 ? toolEvents[toolEvents.length - 1] : null;
 
   return (
-    <div className="relative w-screen h-screen bg-[#000000] text-white flex flex-col items-center justify-between overflow-hidden font-sans select-none">
-      {/* Volumetric Atmospheric Space Haze */}
-      <div className="ambient-halo-1" />
-      <div className="ambient-halo-2" />
-      <div className="ambient-halo-3" />
+    <div className="relative w-screen h-screen bg-[#050505] text-white flex flex-col justify-between overflow-hidden font-sans select-none">
+      {/* Background Typography */}
+      <div className="bg-typography">शाश्वत</div>
 
-      {/* Minimal Top Bar */}
+      {/* Header & Navigation */}
       <AssistantHeader
         state={state}
         mood={mood}
@@ -263,8 +229,8 @@ export default function App() {
 
       {/* Error Toast */}
       {errorMessage && (
-        <div className="absolute top-20 z-50 p-3.5 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-200 text-xs flex items-center space-x-2 backdrop-blur-xl max-w-md shadow-2xl">
-          <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-50 p-3.5 rounded-2xl bg-[#ff2d55]/20 border border-[#ff2d55]/40 text-rose-200 text-xs flex items-center space-x-2 backdrop-blur-xl max-w-md shadow-2xl">
+          <AlertCircle className="w-4 h-4 text-[#ff2d55] shrink-0" />
           <span>{errorMessage}</span>
           <button
             onClick={() => setErrorMessage(null)}
@@ -275,8 +241,17 @@ export default function App() {
         </div>
       )}
 
-      {/* Center Interactive Hologram Consciousness (70% viewport hero) */}
-      <main className="relative z-10 flex-1 flex flex-col items-center justify-center w-full max-w-3xl px-4 my-auto">
+      {/* Kernel Stream Side Panel */}
+      <aside className="kernel-log hidden md:block">
+        <p>[KERNEL_STREAM_ONLINE]</p>
+        <p>PROCESS_ID: SHA_2040_CORE</p>
+        <p>STATE: {state.toUpperCase()}</p>
+        <p>SPEAKER: {speakerStatus.ownerName.toUpperCase()}</p>
+        {latestEvent && <p className="text-[#ff2d55] mt-1">LAST_TOOL: {latestEvent.toolName}</p>}
+      </aside>
+
+      {/* Main Viewport & Centered Liquid Orb */}
+      <main className="relative z-10 flex-1 flex flex-col items-center justify-center w-full my-auto">
         <AssistantOrb
           state={state}
           mood={mood}
@@ -287,17 +262,12 @@ export default function App() {
           onToggleConnection={handleToggleMic}
           onToggleMute={() => setIsMuted((prev) => !prev)}
         />
-
-        {/* Live Audio Spectrum */}
-        <div className="w-full max-w-sm mt-2">
-          <AudioVisualizer volume={activeAudioVolume} isActive={state !== 'disconnected'} />
-        </div>
       </main>
 
       {/* Visual Floating Cards Overlay */}
       <VisualCardOverlay cards={cards} onDismissCard={handleDismissCard} />
 
-      {/* Floating Glass Bottom Dock */}
+      {/* Control Shell Footer */}
       <BottomDock
         state={state}
         isScreenSharing={isScreenSharing}
@@ -355,8 +325,6 @@ export default function App() {
         }}
       />
 
-
-
       {/* Transcript Drawer */}
       <TranscriptDrawer
         isOpen={isTranscriptOpen}
@@ -401,7 +369,7 @@ export default function App() {
         }}
       />
 
-      {/* 🎓 Study Studio Learning Ecosystem Modal */}
+      {/* Study Studio Learning Ecosystem Modal */}
       <StudyStudioModal
         isOpen={isDocWorkspaceOpen}
         onClose={() => setIsDocWorkspaceOpen(false)}
@@ -410,4 +378,3 @@ export default function App() {
     </div>
   );
 }
-
