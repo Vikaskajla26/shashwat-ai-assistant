@@ -117,9 +117,18 @@ function createMainWindow() {
 
   loadApp();
 
+  mainWindow.webContents.once('dom-ready', () => {
+    if (mainWindow && !mainWindow.isVisible()) {
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+
   mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
-    mainWindow.focus();
+    if (mainWindow && !mainWindow.isVisible()) {
+      mainWindow.show();
+      mainWindow.focus();
+    }
   });
 
   mainWindow.on('close', (event) => {
@@ -209,31 +218,47 @@ function registerIPCHandlers() {
   ipcMain.on('window:close', () => mainWindow?.hide());
 }
 
-app.on('ready', () => {
-  startBackendServer();
-  createMainWindow();
-  createSystemTray();
-  registerIPCHandlers();
+const gotTheLock = app.requestSingleInstanceLock();
 
-  if (!isDev && autoUpdater) {
-    autoUpdater.checkForUpdatesAndNotify().catch((e) => console.log('AutoUpdater notice:', e.message));
-  }
-});
+if (!gotTheLock) {
+  console.log('[Electron Main] Another instance is already running. Focus existing instance and exit secondary.');
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
 
-app.on('before-quit', () => {
-  app.isQuitting = true;
-});
-
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
-});
-
-app.on('activate', () => {
-  if (mainWindow === null) {
+  app.on('ready', () => {
+    startBackendServer();
     createMainWindow();
-  } else {
-    mainWindow.show();
-  }
-});
+    createSystemTray();
+    registerIPCHandlers();
+
+    if (!isDev && autoUpdater) {
+      autoUpdater.checkForUpdatesAndNotify().catch((e) => console.log('AutoUpdater notice:', e.message));
+    }
+  });
+
+  app.on('before-quit', () => {
+    app.isQuitting = true;
+  });
+
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') {
+      app.quit();
+    }
+  });
+
+  app.on('activate', () => {
+    if (mainWindow === null) {
+      createMainWindow();
+    } else {
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+}
