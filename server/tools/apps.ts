@@ -1,5 +1,5 @@
 import { runPowerShell } from "./powershell";
-import { exec } from "child_process";
+import { exec, execFile } from "child_process";
 
 /**
  * Maps common natural-language app names to Windows executable / start tokens.
@@ -187,7 +187,7 @@ if ($hit) { $hit } else { '' }
   return out || null;
 }
 
-/** Open a URL in the user's real default system browser safely with multi-stage fallbacks. */
+/** Open a URL in the user's real default system browser safely and instantly. */
 export async function openInDefaultBrowser(url: string): Promise<void> {
   if (!url) return;
   let targetUrl = url.trim();
@@ -197,26 +197,25 @@ export async function openInDefaultBrowser(url: string): Promise<void> {
     targetUrl = 'https://' + targetUrl;
   }
 
-  // 1. Try PowerShell Start-Process
-  try {
-    const safePw = targetUrl.replace(/'/g, "''");
-    await runPowerShell(`Start-Process -FilePath '${safePw}'`, 6000);
-    return;
-  } catch (err1) {
-    console.warn('[openInDefaultBrowser] PowerShell Start-Process failed, trying cmd start fallback:', err1);
-  }
-
-  // 2. Try Windows CMD start
-  try {
-    const safeCmd = targetUrl.replace(/"/g, '""');
-    exec(`cmd /c start "" "${safeCmd}"`, (err2) => {
-      if (err2) {
-        console.warn('[openInDefaultBrowser] CMD start failed, trying explorer fallback:', err2);
-        // 3. Fallback: explorer.exe
-        exec(`explorer "${safeCmd}"`).unref();
+  return new Promise((resolve) => {
+    // Primary fast launch: cmd.exe /c start "" "targetUrl" via execFile (prevents & shell splitting & child_process blocking)
+    execFile("cmd.exe", ["/c", "start", "", targetUrl], { windowsHide: true }, (err) => {
+      if (!err) {
+        resolve();
+        return;
       }
+
+      console.warn('[openInDefaultBrowser] cmd start failed, trying PowerShell Start-Process fallback:', err);
+      // Fallback 1: PowerShell Start-Process
+      const safePw = targetUrl.replace(/'/g, "''");
+      execFile("powershell.exe", ["-NoProfile", "-Command", `Start-Process '${safePw}'`], { windowsHide: true }, (pwErr) => {
+        if (pwErr) {
+          console.warn('[openInDefaultBrowser] PowerShell fallback failed, trying explorer:', pwErr);
+          // Fallback 2: explorer.exe
+          execFile("explorer.exe", [targetUrl], { windowsHide: true }).unref();
+        }
+        resolve();
+      });
     });
-  } catch (err3) {
-    console.error('[openInDefaultBrowser] All browser launch strategies failed:', err3);
-  }
+  });
 }
