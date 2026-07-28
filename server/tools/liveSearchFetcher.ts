@@ -1,7 +1,13 @@
 /**
  * Real-time Web Search Fetcher & Google Knowledge Graph Extractor
- * Fetches real-time search snippets and Google Knowledge Card answers
- * so Gemini speaks fresh, current real-time facts instead of pre-trained data.
+ * Fetches real-time search snippets and Google Featured Snippet/Knowledge Card
+ * answers so Gemini speaks fresh, current real-time facts instead of
+ * pre-trained data.
+ *
+ * GOOGLE-ONLY BY DESIGN: this previously also fell back to Google News RSS
+ * and the Wikipedia API on every search. Per requirement, "browse something"
+ * must use ONLY Google's own live search results — no other provider. Both
+ * fallbacks have been removed; this now exclusively scrapes google.com/search.
  */
 
 export interface LiveSearchResult {
@@ -32,7 +38,9 @@ export async function fetchLiveSearchResults(query: string): Promise<{
   const results: LiveSearchResult[] = [];
   let directAnswer = '';
 
-  // 1. Fetch from Google Search Mobile HTML Endpoint (Returns Google Featured Snippets & Knowledge Cards)
+  // Fetch from Google Search Mobile HTML Endpoint (Returns Google Featured
+  // Snippets & Knowledge Cards). This is the ONLY source — no News RSS, no
+  // Wikipedia, no other provider.
   try {
     const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(cleanQuery)}&hl=en`;
     const response = await fetch(googleUrl, {
@@ -75,55 +83,6 @@ export async function fetchLiveSearchResults(query: string): Promise<{
     console.warn('[LiveSearchFetcher] Google Search fetch warning:', err);
   }
 
-  // 2. Fetch from Google News RSS Endpoint (Guarantees 100% current breaking news & recent appointments)
-  if (results.length < 2) {
-    try {
-      const newsRssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(cleanQuery)}&hl=en-IN&gl=IN&ceid=IN:en`;
-      const newsRes = await fetch(newsRssUrl);
-      if (newsRes.ok) {
-        const xmlText = await newsRes.text();
-        const itemMatches = Array.from(xmlText.matchAll(/<item>[\s\S]*?<title>(.*?)<\/title>[\s\S]*?<link>(.*?)<\/link>[\s\S]*?<pubDate>(.*?)<\/pubDate>/g));
-
-        for (const item of itemMatches.slice(0, 5)) {
-          const title = item[1]?.replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1').trim();
-          const url = item[2]?.trim();
-          const pubDate = item[3]?.trim();
-          if (title) {
-            results.push({
-              title,
-              snippet: `Published: ${pubDate || 'Recent'} - ${title}`,
-              url: url || `https://www.google.com/search?q=${encodeURIComponent(cleanQuery)}`,
-            });
-          }
-        }
-      }
-    } catch (err) {
-      console.warn('[LiveSearchFetcher] Google News RSS fetch warning:', err);
-    }
-  }
-
-  // 3. Fetch from Wikipedia API for Knowledge & Official Positions
-  try {
-    const wikiUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(
-      cleanQuery
-    )}&format=json&origin=*`;
-    const wikiRes = await fetch(wikiUrl);
-    if (wikiRes.ok) {
-      const wikiData = (await wikiRes.json()) as any;
-      const searchItems = wikiData?.query?.search || [];
-      for (const item of searchItems.slice(0, 3)) {
-        const cleanSnippet = item.snippet.replace(/<[^>]+>/g, '').trim();
-        results.push({
-          title: item.title,
-          snippet: cleanSnippet,
-          url: `https://en.wikipedia.org/wiki/${encodeURIComponent(item.title)}`,
-        });
-      }
-    }
-  } catch (err) {
-    console.warn('[LiveSearchFetcher] Wikipedia fetch warning:', err);
-  }
-
   // Compile Comprehensive Live Summary Text
   const summaryParts: string[] = [];
   if (directAnswer) {
@@ -137,7 +96,7 @@ export async function fetchLiveSearchResults(query: string): Promise<{
   const summaryText =
     summaryParts.length > 0
       ? summaryParts.join('\n\n')
-      : `Live web search initiated for "${cleanQuery}". Browser window opened.`;
+      : `Live Google search initiated for "${cleanQuery}". Browser window opened.`;
 
   const instruction = `CRITICAL INSTRUCTION FOR VOICE RESPONSE: The user asked a real-time factual question ("${cleanQuery}"). The current live Google search results above provide the latest accurate facts. You MUST speak the current live answer in your spoken voice response. Do NOT state older pre-trained historical figures or past directors.`;
 

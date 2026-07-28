@@ -79,14 +79,14 @@ export const TOOL_DECLARATIONS = [
   {
     name: "search_web",
     description:
-      "Searches Google, YouTube, Wikipedia, Stack Overflow, Images, or News in the real default browser and opens the results page.",
+      "Searches using Google only (web, images, or news — all Google/Google-owned) or YouTube, and opens the results in the real default browser. Third-party search engines are not used.",
     parameters: {
       type: Type.OBJECT,
       properties: {
         query: { type: Type.STRING },
         engine: {
           type: Type.STRING,
-          enum: ["google", "youtube", "wikipedia", "stackoverflow", "images", "news"],
+          enum: ["google", "youtube", "images", "news"],
         },
       },
       required: ["query"],
@@ -112,10 +112,12 @@ export const TOOL_DECLARATIONS = [
   },
   {
     name: "playFirstVideo",
-    description: "Resolves the top YouTube search result server-side and directly opens and autoplays the video in the default browser.",
+    description:
+      "Finds the top YouTube video for a query and actually PLAYS it (opens the direct /watch?v=... URL with autoplay) in the user's real default browser — not just a search-results page. Use this whenever the user says 'play <song/video>' or 'play <artist> song'. After playing, use media_control (play/pause/next/previous/mute/volume_up/volume_down) to control it — those are real OS media keys that control whatever tab/app is currently playing audio.",
     parameters: {
       type: Type.OBJECT,
-      properties: { query: { type: Type.STRING } },
+      properties: { query: { type: Type.STRING, description: "Song, artist, or video to play, e.g. 'Hawayein Arijit Singh'" } },
+      required: ["query"],
     },
   },
 
@@ -175,7 +177,7 @@ export const TOOL_DECLARATIONS = [
   {
     name: "media_control",
     description:
-      "Controls REAL media playback (system media keys): play, pause, next, previous, mute, volume_up, volume_down, fullscreen, speed_up.",
+      "Sends a REAL OS-level media key (play/pause, next, previous, mute, volume_up, volume_down, fullscreen, speed_up). This controls whatever app or browser tab currently owns the active media session — e.g. a YouTube video just started with playFirstVideo, or Spotify. Use this for 'pause it', 'play', 'next song', 'turn it up/down', 'mute', etc.",
     parameters: {
       type: Type.OBJECT,
       properties: {

@@ -72,7 +72,22 @@ export async function systemControl(
   }
 }
 
-/** Media transport: play, pause, next, previous, fullscreen, speed_up. */
+/**
+ * Media transport: play, pause, next, previous, fullscreen, speed_up.
+ *
+ * IMPORTANT: nircmd's `sendkeypress` only recognizes a documented set of
+ * named keys (a-z, F1-F24, shift/ctrl/alt, arrows, etc.) — it does NOT have
+ * named media keys like "medianext" or "volup". Those strings are silently
+ * ignored by nircmd, which is why play/pause/next/previous/volume never
+ * worked. Media keys must be sent as their real Windows virtual-key codes:
+ *   0xAD = VK_VOLUME_MUTE       0xAE = VK_VOLUME_DOWN
+ *   0xAF = VK_VOLUME_UP         0xB0 = VK_MEDIA_NEXT_TRACK
+ *   0xB1 = VK_MEDIA_PREV_TRACK  0xB3 = VK_MEDIA_PLAY_PAUSE
+ * These are standard OS-level media keys, so they control whatever app/tab
+ * currently owns the active media session — including a YouTube tab open in
+ * the user's real default browser (Chrome/Edge/Firefox all support the Media
+ * Session API and respond to these keys).
+ */
 export async function mediaControl(
   command: string
 ): Promise<{ executed: boolean; command: string; message: string }> {
@@ -80,33 +95,29 @@ export async function mediaControl(
   switch (c) {
     case "play":
     case "pause": {
-      // VK_MEDIA_PLAY_PAUSE = 0xB3
+      // VK_MEDIA_PLAY_PAUSE (0xB3) — toggles whichever app currently owns
+      // the OS media session (e.g. the YouTube tab that's playing).
       await runNircmd(["sendkeypress", "0xB3"]);
       return { executed: true, command: c, message: `${c === "play" ? "Play" : "Pause"} sent.` };
     }
     case "next": {
-      // VK_MEDIA_NEXT_TRACK = 0xB0
-      await runNircmd(["sendkeypress", "0xB0"]);
+      await runNircmd(["sendkeypress", "0xB0"]); // VK_MEDIA_NEXT_TRACK
       return { executed: true, command: c, message: "Next track." };
     }
     case "previous": {
-      // VK_MEDIA_PREV_TRACK = 0xB1
-      await runNircmd(["sendkeypress", "0xB1"]);
+      await runNircmd(["sendkeypress", "0xB1"]); // VK_MEDIA_PREV_TRACK
       return { executed: true, command: c, message: "Previous track." };
     }
     case "mute": {
-      // VK_VOLUME_MUTE = 0xAD
-      await runNircmd(["sendkeypress", "0xAD"]);
+      await runNircmd(["sendkeypress", "0xAD"]); // VK_VOLUME_MUTE
       return { executed: true, command: c, message: "Mute toggled." };
     }
     case "volume_up": {
-      // VK_VOLUME_UP = 0xAF
-      await runNircmd(["sendkeypress", "0xAF"]);
+      await runNircmd(["sendkeypress", "0xAF"]); // VK_VOLUME_UP
       return { executed: true, command: c, message: "Volume up." };
     }
     case "volume_down": {
-      // VK_VOLUME_DOWN = 0xAE
-      await runNircmd(["sendkeypress", "0xAE"]);
+      await runNircmd(["sendkeypress", "0xAE"]); // VK_VOLUME_DOWN
       return { executed: true, command: c, message: "Volume down." };
     }
     case "fullscreen": {

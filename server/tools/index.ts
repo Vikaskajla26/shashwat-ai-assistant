@@ -1,6 +1,7 @@
 import { MemoryManager, MemoryCategory } from "./memory";
 import { classifyRisk, confirmationRequiredResponse } from "./safety";
 import { launchApp, openInDefaultBrowser } from "./apps";
+import { resolveFirstYouTubeVideo, buildWatchUrl } from "./youtube";
 import { systemControl, mediaControl } from "./system";
 import { fileOperation } from "./files";
 import { mouseInput, keyboardInput } from "./input";
@@ -11,7 +12,6 @@ import { KnowledgeIndex } from "../docIntel/knowledgeIndex";
 import { StudyGenerator } from "../docIntel/studyGenerator";
 import { analyzeSanskritShloka, evaluateSanskritRecitation } from "./sanskritChant";
 import { fetchLiveSearchResults } from "./liveSearchFetcher";
-import { fetchFirstYouTubeVideoId } from "./youtube";
 import { withRetry, logOutcome, type RecoveryFixer } from "../registry/recovery";
 import { analyzeError } from "../selfLearningEngine";
 import { recordError } from "../registry/errorIntelStore";
@@ -308,33 +308,51 @@ export async function executeTool(
       }
       case "playFirstVideo": {
         const queryStr = argsSafe.query || "top songs";
-        const videoId = await fetchFirstYouTubeVideoId(queryStr);
-        const url = videoId
-          ? `https://www.youtube.com/watch?v=${videoId}&autoplay=1`
-          : `https://www.youtube.com/results?search_query=${encodeURIComponent(queryStr)}`;
+        const match = await resolveFirstYouTubeVideo(queryStr);
+        const url = match ? buildWatchUrl(match.videoId) : `https://www.youtube.com/results?search_query=${encodeURIComponent(queryStr)}`;
         await openInDefaultBrowser(url);
+        const playing = Boolean(match);
         return ok(
-          { executed: true, query: queryStr, videoId, url, message: `Playing YouTube video for ${queryStr}` },
-          `YouTube Autoplay: ${queryStr}`,
-          { title: "YouTube Player", content: `🎵 Playing ${queryStr}`, category: "Media", url }
+          {
+            executed: true,
+            query: queryStr,
+            url,
+            matchedVideo: playing,
+            videoTitle: match?.title,
+            message: playing
+              ? `Now playing "${match?.title || queryStr}" on YouTube in your default browser. Say pause, play, next, or volume up/down to control it.`
+              : `Couldn't resolve an exact video match — opened YouTube search results for "${queryStr}" instead.`,
+          },
+          `YouTube: ${queryStr}`,
+          {
+            title: "YouTube Player",
+            content: playing ? `🎵 Playing ${match?.title || queryStr}` : `🔍 Search results for ${queryStr}`,
+            category: "Media",
+            url,
+          }
         );
       }
       case "search_web": {
-        const engine = String(argsSafe.engine || "google").toLowerCase();
+        // GOOGLE-ONLY BY DESIGN: only Google and Google-owned properties are
+        // offered here (web, images, news are all google.com/news.google.com;
+        // youtube is Google-owned). Third-party engines (Wikipedia, Stack
+        // Overflow) have been removed — anything not explicitly Google falls
+        // back to a plain Google search instead.
+        const requestedEngine = String(argsSafe.engine || "google").toLowerCase();
+        const GOOGLE_ENGINES = new Set(["google", "youtube", "images", "news"]);
+        const engine = GOOGLE_ENGINES.has(requestedEngine) ? requestedEngine : "google";
         const queryStr = String(argsSafe.query || "").trim();
         const q = encodeURIComponent(queryStr);
         const map: Record<string, string> = {
           google: `https://www.google.com/search?q=${q}`,
           youtube: `https://www.youtube.com/results?search_query=${q}`,
-          wikipedia: `https://en.wikipedia.org/wiki/Special:Search?search=${q}`,
-          stackoverflow: `https://stackoverflow.com/search?q=${q}`,
           images: `https://www.google.com/search?tbm=isch&q=${q}`,
           news: `https://news.google.com/search?q=${q}`,
         };
         const url = map[engine] || map.google;
 
         // For the Google engine, use the shared live-search helper (single visible
-        // window). Other engines just open the default browser — no scraping.
+        // window). Other Google-owned engines just open the default browser — no scraping.
         let directAnswer = "";
         let summaryText = "";
         let openedIn: "sandbox" | "default_browser" = "default_browser";
