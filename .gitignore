@@ -2,6 +2,8 @@ node_modules/
 build/
 dist/
 dist-app/
+dist-exe/
+build-out/
 release/
 coverage/
 .DS_Store

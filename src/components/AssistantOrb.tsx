@@ -8,12 +8,11 @@ interface AssistantOrbProps {
   outputVolume?: number;
   volume?: number;
   isMuted?: boolean;
-  onToggleConnection?: () => void;
-  onToggleMute?: () => void;
 }
 
 const TAU = Math.PI * 2;
 
+// 2D Simplex/Perlin-like noise approximation for organic liquid blob morphing
 function noise2D(x: number, y: number, t: number): number {
   return (
     Math.sin(x * 1.5 + t * 0.8) * Math.cos(y * 1.5 + t * 0.9) +
@@ -25,7 +24,6 @@ function noise2D(x: number, y: number, t: number): number {
 export const AssistantOrb: React.FC<AssistantOrbProps> = ({
   state,
   volume = 0,
-  onToggleConnection,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -44,6 +42,7 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({
       lastT = now;
       const t = now / 1000;
 
+      // AI State Logic & Voice Dynamics
       const isThinking = state === 'connecting';
       const isSpeaking = state === 'speaking';
       const isListening = state === 'listening';
@@ -66,14 +65,15 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({
 
       const breathScale = 1 + 0.06 * Math.sin(t * 1.4) + audioBoost * 0.25;
 
-      // Render Liquid Plasma Deform Inner Overlay
-      const BLOB_POINTS = 64;
+      // 1. RENDER CLEAN ORGANIC LIQUID LIGHT BLOB CORE (No extra particles/sutras)
+      const BLOB_POINTS = 96;
       ctx.beginPath();
       for (let i = 0; i <= BLOB_POINTS; i++) {
         const theta = (i / BLOB_POINTS) * TAU;
         const nx = Math.cos(theta);
         const ny = Math.sin(theta);
 
+        // Procedural Liquid Deform
         const deform = noise2D(nx * 2.2, ny * 2.2, t * 1.4 * speedMul) * (0.22 + audioBoost * 0.28);
         const blobR = scaleBase * (1 + deform) * breathScale;
 
@@ -85,20 +85,33 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({
       }
       ctx.closePath();
 
+      // Liquid Light Radial Gradient
       const blobGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, scaleBase * 1.35 * breathScale);
-      blobGrad.addColorStop(0, `rgba(255, 45, 85, ${0.75 + audioBoost * 0.25})`);
-      blobGrad.addColorStop(0.5, `rgba(155, 93, 229, ${0.45 + audioBoost * 0.25})`);
-      blobGrad.addColorStop(1, 'rgba(5, 5, 5, 0)');
+      blobGrad.addColorStop(0, `rgba(79, 195, 247, ${0.85 + audioBoost * 0.15})`);
+      blobGrad.addColorStop(0.35, `rgba(255, 77, 157, ${0.6 + audioBoost * 0.25})`);
+      blobGrad.addColorStop(0.7, `rgba(155, 93, 229, ${0.4 + audioBoost * 0.2})`);
+      blobGrad.addColorStop(1, 'rgba(5, 7, 13, 0)');
       ctx.fillStyle = blobGrad;
       ctx.fill();
 
-      // Listening / Speaking Audio Shockwave Ring
+      // Inner Core Pulse Sphere
+      const innerR = scaleBase * 0.45 * (1 + 0.08 * Math.sin(t * 2.5)) * breathScale;
+      const innerGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, innerR);
+      innerGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+      innerGrad.addColorStop(0.5, `rgba(79, 195, 247, ${0.7 + audioBoost * 0.3})`);
+      innerGrad.addColorStop(1, 'rgba(155, 93, 229, 0)');
+      ctx.beginPath();
+      ctx.arc(0, 0, innerR, 0, TAU);
+      ctx.fillStyle = innerGrad;
+      ctx.fill();
+
+      // 2. LISTENING / SPEAKING REACTION RING
       if (isListening || isSpeaking) {
         const waveR = scaleBase * (1.25 + 0.15 * Math.sin(t * 6));
         ctx.beginPath();
         ctx.arc(0, 0, waveR, 0, TAU);
-        ctx.strokeStyle = `rgba(255, 45, 85, ${0.5 + audioBoost * 0.4})`;
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = `rgba(79, 195, 247, ${0.45 + audioBoost * 0.45})`;
+        ctx.lineWidth = 2.5;
         ctx.stroke();
       }
 
@@ -113,37 +126,20 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({
     };
   }, [state, volume]);
 
-  const stateLabel =
-    state === 'disconnected'
-      ? 'SHASHWAT OS'
-      : state === 'listening'
-      ? 'LISTENING...'
-      : state === 'speaking'
-      ? 'SPEAKING...'
-      : state === 'connecting'
-      ? 'THINKING...'
-      : 'ACTIVE';
-
   return (
-    <div className="liquid-orb-viewport">
-      {/* Morphing Radial Liquid Gradient Backdrop */}
-      <div className="liquid-blob" />
+    <div className="relative flex items-center justify-center w-[720px] h-[720px] max-w-full select-none">
+      {/* Background Typography: Noto Serif Devanagari 30vw opacity 0.05 "शाश्वत" */}
+      <h1 className="bg-typography">
+        शाश्वत
+      </h1>
 
-      {/* Glassmorphic Central Core */}
-      <div className="orb-core" onClick={onToggleConnection}>
-        <div className="relative flex items-center justify-center">
-          <canvas
-            ref={canvasRef}
-            width={300}
-            height={300}
-            className="absolute inset-0 pointer-events-none rounded-full"
-          />
-          <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-[#ff2d55]/40 to-white/20 border border-white/20 blur-[1px] flex items-center justify-center shadow-[0_0_30px_rgba(255,45,85,0.6)]">
-            <span className="w-4 h-4 rounded-full bg-[#ff2d55] animate-ping" />
-          </div>
-        </div>
-        <span className="label">{stateLabel}</span>
-      </div>
+      {/* Pure Ultra-Clean Liquid Plasma Blob Canvas */}
+      <canvas
+        ref={canvasRef}
+        width={720}
+        height={720}
+        className="absolute inset-0 pointer-events-none z-10"
+      />
     </div>
   );
 };
