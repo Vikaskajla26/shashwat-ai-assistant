@@ -6,6 +6,15 @@ import os from "os";
  * user-data-dir so cookies/sessions survive across runs — the "autonomous
  * sandbox workspace". Playwright is imported lazily so the server can boot
  * even if it isn't installed yet (a clear error is returned per action).
+ *
+ * INTELLIGENT BROWSER ROUTING: this sandbox is a completely separate,
+ * isolated Chromium window from the user's real default browser. It is only
+ * ever invoked via the explicit browser_navigate / browser_sandbox_exec
+ * tools — for autonomous multi-step automation, scraping, form-filling, or
+ * an explicit user request ("...in sandbox", "use AI browser"). Ordinary
+ * open/search requests (open_website, search_web, searchGoogle,
+ * searchYouTube, playFirstVideo) always use openInDefaultBrowser() from
+ * apps.ts instead and must never reach this module.
  */
 
 const PROFILE_DIR = path.join(os.homedir(), ".shaashvat-browser");

@@ -8,7 +8,12 @@ import type { FourSystemsLearningState } from '../../server/selfLearningEngine';
 
 const FOUR_SYSTEMS_KEY = 'shashwat_four_systems_learning_v1';
 
-export const INITIAL_FOUR_SYSTEMS_STATE: FourSystemsLearningState = {
+// Local, browser-safe copy of the empty baseline state. This must NOT be
+// imported from server/selfLearningEngine.ts at runtime — that file (via
+// metricsStore/errorIntelStore/utils/paths) pulls in Node-only globals like
+// `process` and `fs`, which do not exist in the browser and crash the app
+// on load ("process is not defined"). Only the TYPE is imported above.
+const INITIAL_FOUR_SYSTEMS_STATE: FourSystemsLearningState = {
   system1ExperienceMemory: {
     totalTasksExecuted: 0,
     avgExecutionTimeMs: 0,
@@ -28,7 +33,7 @@ export const INITIAL_FOUR_SYSTEMS_STATE: FourSystemsLearningState = {
   system4ImprovementEngine: {
     totalProposalsCount: 0,
     promotedImprovementsCount: 0,
-    overallSystemHealth: 1.0,
+    overallSystemHealth: 50, // neutral prior — no data yet
     proposals: [],
   },
 };

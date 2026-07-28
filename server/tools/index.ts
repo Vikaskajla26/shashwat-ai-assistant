@@ -1,6 +1,7 @@
 import { MemoryManager, MemoryCategory } from "./memory";
 import { classifyRisk, confirmationRequiredResponse } from "./safety";
 import { launchApp, openInDefaultBrowser } from "./apps";
+import { resolveFirstYouTubeVideo, buildWatchUrl } from "./youtube";
 import { systemControl, mediaControl } from "./system";
 import { fileOperation } from "./files";
 import { mouseInput, keyboardInput } from "./input";
@@ -11,7 +12,6 @@ import { KnowledgeIndex } from "../docIntel/knowledgeIndex";
 import { StudyGenerator } from "../docIntel/studyGenerator";
 import { analyzeSanskritShloka, evaluateSanskritRecitation } from "./sanskritChant";
 import { fetchLiveSearchResults } from "./liveSearchFetcher";
-import { fetchFirstYouTubeVideoId } from "./youtube";
 import { withRetry, logOutcome, type RecoveryFixer } from "../registry/recovery";
 import { analyzeError } from "../selfLearningEngine";
 import { recordError } from "../registry/errorIntelStore";
@@ -308,19 +308,39 @@ export async function executeTool(
       }
       case "playFirstVideo": {
         const queryStr = argsSafe.query || "top songs";
-        const videoId = await fetchFirstYouTubeVideoId(queryStr);
-        const url = videoId
-          ? `https://www.youtube.com/watch?v=${videoId}&autoplay=1`
-          : `https://www.youtube.com/results?search_query=${encodeURIComponent(queryStr)}`;
+        const match = await resolveFirstYouTubeVideo(queryStr);
+        const url = match ? buildWatchUrl(match.videoId) : `https://www.youtube.com/results?search_query=${encodeURIComponent(queryStr)}`;
         await openInDefaultBrowser(url);
+        const playing = Boolean(match);
         return ok(
-          { executed: true, query: queryStr, videoId, url, message: `Playing YouTube video for ${queryStr}` },
-          `YouTube Autoplay: ${queryStr}`,
-          { title: "YouTube Player", content: `🎵 Playing ${queryStr}`, category: "Media", url }
+          {
+            executed: true,
+            query: queryStr,
+            url,
+            matchedVideo: playing,
+            videoTitle: match?.title,
+            message: playing
+              ? `Now playing "${match?.title || queryStr}" on YouTube in your default browser. Say pause, play, next, or volume up/down to control it.`
+              : `Couldn't resolve an exact video match — opened YouTube search results for "${queryStr}" instead.`,
+          },
+          `YouTube: ${queryStr}`,
+          {
+            title: "YouTube Player",
+            content: playing ? `🎵 Playing ${match?.title || queryStr}` : `🔍 Search results for ${queryStr}`,
+            category: "Media",
+            url,
+          }
         );
       }
       case "search_web": {
-        const engine = String(argsSafe.engine || "google").toLowerCase();
+        // GOOGLE-ONLY BY DESIGN: only Google and Google-owned properties are
+        // offered here (web, images, news are all google.com/news.google.com;
+        // youtube is Google-owned). Third-party engines (Wikipedia, Stack
+        // Overflow) have been removed — anything not explicitly Google falls
+        // back to a plain Google search instead.
+        const requestedEngine = String(argsSafe.engine || "google").toLowerCase();
+        const GOOGLE_ENGINES = new Set(["google", "youtube", "images", "news"]);
+        const engine = GOOGLE_ENGINES.has(requestedEngine) ? requestedEngine : "google";
         const queryStr = String(argsSafe.query || "").trim();
         const q = encodeURIComponent(queryStr);
         const map: Record<string, string> = {
@@ -332,10 +352,10 @@ export async function executeTool(
         const url = map[engine] || map.google;
 
         // For the Google engine, use the shared live-search helper (single visible
-        // window). Other engines just open the default browser — no scraping.
+        // window). Other Google-owned engines just open the default browser — no scraping.
         let directAnswer = "";
         let summaryText = "";
-        let openedIn: "sandbox" | "default_browser" = "default_browser";
+        let openedIn: "default_browser" = "default_browser";
         if (engine === "google") {
           const live = await liveGoogleSearch(queryStr, url);
           directAnswer = live.directAnswer;
@@ -564,53 +584,40 @@ export async function executeTool(
 }
 
 /**
- * Live Google search with a SINGLE visible window.
+ * Live Google search — ALWAYS opens in the user's REAL default system browser.
  *
- * Previously this opened the user's default browser AND a visible Playwright
- * Chromium window for the same query (double window). Now:
- *   - Try the Playwright sandbox first (it both shows results AND extracts text).
- *   - If Playwright succeeds, the sandbox IS the visible window — do NOT also
- *     open the default browser.
- *   - If Playwright is unavailable or returns nothing, fall back to the HTTP
- *     live-search fetcher and open the default browser so the user still sees
- *     results.
+ * INTELLIGENT BROWSER ROUTING: ordinary user-facing browsing/search must
+ * never open the Playwright sandbox. The sandbox is a separate, explicit
+ * tool (browser_navigate / browser_sandbox_exec) reserved for autonomous
+ * multi-step automation, scraping, or a direct user request like "search
+ * Google in sandbox". searchGoogle/search_web are plain, everyday search —
+ * they must behave exactly like the user typing into their own browser.
  *
- * Returns which surface ended up visible so the response to Gemini is honest.
+ * The live text (for the spoken answer) comes from a plain background HTTP
+ * fetch that never opens any window of its own — the ONLY visible window
+ * that appears is the real default browser tab opened below.
  */
 async function liveGoogleSearch(
   queryStr: string,
   url: string
-): Promise<{ directAnswer: string; summaryText: string; openedIn: "sandbox" | "default_browser" }> {
-  let summaryText = "";
+): Promise<{ directAnswer: string; summaryText: string; openedIn: "default_browser" }> {
+  // 1. Always launch the real default browser immediately — this is the
+  //    single visible surface the user sees, exactly like a normal search.
+  await openInDefaultBrowser(url);
+
+  // 2. Fetch live snippets in the background (no visible window) purely to
+  //    ground the spoken/voice response in current facts.
   let directAnswer = "";
-  let playwrightOk = false;
-
-  // 1. Try Playwright sandbox (visible Chromium) to scrape the Google DOM.
+  let summaryText = "";
   try {
-    const pwResult = await sandboxExec({ action: "research_topic", target: queryStr } as any);
-    if (pwResult && pwResult.data) {
-      directAnswer = pwResult.data.directAnswer || "";
-      summaryText = pwResult.data.summaryText || "";
-      playwrightOk = Boolean(directAnswer || summaryText);
-    }
-  } catch (pwErr) {
-    console.warn("[liveGoogleSearch] Playwright search notice:", pwErr);
-  }
-
-  // 2. If Playwright gave no text, fall back to the HTTP fetcher.
-  if (!summaryText) {
     const liveSearch = await fetchLiveSearchResults(queryStr);
     directAnswer = liveSearch.directAnswer || "";
     summaryText = liveSearch.summaryText || "";
+  } catch (err) {
+    console.warn("[liveGoogleSearch] HTTP live-search fetch notice:", err);
   }
 
-  // 3. Single-window rule: open the default browser ONLY if the sandbox never
-  //    surfaced results — otherwise the sandbox is already the visible window.
-  if (!playwrightOk) {
-    await openInDefaultBrowser(url);
-    return { directAnswer, summaryText, openedIn: "default_browser" };
-  }
-  return { directAnswer, summaryText, openedIn: "sandbox" };
+  return { directAnswer, summaryText, openedIn: "default_browser" };
 }
 
 /** Productivity actions — open real sites/apps, persist reminders to memory. */

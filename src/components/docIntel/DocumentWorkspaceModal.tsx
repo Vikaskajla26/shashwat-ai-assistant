@@ -5,7 +5,7 @@ import {
   CheckCircle2, Search, Layers, RefreshCw, FileCode, FileSpreadsheet,
   FileSearch, HelpCircle, ArrowRight, CornerDownRight, Share2, Eye
 } from 'lucide-react';
-import { DocumentMeta, KnowledgeQueryResult, StudyMaterials, DocumentComparison } from '../../../server/docIntel/types';
+import type { DocumentMeta, KnowledgeQueryResult, StudyMaterials, DocumentComparison } from '../../../server/docIntel/types';
 
 interface DocumentWorkspaceModalProps {
   isOpen: boolean;
