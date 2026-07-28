@@ -225,8 +225,10 @@ export async function executeTool(
             searched: true,
             query: queryStr,
             url,
+            CURRENT_FACTUAL_ANSWER_TO_SPEAK: liveSearch.directAnswer || liveSearch.summaryText,
             liveSearchResults: liveSearch.results,
             liveTextSummary: liveSearch.summaryText,
+            instruction: liveSearch.instruction,
           },
           `Google search: ${queryStr}`,
           {
@@ -284,8 +286,10 @@ export async function executeTool(
             query: queryStr,
             engine,
             url,
+            CURRENT_FACTUAL_ANSWER_TO_SPEAK: liveSearch.directAnswer || liveSearch.summaryText,
             liveSearchResults: liveSearch.results,
             liveTextSummary: liveSearch.summaryText,
+            instruction: liveSearch.instruction,
           },
           `${engine}: ${queryStr}`,
           {
