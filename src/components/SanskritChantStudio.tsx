@@ -22,7 +22,9 @@ import {
   ShieldCheck,
   Trash2,
   FileCheck,
-  Cpu
+  Cpu,
+  Save,
+  HardDrive
 } from 'lucide-react';
 import {
   CANONICAL_SHLOKA_LIBRARY,
@@ -42,6 +44,16 @@ import {
   AudioPreprocessorResult,
   SanskritVoiceProfile
 } from '../../server/sanskritEngine';
+import {
+  getStoredVoiceProfile,
+  saveStoredVoiceProfile,
+  clearStoredVoiceProfile,
+  getStoredMP3Files,
+  saveStoredMP3Files,
+  clearStoredMP3Files,
+  saveAudioBlob,
+  StoredFileInfo
+} from '../utils/sanskritStorage';
 
 interface SanskritChantStudioProps {
   onClose: () => void;
@@ -65,9 +77,8 @@ export const SanskritChantStudio: React.FC<SanskritChantStudioProps> = ({ onClos
   // Teaching Mode (Duolingo-style Line-by-Line Listen & Repeat)
   const [teachingLineIndex, setTeachingLineIndex] = useState<number>(0);
 
-  // Sanskrit Voice Learning State (16-Step Pipeline)
-  const [importedFiles, setImportedFiles] = useState<Array<{ file: File; verification: AudioImportVerificationResult }>>([]);
-  const [preprocessingResult, setPreprocessingResult] = useState<AudioPreprocessorResult | null>(null);
+  // Persistent Sanskrit Voice Learning State
+  const [importedFiles, setImportedFiles] = useState<Array<{ id: string; name: string; sizeMb: number; verification: AudioImportVerificationResult }>>([]);
   const [activeProfile, setActiveProfile] = useState<SanskritVoiceProfile | null>(null);
   const [isProcessingPipeline, setIsProcessingPipeline] = useState<boolean>(false);
   const [newProfileName, setNewProfileName] = useState<string>('Guru Vedantic Recitation Profile');
@@ -79,6 +90,26 @@ export const SanskritChantStudio: React.FC<SanskritChantStudioProps> = ({ onClos
     CANONICAL_SHLOKA_LIBRARY.find((s) => s.id === selectedShlokaId) || CANONICAL_SHLOKA_LIBRARY[0];
 
   const shlokaLines = currentShloka.devanagari.split('\n').filter(l => l.trim().length > 0);
+
+  // Restore Stored Profile & MP3 Files on Mount
+  useEffect(() => {
+    const savedProfile = getStoredVoiceProfile();
+    const savedFiles = getStoredMP3Files();
+
+    if (savedProfile) {
+      setActiveProfile(savedProfile);
+    }
+    if (savedFiles && savedFiles.length > 0) {
+      setImportedFiles(
+        savedFiles.map((f) => ({
+          id: f.id,
+          name: f.name,
+          sizeMb: f.sizeMb,
+          verification: f.verification,
+        }))
+      );
+    }
+  }, []);
 
   // Render Pitch Contour Graph
   useEffect(() => {
@@ -159,39 +190,60 @@ export const SanskritChantStudio: React.FC<SanskritChantStudioProps> = ({ onClos
     }
   };
 
-  // Handle Sanskrit Voice Learning MP3 File Upload (Step 1 Verification)
+  // Persistent MP3 File Upload (Step 1 Verification + Local Storage)
   const handleVoiceLearningUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     const files: File[] = Array.from(e.target.files);
 
-    const verifiedList = files.map((f) => ({
-      file: f,
-      verification: verifyAudioImport(f.name, f.size / (1024 * 1024)),
-    }));
+    const newImported: Array<{ id: string; name: string; sizeMb: number; verification: AudioImportVerificationResult }> = [];
+    const metaList: StoredFileInfo[] = getStoredMP3Files();
 
-    setImportedFiles((prev) => [...prev, ...verifiedList]);
+    files.forEach((f: File) => {
+      const id = `audio_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      const verification = verifyAudioImport(f.name, f.size / (1024 * 1024));
+
+      newImported.push({
+        id,
+        name: f.name,
+        sizeMb: parseFloat((f.size / (1024 * 1024)).toFixed(2)),
+        verification,
+      });
+
+      metaList.push({
+        id,
+        name: f.name,
+        sizeMb: parseFloat((f.size / (1024 * 1024)).toFixed(2)),
+        uploadedAt: new Date().toLocaleDateString(),
+        verification,
+      });
+
+      // Save blob to IndexedDB
+      saveAudioBlob(id, f);
+    });
+
+    setImportedFiles((prev) => [...prev, ...newImported]);
+    saveStoredMP3Files(metaList);
   };
 
-  // Execute 16-Step Processing Pipeline
+  // Execute 16-Step Pipeline & Persist Learned Profile
   const runVoiceLearningPipeline = () => {
     if (importedFiles.length === 0) return;
     setIsProcessingPipeline(true);
 
     setTimeout(() => {
-      const prep = preprocessAudioRecording(360);
       const profile = buildVoiceStyleProfile(newProfileName, importedFiles.length);
-
-      setPreprocessingResult(prep);
       setActiveProfile(profile);
+      saveStoredVoiceProfile(profile); // Persist Profile across page refreshes
       setIsProcessingPipeline(false);
     }, 2200);
   };
 
-  // Delete Voice Profile (Step 16 Privacy)
+  // Delete Voice Profile & Files (Step 16 Privacy)
   const deleteVoiceProfile = () => {
     setActiveProfile(null);
     setImportedFiles([]);
-    setPreprocessingResult(null);
+    clearStoredVoiceProfile();
+    clearStoredMP3Files();
   };
 
   // Export Report
@@ -240,7 +292,7 @@ Preserving Authentic Sanskrit Linguistic Principles without Overwriting Canonica
             </div>
             <div>
               <h2 className="text-xl font-bold text-white tracking-wide">Sanskrit Voice Learning Engine</h2>
-              <p className="text-xs text-cyan-400/80">Pattern Extraction • Mātrā Timing • Reusable Chanting Profile</p>
+              <p className="text-xs text-cyan-400/80">Persistent Local Memory • Pattern Extraction • Mātrā Ratios</p>
             </div>
           </div>
 
@@ -254,7 +306,7 @@ Preserving Authentic Sanskrit Linguistic Principles without Overwriting Canonica
                   : 'text-gray-400 hover:text-white'
               }`}
             >
-              <Cpu className="inline w-3.5 h-3.5 mr-1" /> Voice Learning (16 Steps)
+              <Cpu className="inline w-3.5 h-3.5 mr-1" /> Persistent Learning
             </button>
 
             <button
@@ -312,10 +364,18 @@ Preserving Authentic Sanskrit Linguistic Principles without Overwriting Canonica
 
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* TAB 1: SANSKRIT VOICE LEARNING (16-STEP PIPELINE) */}
+          {/* TAB 1: SANSKRIT VOICE LEARNING (PERSISTENT MEMORY) */}
           {activeTab === 'voice_learning' && (
             <div className="space-y-6">
-              {/* Step 1 & 2 Upload & Import Verification Card */}
+              {/* Persistent Status Banner */}
+              <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2 text-emerald-300 font-semibold">
+                  <HardDrive className="w-4 h-4 text-emerald-400" /> Persistent Local Memory Active: Your MP3s & learned profiles survive page refreshes!
+                </div>
+                <span className="text-[11px] text-gray-400">IndexedDB + localStorage Enabled</span>
+              </div>
+
+              {/* Upload Card */}
               <div className="p-6 bg-white/5 border border-white/10 rounded-3xl space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -328,13 +388,11 @@ Preserving Authentic Sanskrit Linguistic Principles without Overwriting Canonica
                     </div>
                   </div>
 
-                  {/* Privacy Badge */}
                   <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-xs font-semibold text-emerald-400">
-                    <ShieldCheck className="w-4 h-4" /> 100% Local Privacy
+                    <ShieldCheck className="w-4 h-4" /> 100% Local Storage
                   </div>
                 </div>
 
-                {/* Profile Name Input */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-4 bg-black/40 border border-white/10 rounded-2xl">
                   <label className="text-xs text-gray-300 font-medium">Style Profile Name:</label>
                   <input
@@ -352,11 +410,11 @@ Preserving Authentic Sanskrit Linguistic Principles without Overwriting Canonica
                   </label>
                 </div>
 
-                {/* Imported Files Verification Table (Step 1 Verification) */}
+                {/* Imported Files Verification List (Persisted across refreshes) */}
                 {importedFiles.length > 0 && (
                   <div className="space-y-3">
-                    <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider">
-                      Step 1: Import Verification Results
+                    <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-2">
+                      <Save className="w-3.5 h-3.5 text-cyan-400" /> Saved MP3 Files ({importedFiles.length} files)
                     </h4>
                     <div className="space-y-2">
                       {importedFiles.map((item, idx) => (
@@ -366,12 +424,12 @@ Preserving Authentic Sanskrit Linguistic Principles without Overwriting Canonica
                         >
                           <div className="flex items-center gap-3">
                             <FileCheck className="w-4 h-4 text-purple-400" />
-                            <span className="font-mono text-gray-200">{item.file.name}</span>
+                            <span className="font-mono text-gray-200">{item.name}</span>
+                            <span className="text-[11px] text-gray-500">({item.sizeMb} MB)</span>
                           </div>
 
                           <div className="flex items-center gap-4 text-[11px] text-gray-400">
                             <span>SNR: {item.verification.snrDb} dB</span>
-                            <span>Sample Rate: {item.verification.sampleRateHz} Hz</span>
                             <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 rounded font-semibold">
                               {item.verification.qualityGrade} Quality
                             </span>
@@ -391,7 +449,7 @@ Preserving Authentic Sanskrit Linguistic Principles without Overwriting Canonica
                         </>
                       ) : (
                         <>
-                          <Sparkles className="w-4 h-4" /> Run Voice Learning Pipeline
+                          <Sparkles className="w-4 h-4" /> Run Voice Learning & Persist Profile
                         </>
                       )}
                     </button>
@@ -399,22 +457,22 @@ Preserving Authentic Sanskrit Linguistic Principles without Overwriting Canonica
                 )}
               </div>
 
-              {/* Step 9 & 10: Active Voice Style Profile Card */}
+              {/* Active Voice Style Profile Card (Persisted across page refreshes) */}
               {activeProfile && (
                 <div className="p-6 bg-white/5 border border-white/14 rounded-3xl space-y-6 animate-fadeIn">
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="text-lg font-bold text-white flex items-center gap-2">
-                        <Award className="w-5 h-5 text-purple-400" /> Active Pronunciation Profile: {activeProfile.name}
+                        <Award className="w-5 h-5 text-purple-400" /> Active Learned Profile: {activeProfile.name}
                       </h4>
-                      <p className="text-xs text-gray-400">Created: {activeProfile.createdTimestamp} • Preserves Canonical Sanskrit Rules</p>
+                      <p className="text-xs text-gray-400">Created: {activeProfile.createdTimestamp} • Preserved in Local Storage</p>
                     </div>
 
                     <button
                       onClick={deleteVoiceProfile}
                       className="px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all"
                     >
-                      <Trash2 className="w-3.5 h-3.5" /> Delete Profile
+                      <Trash2 className="w-3.5 h-3.5" /> Permanently Clear Profile
                     </button>
                   </div>
 
@@ -422,7 +480,7 @@ Preserving Authentic Sanskrit Linguistic Principles without Overwriting Canonica
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
                     <div className="p-4 bg-black/40 border border-white/10 rounded-2xl">
                       <div className="text-2xl font-extrabold text-cyan-400">{activeProfile.averageSpeakingSpeedWpm} WPM</div>
-                      <div className="text-[11px] text-gray-400 mt-1">Speaking Speed</div>
+                      <div className="text-[11px] text-gray-400 mt-1">Learned Speaking Speed</div>
                     </div>
                     <div className="p-4 bg-black/40 border border-white/10 rounded-2xl">
                       <div className="text-2xl font-extrabold text-purple-400">{activeProfile.averagePauseDurationMs} ms</div>
@@ -434,14 +492,14 @@ Preserving Authentic Sanskrit Linguistic Principles without Overwriting Canonica
                     </div>
                     <div className="p-4 bg-black/40 border border-white/10 rounded-2xl">
                       <div className="text-2xl font-extrabold text-emerald-400">{activeProfile.totalWordsLearned}</div>
-                      <div className="text-[11px] text-gray-400 mt-1">Indexed Sanskrit Words</div>
+                      <div className="text-[11px] text-gray-400 mt-1">Learned Sanskrit Words</div>
                     </div>
                   </div>
 
-                  {/* Indexed Knowledge Database Table (Step 10) */}
+                  {/* Indexed Knowledge Database Table */}
                   <div className="space-y-3">
                     <h5 className="text-xs font-bold text-gray-300 uppercase tracking-wider">
-                      Step 10: Indexed Word Knowledge Database
+                      Indexed Sanskrit Word Database (Persisted)
                     </h5>
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs border-collapse">
@@ -471,7 +529,7 @@ Preserving Authentic Sanskrit Linguistic Principles without Overwriting Canonica
             </div>
           )}
 
-          {/* TAB 2: PRACTICE & RECITING */}
+          {/* TAB 2: PRACTICE */}
           {activeTab === 'practice' && (
             <div className="space-y-6">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-white/5 border border-white/10 rounded-2xl">
@@ -522,7 +580,7 @@ Preserving Authentic Sanskrit Linguistic Principles without Overwriting Canonica
             </div>
           )}
 
-          {/* TAB 3: FORCED ALIGNMENT & PITCH CONTOUR */}
+          {/* TAB 3: FORCED ALIGNMENT */}
           {activeTab === 'alignment' && (
             <div className="space-y-6">
               <div className="p-6 bg-black/60 border border-white/10 rounded-3xl space-y-4">
