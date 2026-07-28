@@ -52,7 +52,7 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({
       const relX = e.clientX - rect.left - rect.width / 2;
       const relY = e.clientY - rect.top - rect.height / 2;
 
-      // Set target displacement for spring follow (magnetic pull)
+      // Target displacement for spring follow
       springRef.current.targetX = relX * 0.18;
       springRef.current.targetY = relY * 0.18;
     };
@@ -79,6 +79,9 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({
     let animFrameId: number;
     let lastT = performance.now();
 
+    // Smooth Hue Transitioning
+    let currentHue = 38;
+
     // 450 Blob Surface-Bound Energy Quantum Nodes
     const NODE_COUNT = 450;
     const surfaceNodes: Array<{
@@ -97,7 +100,7 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({
         speed: rand(0.08, 0.35),
         size: rand(1.2, 2.8),
         alpha: rand(0.4, 0.95),
-        hueShift: rand(-40, 40),
+        hueShift: rand(-15, 15),
       });
     }
 
@@ -165,8 +168,22 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({
 
       const breathScale = 1 + 0.05 * Math.sin(t * 1.5) + uAudioBoost * 0.22;
 
-      // Color Theme Cycle
-      const baseHue = (t * 24 + (isThinking ? t * 60 : 0)) % 360;
+      // WARM EYE-SOOTHING STATE-DRIVEN COLOR SYSTEM (NO CONTINUOUS ROTATION)
+      // Idle: Warm Honey Gold (Hue 38)
+      // Thinking/Executing: Solar Radiance Gold (Hue 46)
+      // Speaking: Warm Sunset Amber (Hue 28)
+      // Listening: Soft Terracotta Rose (Hue 18)
+      let targetHue = 38;
+      if (isThinking) {
+        targetHue = 46;
+      } else if (isSpeaking) {
+        targetHue = 28;
+      } else if (isListening) {
+        targetHue = 18;
+      }
+
+      // Smooth Ease Transition to Target State Color
+      currentHue += (targetHue - currentHue) * 0.08;
 
       // 1. RENDER FUTURISTIC MORPHING LIQUID LIGHT BLOB CORE
       const BLOB_POINTS = 120;
@@ -188,12 +205,12 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({
       }
       ctx.closePath();
 
-      // Multi-layer Radial Gradient with Speaking Rim Flare
+      // Warm Eye-Soothing Radial Gradient (Warm Gold -> Amber -> Soft Terracotta)
       const rimFlare = isSpeaking ? normVolume * 0.35 : 0;
       const blobGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, scaleBase * (1.35 + rimFlare) * breathScale);
-      blobGrad.addColorStop(0, `hsla(${baseHue}, 92%, 65%, ${0.88 + uAudioBoost * 0.12})`);
-      blobGrad.addColorStop(0.35, `hsla(${(baseHue + 60) % 360}, 88%, 60%, ${0.6 + uAudioBoost * 0.25})`);
-      blobGrad.addColorStop(0.75, `hsla(${(baseHue + 120) % 360}, 82%, 55%, ${0.35 + uAudioBoost * 0.2})`);
+      blobGrad.addColorStop(0, `hsla(${currentHue}, 88%, 62%, ${0.88 + uAudioBoost * 0.12})`);
+      blobGrad.addColorStop(0.4, `hsla(${currentHue - 12}, 82%, 56%, ${0.58 + uAudioBoost * 0.25})`);
+      blobGrad.addColorStop(0.8, `hsla(${currentHue - 22}, 78%, 48%, ${0.32 + uAudioBoost * 0.2})`);
       blobGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
       ctx.fillStyle = blobGrad;
       ctx.fill();
@@ -219,8 +236,8 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({
         }
         ctx.closePath();
 
-        const contourHue = (baseHue + c * 25) % 360;
-        ctx.strokeStyle = `hsla(${contourHue}, 85%, 70%, ${0.18 + (1 - cRatio) * 0.25 + uAudioBoost * 0.2})`;
+        const contourHue = currentHue + c * 4;
+        ctx.strokeStyle = `hsla(${contourHue}, 85%, 68%, ${0.18 + (1 - cRatio) * 0.22 + uAudioBoost * 0.18})`;
         ctx.lineWidth = 1.2;
         ctx.stroke();
       }
@@ -239,20 +256,20 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({
         const px = nx * pr;
         const py = ny * pr;
 
-        const nodeHue = (baseHue + node.hueShift + 360) % 360;
+        const nodeHue = currentHue + node.hueShift;
 
         ctx.beginPath();
         ctx.arc(px, py, node.size * (1 + uAudioBoost * 0.35), 0, TAU);
-        ctx.fillStyle = `hsla(${nodeHue}, 90%, 75%, ${node.alpha * (0.6 + uAudioBoost * 0.4)})`;
+        ctx.fillStyle = `hsla(${nodeHue}, 88%, 72%, ${node.alpha * (0.6 + uAudioBoost * 0.4)})`;
         ctx.fill();
       }
 
-      // 4. INNER INTENSE CORE SPHERE (Brightens dynamically on Listening & Thinking)
-      const coreBrightness = isListening || isThinking ? 1.0 : 0.85;
+      // 4. INNER INTENSE WARM CORE SPHERE
+      const coreBrightness = isListening || isThinking ? 1.0 : 0.88;
       const innerR = scaleBase * (isListening ? 0.48 : 0.4) * (1 + 0.08 * Math.sin(t * 2.5)) * breathScale;
       const innerGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, innerR);
-      innerGrad.addColorStop(0, `rgba(255, 255, 255, ${coreBrightness})`);
-      innerGrad.addColorStop(0.5, `hsla(${baseHue}, 95%, 72%, ${0.75 + uAudioBoost * 0.25})`);
+      innerGrad.addColorStop(0, `rgba(255, 253, 245, ${coreBrightness})`);
+      innerGrad.addColorStop(0.5, `hsla(${currentHue}, 92%, 68%, ${0.75 + uAudioBoost * 0.25})`);
       innerGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
       ctx.beginPath();
       ctx.arc(0, 0, innerR, 0, TAU);
@@ -277,7 +294,7 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({
         शाश्वत
       </h1>
 
-      {/* State-Driven & Mouse Spring Physics Blob Canvas */}
+      {/* State-Driven Warm Eye-Soothing Blob Canvas */}
       <canvas
         ref={canvasRef}
         width={520}
