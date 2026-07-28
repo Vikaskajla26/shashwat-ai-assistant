@@ -11,6 +11,7 @@ import { KnowledgeIndex } from "../docIntel/knowledgeIndex";
 import { StudyGenerator } from "../docIntel/studyGenerator";
 import { analyzeSanskritShloka, evaluateSanskritRecitation } from "./sanskritChant";
 import { fetchLiveSearchResults } from "./liveSearchFetcher";
+import { fetchFirstYouTubeVideoId } from "./youtube";
 import { withRetry, logOutcome, type RecoveryFixer } from "../registry/recovery";
 import { analyzeError } from "../selfLearningEngine";
 import { recordError } from "../registry/errorIntelStore";
@@ -307,10 +308,13 @@ export async function executeTool(
       }
       case "playFirstVideo": {
         const queryStr = argsSafe.query || "top songs";
-        const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(queryStr)}`;
+        const videoId = await fetchFirstYouTubeVideoId(queryStr);
+        const url = videoId
+          ? `https://www.youtube.com/watch?v=${videoId}&autoplay=1`
+          : `https://www.youtube.com/results?search_query=${encodeURIComponent(queryStr)}`;
         await openInDefaultBrowser(url);
         return ok(
-          { executed: true, query: queryStr, url, message: `Opened YouTube playback for ${queryStr}` },
+          { executed: true, query: queryStr, videoId, url, message: `Playing YouTube video for ${queryStr}` },
           `YouTube Autoplay: ${queryStr}`,
           { title: "YouTube Player", content: `🎵 Playing ${queryStr}`, category: "Media", url }
         );

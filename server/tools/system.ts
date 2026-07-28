@@ -80,28 +80,33 @@ export async function mediaControl(
   switch (c) {
     case "play":
     case "pause": {
-      // Play/Pause media key
-      await runNircmd(["sendkeypress", "medialaypause"]);
+      // VK_MEDIA_PLAY_PAUSE = 0xB3
+      await runNircmd(["sendkeypress", "0xB3"]);
       return { executed: true, command: c, message: `${c === "play" ? "Play" : "Pause"} sent.` };
     }
     case "next": {
-      await runNircmd(["sendkeypress", "medianext"]);
+      // VK_MEDIA_NEXT_TRACK = 0xB0
+      await runNircmd(["sendkeypress", "0xB0"]);
       return { executed: true, command: c, message: "Next track." };
     }
     case "previous": {
-      await runNircmd(["sendkeypress", "mediaprev"]);
+      // VK_MEDIA_PREV_TRACK = 0xB1
+      await runNircmd(["sendkeypress", "0xB1"]);
       return { executed: true, command: c, message: "Previous track." };
     }
     case "mute": {
-      await runNircmd(["sendkeypress", "volmute"]);
+      // VK_VOLUME_MUTE = 0xAD
+      await runNircmd(["sendkeypress", "0xAD"]);
       return { executed: true, command: c, message: "Mute toggled." };
     }
     case "volume_up": {
-      await runNircmd(["sendkeypress", "volup"]);
+      // VK_VOLUME_UP = 0xAF
+      await runNircmd(["sendkeypress", "0xAF"]);
       return { executed: true, command: c, message: "Volume up." };
     }
     case "volume_down": {
-      await runNircmd(["sendkeypress", "voldown"]);
+      // VK_VOLUME_DOWN = 0xAE
+      await runNircmd(["sendkeypress", "0xAE"]);
       return { executed: true, command: c, message: "Volume down." };
     }
     case "fullscreen": {

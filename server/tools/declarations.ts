@@ -112,7 +112,7 @@ export const TOOL_DECLARATIONS = [
   },
   {
     name: "playFirstVideo",
-    description: "Opens YouTube search results for a query (first result is typically auto-prominent).",
+    description: "Resolves the top YouTube search result server-side and directly opens and autoplays the video in the default browser.",
     parameters: {
       type: Type.OBJECT,
       properties: { query: { type: Type.STRING } },
