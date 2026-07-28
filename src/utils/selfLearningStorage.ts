@@ -1,49 +1,49 @@
 /**
- * Self Learning System Storage & Export/Import Manager
- * Manages persistent local memory of task records, error logs, verified solutions,
- * learned macro workflows, user preferences, and rollback snapshots across page refreshes.
+ * Four Cooperating Systems Storage & Persistence Manager
+ * Manages persistent local memory for Experience Memory, Error Intelligence,
+ * Workflow Learning, and Improvement Engine across page refreshes.
  */
 
-import { LearningSystemState, INITIAL_LEARNING_STATE, TaskRecord, ErrorRecord, SolutionRecord } from '../../server/selfLearningEngine';
+import { FourSystemsLearningState, INITIAL_FOUR_SYSTEMS_STATE } from '../../server/selfLearningEngine';
 
-const LEARNING_KEY = 'shashwat_self_learning_v1';
+const FOUR_SYSTEMS_KEY = 'shashwat_four_systems_learning_v1';
 
-export function getStoredLearningState(): LearningSystemState {
+export function getStoredFourSystemsState(): FourSystemsLearningState {
   try {
-    const raw = localStorage.getItem(LEARNING_KEY);
+    const raw = localStorage.getItem(FOUR_SYSTEMS_KEY);
     if (!raw) {
-      saveStoredLearningState(INITIAL_LEARNING_STATE);
-      return INITIAL_LEARNING_STATE;
+      saveStoredFourSystemsState(INITIAL_FOUR_SYSTEMS_STATE);
+      return INITIAL_FOUR_SYSTEMS_STATE;
     }
-    return JSON.parse(raw) as LearningSystemState;
+    return JSON.parse(raw) as FourSystemsLearningState;
   } catch (err) {
-    console.error('[SelfLearningStorage] Failed to read learning state:', err);
-    return INITIAL_LEARNING_STATE;
+    console.error('[FourSystemsStorage] Failed to read learning state:', err);
+    return INITIAL_FOUR_SYSTEMS_STATE;
   }
 }
 
-export function saveStoredLearningState(state: LearningSystemState): void {
+export function saveStoredFourSystemsState(state: FourSystemsLearningState): void {
   try {
-    localStorage.setItem(LEARNING_KEY, JSON.stringify(state));
+    localStorage.setItem(FOUR_SYSTEMS_KEY, JSON.stringify(state));
   } catch (err) {
-    console.error('[SelfLearningStorage] Failed to save learning state:', err);
+    console.error('[FourSystemsStorage] Failed to save learning state:', err);
   }
 }
 
-export function resetStoredLearningState(): void {
+export function resetStoredFourSystemsState(): void {
   try {
-    localStorage.removeItem(LEARNING_KEY);
-    saveStoredLearningState(INITIAL_LEARNING_STATE);
+    localStorage.removeItem(FOUR_SYSTEMS_KEY);
+    saveStoredFourSystemsState(INITIAL_FOUR_SYSTEMS_STATE);
   } catch (err) {
-    console.error('[SelfLearningStorage] Failed to reset learning state:', err);
+    console.error('[FourSystemsStorage] Failed to reset learning state:', err);
   }
 }
 
-export function exportLearningDatabase(state: LearningSystemState): void {
+export function exportFourSystemsDatabase(state: FourSystemsLearningState): void {
   const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(state, null, 2));
   const downloadAnchor = document.createElement('a');
   downloadAnchor.setAttribute('href', dataStr);
-  downloadAnchor.setAttribute('download', `Shashwat_Self_Learning_Database_${Date.now()}.json`);
+  downloadAnchor.setAttribute('download', `Shashwat_Four_Systems_Learning_DB_${Date.now()}.json`);
   document.body.appendChild(downloadAnchor);
   downloadAnchor.click();
   downloadAnchor.remove();
