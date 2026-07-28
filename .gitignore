@@ -1,6 +1,7 @@
 node_modules/
 build/
 dist/
+release/
 coverage/
 .DS_Store
 *.log
@@ -10,4 +11,3 @@ bin/nircmd*.exe
 bin/*.zip
 bin/*.chm
 data/memory.json
-

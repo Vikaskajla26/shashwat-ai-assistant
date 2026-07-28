@@ -1,8 +1,9 @@
 {
   "name": "shashwat-ai-assistant",
-  "productName": "शाश्वत AI Assistant",
+  "productName": "Shashwat AI Assistant",
   "private": true,
   "version": "1.0.0",
+  "author": "Vikas Kajla",
   "description": "Production-ready Windows Desktop AI Operating System and AI Companion",
   "main": "electron/main.cjs",
   "type": "module",
@@ -11,8 +12,8 @@
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "start": "node dist/server.cjs",
     "electron:dev": "concurrently \"tsx server.ts\" \"wait-on http://localhost:3000 && electron .\"",
-    "electron:build": "npm run build && electron-builder",
-    "dist": "npm run build && electron-builder --win nsis portable",
+    "electron:build": "npm run build && npx electron-builder",
+    "dist": "npm run build && npx electron-builder --win nsis portable",
     "clean": "rm -rf dist release server.js",
     "lint": "tsc --noEmit"
   },
@@ -22,8 +23,6 @@
     "@types/three": "^0.185.1",
     "@vitejs/plugin-react": "^5.0.4",
     "dotenv": "^17.2.3",
-    "electron-is-dev": "^3.0.1",
-    "electron-updater": "^6.3.9",
     "express": "^4.21.2",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
@@ -40,7 +39,7 @@
     "@types/ws": "^8.18.1",
     "autoprefixer": "^10.4.21",
     "concurrently": "^9.1.2",
-    "electron": "^33.2.1",
+    "electron": "33.2.1",
     "electron-builder": "^25.1.8",
     "esbuild": "^0.25.0",
     "tailwindcss": "^4.1.14",
@@ -51,13 +50,16 @@
   },
   "build": {
     "appId": "com.shashwat.ai.assistant",
-    "productName": "शाश्वत AI Assistant",
+    "productName": "Shashwat AI Assistant",
+    "executableName": "Shashwat-AI-Assistant",
+    "electronVersion": "33.2.1",
     "directories": {
       "output": "release"
     },
     "files": [
       "dist/**/*",
       "electron/**/*",
+      "assets/**/*",
       "data/**/*",
       "package.json"
     ],

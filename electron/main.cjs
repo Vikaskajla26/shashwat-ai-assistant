@@ -1,8 +1,16 @@
 const { app, BrowserWindow, ipcMain, Tray, Menu, Notification, shell } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
-const isDev = require('electron-is-dev');
-const { autoUpdater } = require('electron-updater');
+
+// Built-in Electron check: true when running inside compiled .exe
+const isDev = !app.isPackaged;
+
+let autoUpdater = null;
+try {
+  autoUpdater = require('electron-updater').autoUpdater;
+} catch (e) {
+  console.warn('[Electron Main] electron-updater module notice:', e.message);
+}
 
 let mainWindow = null;
 let tray = null;
@@ -13,11 +21,12 @@ const PORT = 3000;
 function startBackendServer() {
   if (serverProcess) return;
 
+  const appPath = app.getAppPath();
   const serverScript = isDev
     ? path.join(process.cwd(), 'server.ts')
-    : path.join(process.cwd(), 'dist', 'server.cjs');
+    : path.join(appPath, 'dist', 'server.cjs');
 
-  console.log(`[Electron Main] Starting backend server: ${serverScript}`);
+  console.log(`[Electron Main] Starting backend server (isDev: ${isDev}): ${serverScript}`);
 
   if (isDev) {
     serverProcess = spawn('npx', ['tsx', serverScript], {
@@ -46,7 +55,9 @@ function startBackendServer() {
 }
 
 function createMainWindow() {
-  const iconPath = path.join(process.cwd(), 'assets', 'icon.png');
+  const iconPath = isDev
+    ? path.join(process.cwd(), 'assets', 'icon.png')
+    : path.join(app.getAppPath(), 'assets', 'icon.png');
 
   mainWindow = new BrowserWindow({
     width: 1360,
@@ -55,13 +66,13 @@ function createMainWindow() {
     minHeight: 700,
     title: 'शाश्वत AI Assistant',
     icon: iconPath,
-    backgroundColor: '#05070D',
+    backgroundColor: '#000000',
     show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
       contextIsolation: true,
-      webSecurity: false, // Allows local asset loading & WebRTC screen sharing
+      webSecurity: false,
     },
   });
 
@@ -95,7 +106,9 @@ function createMainWindow() {
 }
 
 function createSystemTray() {
-  const iconPath = path.join(process.cwd(), 'assets', 'icon.png');
+  const iconPath = isDev
+    ? path.join(process.cwd(), 'assets', 'icon.png')
+    : path.join(app.getAppPath(), 'assets', 'icon.png');
 
   try {
     tray = new Tray(iconPath);
@@ -116,7 +129,11 @@ function createSystemTray() {
       { type: 'separator' },
       {
         label: 'Check for Updates',
-        click: () => autoUpdater.checkForUpdatesAndNotify(),
+        click: () => {
+          if (autoUpdater) {
+            autoUpdater.checkForUpdatesAndNotify().catch((e) => console.log('Update notice:', e.message));
+          }
+        },
       },
       { type: 'separator' },
       {
@@ -168,7 +185,7 @@ app.on('ready', () => {
   createSystemTray();
   registerIPCHandlers();
 
-  if (!isDev) {
+  if (!isDev && autoUpdater) {
     autoUpdater.checkForUpdatesAndNotify().catch((e) => console.log('AutoUpdater notice:', e.message));
   }
 });
