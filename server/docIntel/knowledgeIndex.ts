@@ -3,8 +3,10 @@ import path from 'path';
 import { DocumentMeta, DocumentSection, KnowledgeQueryResult, SearchCitation, DocumentComparison } from './types';
 import { processDocumentFile } from './documentProcessor';
 
-const INDEX_FILE = path.join(process.cwd(), 'data', 'knowledge_index.json');
-const DOCS_DIR = path.join(process.cwd(), 'data', 'documents');
+import { getDataDir } from '../utils/paths';
+
+const INDEX_FILE = path.join(getDataDir(), 'knowledge_index.json');
+const DOCS_DIR = path.join(getDataDir(), 'documents');
 
 interface KnowledgeStorageSchema {
   documents: DocumentMeta[];
