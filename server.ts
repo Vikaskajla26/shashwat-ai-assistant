@@ -83,6 +83,24 @@ async function startServer() {
     res.json({ success: true, study });
   });
 
+  // Slash Command Execution Endpoints
+  app.get("/api/study/commands", (_req, res) => {
+    const { REGISTERED_COMMANDS } = require("./server/docIntel/commandProcessor");
+    res.json({ success: true, commands: REGISTERED_COMMANDS });
+  });
+
+  app.post("/api/study/command", async (req, res) => {
+    try {
+      const { command, docId } = req.body || {};
+      const { processStudyCommand } = require("./server/docIntel/commandProcessor");
+      const result = await processStudyCommand(command || "/notes", docId);
+      res.json({ success: true, result });
+    } catch (err: any) {
+      console.error("[StudyCommand API] Error:", err);
+      res.status(500).json({ success: false, message: err?.message || "Command execution failed" });
+    }
+  });
+
   app.post("/api/documents/compare", (req, res) => {
     const { docIds } = req.body || {};
     const ki = KnowledgeIndex.getInstance();
