@@ -33,7 +33,8 @@ import {
   getStoredFourSystemsState,
   saveStoredFourSystemsState,
   resetStoredFourSystemsState,
-  exportFourSystemsDatabase
+  exportFourSystemsDatabase,
+  fetchLiveLearningState
 } from '../utils/selfLearningStorage';
 
 interface SelfLearningDashboardProps {
@@ -43,6 +44,20 @@ interface SelfLearningDashboardProps {
 export const SelfLearningDashboard: React.FC<SelfLearningDashboardProps> = ({ onClose }) => {
   const [learningState, setLearningState] = useState<FourSystemsLearningState>(getStoredFourSystemsState());
   const [activeSystemTab, setActiveSystemTab] = useState<'system1' | 'system2' | 'system3' | 'system4'>('system1');
+  const [isLive, setIsLive] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    fetchLiveLearningState().then((state) => {
+      if (mounted) {
+        setLearningState(state);
+        setIsLive(true);
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     saveStoredFourSystemsState(learningState);
@@ -91,7 +106,14 @@ export const SelfLearningDashboard: React.FC<SelfLearningDashboardProps> = ({ on
               <Brain className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white tracking-wide">Four Cooperating Systems (आत्म-शिक्षा तन्त्र)</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-bold text-white tracking-wide">Four Cooperating Systems (आत्म-शिक्षा तन्त्र)</h2>
+                {isLive && (
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[10px] font-mono font-bold tracking-wider uppercase flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> LIVE
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-amber-400/80">Experience Memory • Error Intelligence • Workflow Learning • Improvement Engine</p>
             </div>
           </div>

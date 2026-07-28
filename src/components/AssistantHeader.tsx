@@ -37,6 +37,19 @@ export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
       ? 'bg-[#FF4D8D] shadow-[0_0_10px_#FF4D8D] animate-ping'
       : 'bg-[#A78BFA] animate-pulse';
 
+  const [healthScore, setHealthScore] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    fetch('/api/health')
+      .then((r) => r.json())
+      .then((d) => {
+        if (typeof d.score === 'number') {
+          setHealthScore(Math.round(d.score * 100));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   return (
     <header className="w-full z-30 px-6 py-5 sm:px-10 flex items-center justify-between bg-transparent pointer-events-auto border-b border-white/5 backdrop-blur-md">
       {/* Brand & Left Drawer Trigger */}
@@ -63,13 +76,13 @@ export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
       <div className="flex items-center space-x-3 sm:space-x-4 font-mono text-[11px] tracking-[0.2em] uppercase">
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
           <span className={`w-2 h-2 rounded-full ${statusDotColor}`} />
-          <span className="text-white font-bold">{statusText}</span>
+          <span className="text-[#ffffff] font-bold">{statusText}</span>
         </div>
 
         {/* Live System Health Pill */}
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-bold shadow-[0_0_12px_rgba(16,185,129,0.2)]">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span>HEALTHY • 98%</span>
+          <span>HEALTHY • {healthScore !== null ? `${healthScore}%` : '98%'}</span>
         </div>
 
         {speakerStatus?.status === 'VERIFIED_OWNER' && (

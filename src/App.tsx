@@ -257,7 +257,22 @@ export default function App() {
   const latestEvent = toolEvents.length > 0 ? toolEvents[toolEvents.length - 1] : null;
 
   return (
-    <div className="relative w-screen h-screen bg-[#000000] text-white flex flex-col items-center justify-between overflow-hidden font-sans select-none">
+    <div
+      style={{
+        width: '100vw',
+        height: '100vh',
+        backgroundColor: '#05070d',
+        color: '#ffffff',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justify: 'space-between',
+        position: 'relative',
+        overflow: 'hidden',
+        boxSizing: 'border-box'
+      }}
+      className="relative w-screen h-screen bg-[#05070d] text-white flex flex-col items-center justify-between overflow-hidden font-sans select-none"
+    >
       {/* Volumetric Atmospheric Space Haze */}
       <div className="ambient-halo-1" />
       <div className="ambient-halo-2" />

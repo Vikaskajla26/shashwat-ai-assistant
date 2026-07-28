@@ -12,7 +12,6 @@ export function getStoredFourSystemsState(): FourSystemsLearningState {
   try {
     const raw = localStorage.getItem(FOUR_SYSTEMS_KEY);
     if (!raw) {
-      saveStoredFourSystemsState(INITIAL_FOUR_SYSTEMS_STATE);
       return INITIAL_FOUR_SYSTEMS_STATE;
     }
     return JSON.parse(raw) as FourSystemsLearningState;
@@ -20,6 +19,27 @@ export function getStoredFourSystemsState(): FourSystemsLearningState {
     console.error('[FourSystemsStorage] Failed to read learning state:', err);
     return INITIAL_FOUR_SYSTEMS_STATE;
   }
+}
+
+export async function fetchLiveLearningState(): Promise<FourSystemsLearningState> {
+  try {
+    const res = await fetch('/api/learning');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (data.success) {
+      const liveState: FourSystemsLearningState = {
+        system1ExperienceMemory: data.system1ExperienceMemory,
+        system2ErrorIntelligence: data.system2ErrorIntelligence,
+        system3WorkflowLearning: data.system3WorkflowLearning,
+        system4ImprovementEngine: data.system4ImprovementEngine,
+      };
+      saveStoredFourSystemsState(liveState);
+      return liveState;
+    }
+  } catch (err) {
+    console.warn('[FourSystemsStorage] Failed to fetch live state, using cache:', err);
+  }
+  return getStoredFourSystemsState();
 }
 
 export function saveStoredFourSystemsState(state: FourSystemsLearningState): void {
