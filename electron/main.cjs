@@ -2,55 +2,43 @@ const { app, BrowserWindow, ipcMain, Tray, Menu, Notification, shell } = require
 const path = require('path');
 const { spawn } = require('child_process');
 
-// Built-in Electron check: true when running inside compiled .exe
 const isDev = !app.isPackaged;
 
 let autoUpdater = null;
 try {
   autoUpdater = require('electron-updater').autoUpdater;
 } catch (e) {
-  console.warn('[Electron Main] electron-updater module notice:', e.message);
+  console.warn('[Electron Main] electron-updater notice:', e.message);
 }
 
 let mainWindow = null;
 let tray = null;
-let serverProcess = null;
+let serverStarted = false;
 
 const PORT = 3000;
 
 function startBackendServer() {
-  if (serverProcess) return;
-
-  const appPath = app.getAppPath();
-  const serverScript = isDev
-    ? path.join(process.cwd(), 'server.ts')
-    : path.join(appPath, 'dist', 'server.cjs');
-
-  console.log(`[Electron Main] Starting backend server (isDev: ${isDev}): ${serverScript}`);
+  if (serverStarted) return;
+  serverStarted = true;
 
   if (isDev) {
-    serverProcess = spawn('npx', ['tsx', serverScript], {
+    const serverScript = path.join(process.cwd(), 'server.ts');
+    console.log(`[Electron Main] Starting dev server via tsx: ${serverScript}`);
+    spawn('npx', ['tsx', serverScript], {
       cwd: process.cwd(),
       shell: true,
       env: { ...process.env, PORT: PORT.toString() },
     });
   } else {
-    serverProcess = spawn('node', [serverScript], {
-      cwd: process.cwd(),
-      env: { ...process.env, PORT: PORT.toString(), NODE_ENV: 'production' },
-    });
-  }
-
-  if (serverProcess.stdout) {
-    serverProcess.stdout.on('data', (data) => {
-      console.log(`[Backend Log] ${data.toString().trim()}`);
-    });
-  }
-
-  if (serverProcess.stderr) {
-    serverProcess.stderr.on('data', (data) => {
-      console.error(`[Backend Err] ${data.toString().trim()}`);
-    });
+    // Production Mode: Execute bundled server directly inside Electron Node engine!
+    const bundledServer = path.join(app.getAppPath(), 'dist', 'server.cjs');
+    console.log(`[Electron Main] Loading production server module: ${bundledServer}`);
+    try {
+      require(bundledServer);
+      console.log('[Electron Main] Bundled server initialized successfully');
+    } catch (err) {
+      console.error('[Electron Main] Error loading bundled server module:', err);
+    }
   }
 }
 
@@ -79,9 +67,9 @@ function createMainWindow() {
   const appUrl = `http://localhost:${PORT}`;
 
   const loadApp = () => {
-    mainWindow.loadURL(appUrl).catch(() => {
-      console.log('[Electron Main] Backend loading... retrying in 1s');
-      setTimeout(loadApp, 1000);
+    mainWindow.loadURL(appUrl).catch((err) => {
+      console.log('[Electron Main] Backend connection pending... retrying in 500ms:', err.message);
+      setTimeout(loadApp, 500);
     });
   };
 
@@ -155,7 +143,7 @@ function createSystemTray() {
       }
     });
   } catch (err) {
-    console.warn('[Electron Main] System tray initialization warning:', err.message);
+    console.warn('[Electron Main] System tray notice:', err.message);
   }
 }
 
@@ -192,11 +180,6 @@ app.on('ready', () => {
 
 app.on('before-quit', () => {
   app.isQuitting = true;
-  if (serverProcess) {
-    try {
-      serverProcess.kill('SIGTERM');
-    } catch (_) {}
-  }
 });
 
 app.on('window-all-closed', () => {
