@@ -532,6 +532,14 @@ async function startServer() {
     app.use("*", async (req, res, next) => {
       const url = req.originalUrl;
       if (url.startsWith("/api/")) return next();
+
+      // Only serve index.html for HTML navigation requests (skip asset files with extensions)
+      const acceptHeader = req.headers.accept || "";
+      const hasExtension = path.extname(url.split("?")[0]).length > 0;
+      if (hasExtension && !acceptHeader.includes("text/html")) {
+        return next();
+      }
+
       try {
         const indexPath = path.resolve(process.cwd(), "index.html");
         let template = fs.readFileSync(indexPath, "utf-8");
