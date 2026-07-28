@@ -27,10 +27,6 @@ function hexToRgb(h: string): [number, number, number] {
   ];
 }
 
-function lerp(a: number, b: number, t: number): number {
-  return a + (b - a) * t;
-}
-
 const TAU = Math.PI * 2;
 function rand(a = 1, b: number | null = null): number {
   if (b === null) {
@@ -42,7 +38,6 @@ function rand(a = 1, b: number | null = null): number {
 
 export const AssistantOrb: React.FC<AssistantOrbProps> = ({
   state,
-  mood,
   volume = 0,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -79,21 +74,21 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({
 
     let animFrameId: number;
 
-    // 10,000 GPU Particles
-    const PARTICLE_COUNT = 3200;
+    // Sparse, purposeful, low-opacity particles (120 max for restrained precision)
+    const PARTICLE_COUNT = 120;
     const particles: any[] = [];
 
     for (let i = 0; i < PARTICLE_COUNT; i++) {
-      const isCore = i < 800;
-      const isFilament = i >= 800 && i < 2400;
+      const isCore = i < 30;
+      const isFilament = i >= 30 && i < 90;
       particles.push({
         type: isCore ? 'core' : isFilament ? 'filament' : 'aura',
         r: isCore ? Math.sqrt(Math.random()) * 0.22 : isFilament ? rand(0.25, 0.65) : rand(0.65, 0.95),
         angle: rand(TAU),
-        speed: rand(0.08, 0.35) * (Math.random() < 0.5 ? 1 : -1),
-        size: isCore ? rand(1.2, 2.8) : rand(0.8, 2.0),
-        color: Math.random() < 0.45 ? '#4FC3F7' : Math.random() < 0.8 ? '#FF4D9D' : '#9B5DE5',
-        bright: rand(0.4, 1.0),
+        speed: rand(0.04, 0.15) * (Math.random() < 0.5 ? 1 : -1),
+        size: isCore ? rand(1.2, 2.4) : rand(0.8, 1.8),
+        color: Math.random() < 0.6 ? '#6C7CE0' : Math.random() < 0.85 ? '#4FC3F7' : '#9B5DE5',
+        bright: rand(0.2, 0.6),
         phase: rand(TAU),
       });
     }
@@ -102,8 +97,8 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({
     const sutraNodes = SUTRAS.map((text, idx) => ({
       text,
       angle: (idx / SUTRAS.length) * TAU,
-      radiusOffset: rand(-0.06, 0.06),
-      speed: rand(0.10, 0.22),
+      radiusOffset: rand(-0.04, 0.04),
+      speed: rand(0.06, 0.14),
       phase: rand(TAU),
     }));
 
@@ -115,91 +110,102 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({
       const dt = Math.min(0.05, (now - lastT) / 1000);
       lastT = now;
 
-      // Emotion / State color parameters
+      // State visual signatures
       const isThinking = state === 'connecting';
       const isSpeaking = state === 'speaking';
       const isListening = state === 'listening';
 
       const normVolume = Math.min(1, volume / 100);
-      const audioBoost = isSpeaking ? 0.4 + normVolume * 0.6 : normVolume * 0.5;
+      const audioBoost = isSpeaking ? 0.3 + normVolume * 0.5 : normVolume * 0.4;
 
-      const speedMul = isThinking ? 2.5 : isSpeaking ? 1.6 : 1.0;
-      globalAngle += dt * 0.15 * speedMul;
+      const speedMul = isThinking ? 2.0 : isSpeaking ? 1.4 : 1.0;
+      globalAngle += dt * 0.10 * speedMul;
 
       const W = canvas.width;
       const H = canvas.height;
       const cx = W / 2;
       const cy = H / 2;
-      const scaleBase = Math.min(W, H) * 0.38;
+      const scaleBase = Math.min(W, H) * 0.36;
 
       ctx.clearRect(0, 0, W, H);
       ctx.save();
       ctx.translate(cx, cy);
-      ctx.scale(1, 0.76); // 3D tilt perspective
+      ctx.scale(1, 0.78); // Subtle 3D perspective
 
       ctx.globalCompositeOperation = 'lighter';
 
       const t = now / 1000;
-      const breathScale = 1 + 0.05 * Math.sin(t * 1.5) + audioBoost * 0.2;
+
+      // Restrained breathing cycle (4-6 second pulse)
+      const breathScale = 1 + 0.04 * Math.sin(t * 1.2) + audioBoost * 0.15;
 
       // Mouse attraction vector
       const mouse = mousePosRef.current;
 
-      // Render 3,200 Cosmic Energy Particles
+      // 1. LISTENING STATE THIN LIGHT RING
+      if (isListening) {
+        ctx.beginPath();
+        ctx.arc(0, 0, scaleBase * 0.72 * breathScale, 0, TAU);
+        ctx.strokeStyle = 'rgba(79, 195, 247, 0.45)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+
+      // 2. SPARSE PARTICLES DRIFT
       for (const p of particles) {
         p.angle += dt * p.speed * speedMul;
 
         let rr = p.r * scaleBase * breathScale;
-        if (isThinking && p.type === 'core') rr *= 0.75; // Contract core when thinking
+        if (isThinking && p.type === 'core') rr *= 0.8;
 
         let x = Math.cos(p.angle) * rr;
         let y = Math.sin(p.angle) * rr;
 
-        // Neural Wings / Filament attraction towards mouse cursor
+        // Neural Wings proximity pull toward cursor
         if (mouse.active && p.type === 'filament') {
           const dx = mouse.x - x;
           const dy = mouse.y - y;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < 180) {
-            const pull = (180 - dist) / 180 * 18;
+          if (dist < 160) {
+            const pull = (160 - dist) / 160 * 12;
             x += (dx / dist) * pull;
             y += (dy / dist) * pull;
           }
         }
 
-        const flicker = 0.7 + 0.3 * Math.sin(t * 3 + p.phase);
-        const alpha = p.bright * flicker * (0.6 + audioBoost * 0.4);
+        const flicker = 0.8 + 0.2 * Math.sin(t * 2 + p.phase);
+        const alpha = p.bright * flicker * (0.4 + audioBoost * 0.4);
 
         const [r, g, b] = hexToRgb(p.color);
         ctx.beginPath();
-        ctx.arc(x, y, p.size * (1 + audioBoost * 0.5), 0, TAU);
-        ctx.fillStyle = `rgba(${r},${g},${b},${Math.min(1, alpha)})`;
+        ctx.arc(x, y, p.size * (1 + audioBoost * 0.4), 0, TAU);
+        ctx.fillStyle = `rgba(${r},${g},${b},${Math.min(0.6, alpha)})`;
         ctx.fill();
       }
 
-      // Flowing Maheshwar Sutras along orbital paths
-      ctx.font = '600 13px "Noto Sans Devanagari", sans-serif';
+      // 3. FLOWING MAHESHWAR SUTRAS
+      ctx.font = '500 12px "Noto Sans Devanagari", sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
       sutraNodes.forEach((node) => {
         const ang = node.angle + globalAngle * node.speed;
-        const rr = (0.52 + node.radiusOffset) * scaleBase * breathScale;
+        const rr = (0.50 + node.radiusOffset) * scaleBase * breathScale;
         const x = Math.cos(ang) * rr;
-        const y = Math.sin(ang) * rr + Math.sin(t * 2 + node.phase) * 6;
+        const y = Math.sin(ang) * rr + Math.sin(t * 1.5 + node.phase) * 4;
 
-        const depthAlpha = 0.4 + 0.5 * Math.sin(ang);
-        const pulseGlow = isSpeaking ? 0.3 * Math.sin(t * 10 + node.phase) : 0;
+        const depthAlpha = 0.25 + 0.35 * Math.sin(ang);
+        const pulseGlow = isSpeaking ? 0.2 * Math.sin(t * 8 + node.phase) : 0;
 
-        ctx.fillStyle = `rgba(79, 195, 247, ${Math.max(0.15, depthAlpha + pulseGlow)})`;
+        ctx.fillStyle = `rgba(108, 124, 224, ${Math.max(0.12, depthAlpha + pulseGlow)})`;
         ctx.fillText(node.text, x, y);
       });
 
-      // Outer Volumetric Plasma Glow
-      const glowR = scaleBase * 0.28 * breathScale;
+      // 4. RESTRAINED FROSTED GLASS PLASMA CORE
+      const glowR = scaleBase * 0.26 * breathScale;
       const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, glowR);
-      grad.addColorStop(0, `rgba(79, 195, 247, ${0.65 + audioBoost * 0.35})`);
-      grad.addColorStop(0.5, `rgba(255, 77, 157, ${0.35 + audioBoost * 0.25})`);
+      grad.addColorStop(0, `rgba(108, 124, 224, ${0.45 + audioBoost * 0.3})`);
+      grad.addColorStop(0.6, `rgba(79, 195, 247, ${0.25 + audioBoost * 0.2})`);
       grad.addColorStop(1, 'rgba(155, 93, 229, 0)');
       ctx.fillStyle = grad;
       ctx.beginPath();
@@ -219,12 +225,11 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({
   }, [state, volume]);
 
   return (
-    <div className="relative flex items-center justify-center w-[580px] h-[580px] max-w-full select-none">
-      {/* Living Cosmic Energy Entity Core (WebGL Particle Engine Canvas) */}
+    <div className="relative flex items-center justify-center w-[520px] h-[520px] max-w-full select-none">
       <canvas
         ref={canvasRef}
-        width={580}
-        height={580}
+        width={520}
+        height={520}
         className="absolute inset-0 pointer-events-none z-0"
       />
     </div>
