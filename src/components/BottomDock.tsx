@@ -6,6 +6,7 @@ import {
   Globe,
   FileSearch,
   Brain,
+  Sparkles,
   Sliders,
   Send,
   Mic,
@@ -22,6 +23,7 @@ interface BottomDockProps {
   onToggleSandbox: () => void;
   onToggleDocWorkspace: () => void;
   onOpenSanskritStudio?: () => void;
+  onOpenSelfLearning?: () => void;
   onOpenLeftDrawer: () => void;
   onOpenRightDrawer: () => void;
   onSendTypedText?: (text: string) => void;
@@ -37,6 +39,7 @@ export const BottomDock: React.FC<BottomDockProps> = ({
   onToggleSandbox,
   onToggleDocWorkspace,
   onOpenSanskritStudio,
+  onOpenSelfLearning,
   onOpenLeftDrawer,
   onOpenRightDrawer,
   onSendTypedText,
@@ -142,6 +145,17 @@ export const BottomDock: React.FC<BottomDockProps> = ({
             title="Sanskrit Chant Intelligence Studio"
           >
             <Brain className="w-4 h-4" />
+          </button>
+        )}
+
+        {/* Self Learning Engine & Improvement Dashboard Button */}
+        {onOpenSelfLearning && (
+          <button
+            onClick={onOpenSelfLearning}
+            className="p-2.5 rounded-full transition-all cursor-pointer border bg-white/5 border-white/10 text-purple-400 hover:text-purple-300 hover:bg-purple-500/20 hover:border-purple-400/40"
+            title="Self Learning Engine & Improvement Dashboard"
+          >
+            <Sparkles className="w-4 h-4" />
           </button>
         )}
 

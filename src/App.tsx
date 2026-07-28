@@ -13,6 +13,7 @@ import { AISandboxBrowser } from './components/AISandboxBrowser';
 import { VoiceEnrollmentModal } from './components/VoiceEnrollmentModal';
 import { StudyStudioModal } from './components/docIntel/StudyStudioModal';
 import { SanskritChantStudio } from './components/SanskritChantStudio';
+import { SelfLearningDashboard } from './components/SelfLearningDashboard';
 import { LeftDrawer, RightDrawer } from './components/CinematicPanels';
 import { BottomDock } from './components/BottomDock';
 import {
@@ -43,6 +44,7 @@ export default function App() {
   const [isEnrollmentOpen, setIsEnrollmentOpen] = useState<boolean>(false);
   const [isDocWorkspaceOpen, setIsDocWorkspaceOpen] = useState<boolean>(false);
   const [isSanskritStudioOpen, setIsSanskritStudioOpen] = useState<boolean>(false);
+  const [isSelfLearningOpen, setIsSelfLearningOpen] = useState<boolean>(false);
   const [isScreenSharing, setIsScreenSharing] = useState<boolean>(false);
   const [isSandboxOpen, setIsSandboxOpen] = useState<boolean>(false);
   const [isLeftDrawerOpen, setIsLeftDrawerOpen] = useState<boolean>(false);
@@ -328,6 +330,7 @@ export default function App() {
         onToggleSandbox={() => setIsSandboxOpen((prev) => !prev)}
         onToggleDocWorkspace={() => setIsDocWorkspaceOpen((prev) => !prev)}
         onOpenSanskritStudio={() => setIsSanskritStudioOpen(true)}
+        onOpenSelfLearning={() => setIsSelfLearningOpen(true)}
         onOpenLeftDrawer={() => setIsLeftDrawerOpen(true)}
         onOpenRightDrawer={() => setIsRightDrawerOpen(true)}
         onSendTypedText={handleSendMessage}
@@ -369,8 +372,6 @@ export default function App() {
           setIsEnrollmentOpen(true);
         }}
       />
-
-
 
       {/* Transcript Drawer */}
       <TranscriptDrawer
@@ -426,6 +427,11 @@ export default function App() {
       {/* 🕉️ Sanskrit Chant Intelligence Studio Modal */}
       {isSanskritStudioOpen && (
         <SanskritChantStudio onClose={() => setIsSanskritStudioOpen(false)} />
+      )}
+
+      {/* 🧠 Self Learning Engine & Improvement Dashboard Modal */}
+      {isSelfLearningOpen && (
+        <SelfLearningDashboard onClose={() => setIsSelfLearningOpen(false)} />
       )}
     </div>
   );
