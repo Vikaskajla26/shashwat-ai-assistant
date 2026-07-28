@@ -558,8 +558,8 @@ async function startServer() {
     });
   }
 
-  server.listen(PORT, HOST, () => {
-    console.log(`शाश्वत AI Assistant server running on http://${HOST}:${PORT}`);
+  server.listen(PORT, () => {
+    console.log(`शाश्वत AI Assistant server running on http://localhost:${PORT} and http://127.0.0.1:${PORT}`);
 
     // Fire-and-forget startup self-test. Never blocks boot; results appear in
     // GET /api/health/detailed and are logged to the console.
