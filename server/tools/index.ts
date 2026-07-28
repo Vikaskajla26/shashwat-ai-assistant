@@ -11,15 +11,61 @@ import { KnowledgeIndex } from "../docIntel/knowledgeIndex";
 import { StudyGenerator } from "../docIntel/studyGenerator";
 import { analyzeSanskritShloka, evaluateSanskritRecitation } from "./sanskritChant";
 import { fetchLiveSearchResults } from "./liveSearchFetcher";
+import { withRetry, logOutcome, type RecoveryFixer } from "../registry/recovery";
+import { analyzeError } from "../selfLearningEngine";
+import { recordError } from "../registry/errorIntelStore";
 
 /**
  * Central tool executor. Runs REAL actions on the OS, applies the safety
  * (confirmation) layer, and returns the response object that gets sent back
  * to Gemini. UI-only tools (changeAssistantMood, showVisualCard) are flagged
  * via `clientSide: true` so the server forwards them to the browser instead.
+ *
+ * Every execution is timed, recorded into the metrics store, and retried with
+ * recovery on transient failures — so the Task Health Dashboard reflects what
+ * actually happens, not seed data.
  */
 
 const memory = new MemoryManager();
+
+/**
+ * Verified-fix handlers keyed by problem key. When `withRetry` hits a known
+ * error (e.g. Playwright's missing Chromium binary), the matching fixer runs
+ * BEFORE the retry — a real alternate strategy instead of a blind re-attempt.
+ */
+const RECOVERY_FIXERS: Record<string, RecoveryFixer> = {
+  // "Executable doesn't appear at .../chrome-win64-*/chrome-win64/chrome.exe"
+  // → install the browser once, then let the retry succeed.
+  async BrowserNotFoundError(_key: string) {
+    return installPlaywrightChromium();
+  },
+};
+
+let playwrightInstallInFlight: Promise<boolean> | null = null;
+async function installPlaywrightChromium(): Promise<boolean> {
+  // Guard against re-entrant installs (retries could otherwise stack downloads).
+  if (playwrightInstallInFlight) return playwrightInstallInFlight;
+  playwrightInstallInFlight = (async () => {
+    try {
+      const { execFile } = await import("child_process");
+      await new Promise<void>((resolve, reject) => {
+        execFile(
+          process.platform === "win32" ? "npx.cmd" : "npx",
+          ["playwright", "install", "chromium"],
+          { windowsHide: true, timeout: 120000 },
+          (err) => (err ? reject(err) : resolve())
+        );
+      });
+      return true;
+    } catch (e) {
+      console.warn("[recovery] playwright install chromium failed:", e);
+      return false;
+    } finally {
+      playwrightInstallInFlight = null;
+    }
+  })();
+  return playwrightInstallInFlight;
+}
 
 export interface ToolEvent {
   /** Short human-readable status line for the on-screen event log. */
@@ -95,8 +141,17 @@ export async function executeTool(
     };
   }
 
+  // ---- Timed dispatch with retry + recovery + telemetry ----
+  // The actual switch runs inside withRetry(); safety/speaker/client-side gates
+  // stay OUTSIDE retry (never retried, never double-confirmed). Every outcome is
+  // recorded so the health dashboard and confidence scores reflect reality.
+  const startedAtIso = new Date().toISOString();
+  const t0 = performance.now();
+  let retryMeta = { recoveryTried: false, recoverySucceeded: false };
+
   try {
-    switch (name) {
+    const dispatch = async (): Promise<ExecuteResult> => {
+      switch (name) {
       // ---------------- Memory ----------------
       case "remember_fact": {
         const category = (argsSafe.category || "personal") as MemoryCategory;
@@ -215,28 +270,7 @@ export async function executeTool(
       case "searchGoogle": {
         const queryStr = String(argsSafe.query || "").trim();
         const url = `https://www.google.com/search?q=${encodeURIComponent(queryStr)}`;
-        await openInDefaultBrowser(url);
-
-        // 1. Run Playwright Chromium Autonomous Sandbox Browser to scrape Google DOM directly
-        let summaryText = "";
-        let directAnswer = "";
-        try {
-          const pwResult = await sandboxExec({ action: "research_topic", target: queryStr } as any);
-          if (pwResult && pwResult.data) {
-            directAnswer = pwResult.data.directAnswer || "";
-            summaryText = pwResult.data.summaryText || "";
-          }
-        } catch (pwErr) {
-          console.warn("[searchGoogle] Playwright search notice:", pwErr);
-        }
-
-        // 2. Fallback to HTTP Live Search Fetcher if Playwright returned empty text
-        if (!summaryText) {
-          const liveSearch = await fetchLiveSearchResults(queryStr);
-          directAnswer = liveSearch.directAnswer || "";
-          summaryText = liveSearch.summaryText || "";
-        }
-
+        const { directAnswer, summaryText, openedIn } = await liveGoogleSearch(queryStr, url);
         const instruction = `CRITICAL INSTRUCTION FOR VOICE RESPONSE: The user asked a real-time factual question ("${queryStr}"). The current live Google search results above provide the latest accurate facts. You MUST speak the current live answer in your spoken voice response. Do NOT state older pre-trained historical figures or past directors.`;
 
         return ok(
@@ -244,6 +278,7 @@ export async function executeTool(
             searched: true,
             query: queryStr,
             url,
+            openedIn, // "sandbox" | "default_browser" — single visible window
             CURRENT_FACTUAL_ANSWER_TO_SPEAK: directAnswer || summaryText,
             liveTextSummary: summaryText,
             instruction,
@@ -293,26 +328,19 @@ export async function executeTool(
           news: `https://news.google.com/search?q=${q}`,
         };
         const url = map[engine] || map.google;
-        await openInDefaultBrowser(url);
 
-        // 1. Run Playwright Chromium Autonomous Sandbox Browser to scrape Google DOM directly
-        let summaryText = "";
+        // For the Google engine, use the shared live-search helper (single visible
+        // window). Other engines just open the default browser — no scraping.
         let directAnswer = "";
-        try {
-          const pwResult = await sandboxExec({ action: "research_topic", target: queryStr } as any);
-          if (pwResult && pwResult.data) {
-            directAnswer = pwResult.data.directAnswer || "";
-            summaryText = pwResult.data.summaryText || "";
-          }
-        } catch (pwErr) {
-          console.warn("[search_web] Playwright search notice:", pwErr);
-        }
-
-        // 2. Fallback to HTTP Live Search Fetcher if Playwright returned empty text
-        if (!summaryText) {
-          const liveSearch = await fetchLiveSearchResults(queryStr);
-          directAnswer = liveSearch.directAnswer || "";
-          summaryText = liveSearch.summaryText || "";
+        let summaryText = "";
+        let openedIn: "sandbox" | "default_browser" = "default_browser";
+        if (engine === "google") {
+          const live = await liveGoogleSearch(queryStr, url);
+          directAnswer = live.directAnswer;
+          summaryText = live.summaryText;
+          openedIn = live.openedIn;
+        } else {
+          await openInDefaultBrowser(url);
         }
 
         const instruction = `CRITICAL INSTRUCTION FOR VOICE RESPONSE: The user asked a real-time factual question ("${queryStr}"). The current live Google search results above provide the latest accurate facts. You MUST speak the current live answer in your spoken voice response. Do NOT state older pre-trained historical figures or past directors.`;
@@ -323,6 +351,7 @@ export async function executeTool(
             query: queryStr,
             engine,
             url,
+            openedIn,
             CURRENT_FACTUAL_ANSWER_TO_SPEAK: directAnswer || summaryText,
             liveTextSummary: summaryText,
             instruction,
@@ -490,10 +519,96 @@ export async function executeTool(
 
       default:
         return fail(name, `Unknown tool: ${name}`);
-    }
+      }
+    };
+
+    // Wrap the dispatch: retry transient failures, apply verified fixes first.
+    const retried = await withRetry<ExecuteResult>(name, argsSafe, dispatch, {
+      fixers: RECOVERY_FIXERS,
+    });
+    retryMeta = retried;
+
+    // Telemetry: success if the result's response isn't an error status.
+    const durationMs = Math.round(performance.now() - t0);
+    const isSuccess = retried.result.response?.status !== "error";
+    logOutcome(name, startedAtIso, durationMs, isSuccess, retryMeta);
+
+    return retried.result;
   } catch (error: any) {
+    // Failure path (after retries/recovery exhausted, or non-retryable error).
+    const durationMs = Math.round(performance.now() - t0);
+    logOutcome(name, startedAtIso, durationMs, false, retryMeta, error);
+
+    // Error Intelligence: classify + persist the root cause and any recovery.
+    try {
+      const analyzed = analyzeError(name, error, /* userCommand */ "");
+      recordError({
+        taskName: name,
+        logs: String(error?.message || error),
+        exceptionName: analyzed.exceptionName,
+        userCommand: "",
+        category: analyzed.category,
+        rootCauseReason: analyzed.rootCauseReason,
+        suggestedFix: analyzed.suggestedFix,
+        recoveryAttempted: analyzed.recoveryAttempted,
+        recoverySucceeded: retryMeta.recoverySucceeded,
+      });
+    } catch (intelErr) {
+      console.warn("[executeTool] failed to record error intelligence:", intelErr);
+    }
+
     return fail(name, error?.message || "Tool execution failed");
   }
+}
+
+/**
+ * Live Google search with a SINGLE visible window.
+ *
+ * Previously this opened the user's default browser AND a visible Playwright
+ * Chromium window for the same query (double window). Now:
+ *   - Try the Playwright sandbox first (it both shows results AND extracts text).
+ *   - If Playwright succeeds, the sandbox IS the visible window — do NOT also
+ *     open the default browser.
+ *   - If Playwright is unavailable or returns nothing, fall back to the HTTP
+ *     live-search fetcher and open the default browser so the user still sees
+ *     results.
+ *
+ * Returns which surface ended up visible so the response to Gemini is honest.
+ */
+async function liveGoogleSearch(
+  queryStr: string,
+  url: string
+): Promise<{ directAnswer: string; summaryText: string; openedIn: "sandbox" | "default_browser" }> {
+  let summaryText = "";
+  let directAnswer = "";
+  let playwrightOk = false;
+
+  // 1. Try Playwright sandbox (visible Chromium) to scrape the Google DOM.
+  try {
+    const pwResult = await sandboxExec({ action: "research_topic", target: queryStr } as any);
+    if (pwResult && pwResult.data) {
+      directAnswer = pwResult.data.directAnswer || "";
+      summaryText = pwResult.data.summaryText || "";
+      playwrightOk = Boolean(directAnswer || summaryText);
+    }
+  } catch (pwErr) {
+    console.warn("[liveGoogleSearch] Playwright search notice:", pwErr);
+  }
+
+  // 2. If Playwright gave no text, fall back to the HTTP fetcher.
+  if (!summaryText) {
+    const liveSearch = await fetchLiveSearchResults(queryStr);
+    directAnswer = liveSearch.directAnswer || "";
+    summaryText = liveSearch.summaryText || "";
+  }
+
+  // 3. Single-window rule: open the default browser ONLY if the sandbox never
+  //    surfaced results — otherwise the sandbox is already the visible window.
+  if (!playwrightOk) {
+    await openInDefaultBrowser(url);
+    return { directAnswer, summaryText, openedIn: "default_browser" };
+  }
+  return { directAnswer, summaryText, openedIn: "sandbox" };
 }
 
 /** Productivity actions — open real sites/apps, persist reminders to memory. */

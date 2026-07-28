@@ -24,10 +24,24 @@ function startBackendServer() {
   if (isDev) {
     const serverScript = path.join(process.cwd(), 'server.ts');
     console.log(`[Electron Main] Starting dev server via tsx: ${serverScript}`);
-    spawn('npx', ['tsx', serverScript], {
+    const child = spawn('npx', ['tsx', serverScript], {
       cwd: process.cwd(),
       shell: true,
       env: { ...process.env, PORT: PORT.toString() },
+    });
+    child.on('error', (err) => {
+      console.error('[Electron Main] Failed to spawn dev server:', err.message);
+      try {
+        new Notification({
+          title: 'शाश्वत Server Failed to Start',
+          body: `Could not launch the backend server: ${err.message}`,
+        }).show();
+      } catch (_) { /* Notification API not available */ }
+    });
+    child.on('exit', (code) => {
+      if (code !== null && code !== 0) {
+        console.error(`[Electron Main] Dev server exited with code ${code}`);
+      }
     });
   } else {
     // Production Mode: Execute bundled server directly inside Electron Node engine!
@@ -38,6 +52,12 @@ function startBackendServer() {
       console.log('[Electron Main] Bundled server initialized successfully');
     } catch (err) {
       console.error('[Electron Main] Error loading bundled server module:', err);
+      try {
+        new Notification({
+          title: 'शाश्वत Server Failed to Start',
+          body: `Could not load bundled server: ${err.message}`,
+        }).show();
+      } catch (_) { /* Notification API not available */ }
     }
   }
 }

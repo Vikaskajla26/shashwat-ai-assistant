@@ -92,6 +92,7 @@ Return a clear, highly structured, beautifully formatted Markdown response appro
 
   try {
     let resultText = '';
+    let aiUsed = false;
 
     if (ai) {
       const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
@@ -103,6 +104,7 @@ Return a clear, highly structured, beautifully formatted Markdown response appro
           });
           if (response.text) {
             resultText = response.text;
+            aiUsed = true;
             break;
           }
         } catch (mErr: any) {
@@ -115,8 +117,14 @@ Return a clear, highly structured, beautifully formatted Markdown response appro
       resultText = generateFallbackCommandOutput(cmdName, userQuery);
     }
 
+    // Honesty: if AI was available but ALL models failed and we fell back to
+    // static text, report `success: false` so the telemetry layer (metrics,
+    // error intelligence, confidence score) isn't lied to. The fallback text is
+    // still returned for display.
+    const success = aiUsed || !ai;
+
     return {
-      success: true,
+      success,
       command: cmdName,
       title: `${cmdName.toUpperCase()}: ${userQuery}`,
       output: resultText,
@@ -134,7 +142,7 @@ Return a clear, highly structured, beautifully formatted Markdown response appro
   } catch (err: any) {
     console.error(`[CommandProcessor] Error running command ${cmdName}:`, err);
     return {
-      success: true,
+      success: false,
       command: cmdName,
       title: `${cmdName.toUpperCase()}: ${userQuery}`,
       output: generateFallbackCommandOutput(cmdName, userQuery),

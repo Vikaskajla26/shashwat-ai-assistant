@@ -1,4 +1,5 @@
 import { runPowerShell } from "./powershell";
+import { exec } from "child_process";
 
 /**
  * Maps common natural-language app names to Windows executable / start tokens.
@@ -186,8 +187,36 @@ if ($hit) { $hit } else { '' }
   return out || null;
 }
 
-/** Open a URL in the user's real default system browser. */
+/** Open a URL in the user's real default system browser safely with multi-stage fallbacks. */
 export async function openInDefaultBrowser(url: string): Promise<void> {
-  const safe = url.replace(/'/g, "''");
-  await runPowerShell(`Start-Process '${safe}'`, 8000);
+  if (!url) return;
+  let targetUrl = url.trim();
+
+  // Add https:// if missing
+  if (!/^https?:\/\//i.test(targetUrl) && !targetUrl.startsWith('file://')) {
+    targetUrl = 'https://' + targetUrl;
+  }
+
+  // 1. Try PowerShell Start-Process
+  try {
+    const safePw = targetUrl.replace(/'/g, "''");
+    await runPowerShell(`Start-Process -FilePath '${safePw}'`, 6000);
+    return;
+  } catch (err1) {
+    console.warn('[openInDefaultBrowser] PowerShell Start-Process failed, trying cmd start fallback:', err1);
+  }
+
+  // 2. Try Windows CMD start
+  try {
+    const safeCmd = targetUrl.replace(/"/g, '""');
+    exec(`cmd /c start "" "${safeCmd}"`, (err2) => {
+      if (err2) {
+        console.warn('[openInDefaultBrowser] CMD start failed, trying explorer fallback:', err2);
+        // 3. Fallback: explorer.exe
+        exec(`explorer "${safeCmd}"`).unref();
+      }
+    });
+  } catch (err3) {
+    console.error('[openInDefaultBrowser] All browser launch strategies failed:', err3);
+  }
 }
