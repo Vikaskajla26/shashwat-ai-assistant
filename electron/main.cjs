@@ -64,6 +64,28 @@ function createMainWindow() {
     },
   });
 
+  // Enable Screen Sharing & Display Media Capturing in Electron
+  const { session, desktopCapturer } = require('electron');
+  if (session && session.defaultSession) {
+    session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
+      desktopCapturer.getSources({ types: ['screen', 'window'] }).then((sources) => {
+        if (sources && sources.length > 0) {
+          callback({ video: sources[0], audio: 'loopback' });
+        } else {
+          callback({});
+        }
+      }).catch((err) => {
+        console.error('[Electron DisplayMedia] Error fetching screen sources:', err);
+        callback({});
+      });
+    });
+
+    session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {
+      if (permission === 'display-capture' || permission === 'media') return true;
+      return true;
+    });
+  }
+
   const appUrl = `http://localhost:${PORT}`;
 
   const loadApp = () => {

@@ -219,21 +219,26 @@ export async function executeTool(
         );
       }
       case "searchYouTube": {
-        const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(argsSafe.query || "")}`;
+        const queryStr = argsSafe.query || "trending music";
+        const isMusic = queryStr.toLowerCase().includes("music") || queryStr.toLowerCase().includes("song");
+        const url = isMusic
+          ? `https://music.youtube.com/search?q=${encodeURIComponent(queryStr)}`
+          : `https://www.youtube.com/results?search_query=${encodeURIComponent(queryStr)}`;
         await openInDefaultBrowser(url);
         return ok(
-          { searched: true, query: argsSafe.query, url },
-          `YouTube search: ${argsSafe.query}`,
-          { title: "YouTube Search", content: `Searching "${argsSafe.query}"`, category: "Media Search", url }
+          { searched: true, query: queryStr, url },
+          `YouTube search for ${queryStr}`,
+          { title: "YouTube Media", content: `▶️ Playing ${queryStr} on YouTube`, category: "Media Search", url }
         );
       }
       case "playFirstVideo": {
-        const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(argsSafe.query || "")}`;
+        const queryStr = argsSafe.query || "top songs";
+        const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(queryStr)}`;
         await openInDefaultBrowser(url);
         return ok(
-          { executed: true, query: argsSafe.query, url, message: "Opened YouTube results." },
-          `YouTube: ${argsSafe.query}`,
-          { title: "Autoplay Video", content: `▶️ ${argsSafe.query}`, category: "Media", url }
+          { executed: true, query: queryStr, url, message: `Opened YouTube playback for ${queryStr}` },
+          `YouTube Autoplay: ${queryStr}`,
+          { title: "YouTube Player", content: `🎵 Playing ${queryStr}`, category: "Media", url }
         );
       }
       case "search_web": {

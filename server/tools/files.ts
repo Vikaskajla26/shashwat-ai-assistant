@@ -13,11 +13,19 @@ import { runPowerShell } from "./powershell";
 const MAX_SEARCH_RESULTS = 40;
 const MAX_READ_BYTES = 200_000;
 
-/** Resolve a target_name relative to the user home when it isn't absolute. */
+/** Resolve a target_name relative to the user home when it isn't absolute, and sanitize stale user paths. */
 function resolveTarget(name: string | undefined, baseDir: string): string {
   if (!name) return baseDir;
-  if (path.isAbsolute(name)) return name;
-  return path.join(baseDir, name);
+  let target = name;
+  const home = os.homedir();
+
+  // Remap stale paths like C:\Users\Admin\Desktop -> current user's C:\Users\kajla\Desktop
+  if (target.match(/^C:\\Users\\[^\\]+/i)) {
+    target = target.replace(/^C:\\Users\\[^\\]+/i, home);
+  }
+
+  if (path.isAbsolute(target)) return target;
+  return path.join(baseDir, target);
 }
 
 export async function fileOperation(args: {
