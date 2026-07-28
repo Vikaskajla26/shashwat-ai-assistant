@@ -3,7 +3,6 @@ import { LiveSession } from './modules/LiveSession';
 import { WakeWordDetector } from './modules/WakeWordDetector';
 import { AssistantHeader } from './components/AssistantHeader';
 import { AssistantOrb } from './components/AssistantOrb';
-import { AudioVisualizer } from './components/AudioVisualizer';
 import { VisualCardOverlay } from './components/VisualCardOverlay';
 import { ToolActionBanner } from './components/ToolActionBanner';
 import { TranscriptDrawer } from './components/TranscriptDrawer';
@@ -23,7 +22,6 @@ import {
   TaskExecutionPlan,
 } from './types';
 import { AlertCircle } from 'lucide-react';
-
 import { PowerShutdownModal } from './components/PowerShutdownModal';
 
 export default function App() {
@@ -48,6 +46,7 @@ export default function App() {
   const [isPowerModalOpen, setIsPowerModalOpen] = useState<boolean>(false);
   const [activePlan, setActivePlan] = useState<TaskExecutionPlan | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [previewState, setPreviewState] = useState<string | null>(null);
 
   const [speakerStatus, setSpeakerStatus] = useState<{
     status: string;
@@ -56,7 +55,6 @@ export default function App() {
   }>({ status: 'UNENROLLED', confidence: 1.0, ownerName: 'Guest' });
 
   const liveSessionRef = useRef<LiveSession | null>(null);
-  const persistentWindowRef = useRef<Window | null>(null);
 
   // Initialize LiveSession instance
   useEffect(() => {
@@ -119,13 +117,11 @@ export default function App() {
     };
   }, []);
 
-  // Initialize Wake Word Detector for hands-free "शाश्वत" or "shashwat" wake activation
-  const wakeWordDetectorRef = useRef<WakeWordDetector | null>(null);
-
+  // Initialize Wake Word Detector
   useEffect(() => {
     const detector = new WakeWordDetector({
       onWakeWord: (phrase) => {
-        console.log('⚡ Wake word triggered by phrase:', phrase);
+        console.log('⚡ Wake word triggered:', phrase);
         setErrorMessage(null);
         if (liveSessionRef.current) {
           liveSessionRef.current.connect();
@@ -133,7 +129,6 @@ export default function App() {
       },
     });
 
-    wakeWordDetectorRef.current = detector;
     detector.start();
 
     return () => {
@@ -167,15 +162,18 @@ export default function App() {
     }
   }, [state]);
 
-  const handleSendMessage = useCallback((text: string) => {
-    if (state === 'disconnected') {
-      liveSessionRef.current?.connect().then(() => {
-        setTimeout(() => liveSessionRef.current?.sendTextMessage(text), 800);
-      });
-    } else {
-      liveSessionRef.current?.sendTextMessage(text);
-    }
-  }, [state]);
+  const handleSendMessage = useCallback(
+    (text: string) => {
+      if (state === 'disconnected') {
+        liveSessionRef.current?.connect().then(() => {
+          setTimeout(() => liveSessionRef.current?.sendTextMessage(text), 800);
+        });
+      } else {
+        liveSessionRef.current?.sendTextMessage(text);
+      }
+    },
+    [state]
+  );
 
   const handleDismissCard = useCallback((id: string) => {
     setCards((prev) => prev.filter((c) => c.id !== id));
@@ -189,65 +187,38 @@ export default function App() {
     if (toolName === 'openWebsite') {
       const url = 'https://youtube.com';
       openExternalUrl(url, '_blank');
-
-      setToolEvents((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          toolName: 'openWebsite',
-          status: 'success',
-          message: 'Opening https://youtube.com in browser',
-          timestamp: new Date().toLocaleTimeString(),
-          actionUrl: url,
-        },
-      ]);
-    } else if (toolName === 'changeAssistantMood') {
-      const moods: AssistantMood[] = ['witty', 'playful', 'focused', 'charming', 'energetic'];
-      const nextMood = moods[Math.floor(Math.random() * moods.length)];
-      setMood(nextMood);
-      setToolEvents((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          toolName: 'changeAssistantMood',
-          status: 'success',
-          message: `Changed mood to ${nextMood}`,
-          timestamp: new Date().toLocaleTimeString(),
-        },
-      ]);
-    } else if (toolName === 'showVisualCard') {
-      const newCard: VisualCardData = {
-        id: Date.now().toString(),
-        title: 'शाश्वत Wisdom Tip',
-        content: '“Confidence combined with witty warmth creates unstoppable charisma.”',
-        category: 'Assistant Quote',
-        timestamp: new Date().toLocaleTimeString(),
-      };
-      setCards((prev) => [newCard, ...prev.slice(0, 3)]);
-      setToolEvents((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          toolName: 'showVisualCard',
-          status: 'success',
-          message: 'Displayed card',
-          timestamp: new Date().toLocaleTimeString(),
-        },
-      ]);
     }
   }, []);
 
   const activeAudioVolume = state === 'speaking' ? outputVolume : inputVolume;
-  const latestEvent = toolEvents.length > 0 ? toolEvents[toolEvents.length - 1] : null;
+
+  const currentLabel =
+    previewState === 'listening'
+      ? 'Listening'
+      : previewState === 'thinking'
+      ? 'Thinking'
+      : previewState === 'speaking'
+      ? 'Speaking'
+      : previewState === 'executing'
+      ? 'Executing'
+      : previewState === 'memory'
+      ? 'Recalling'
+      : previewState === 'error'
+      ? 'Attention'
+      : state === 'listening'
+      ? 'Listening'
+      : state === 'connecting'
+      ? 'Thinking'
+      : state === 'speaking'
+      ? 'Speaking'
+      : 'Idle';
 
   return (
-    <div className="relative w-screen h-screen bg-[#000000] text-white flex flex-col items-center justify-between overflow-hidden font-sans select-none">
-      {/* Volumetric Atmospheric Space Haze */}
-      <div className="ambient-halo-1" />
-      <div className="ambient-halo-2" />
-      <div className="ambient-halo-3" />
+    <div className="relative w-screen h-screen bg-[#0A0A0C] text-white flex flex-col items-center justify-between overflow-hidden font-sans select-none">
+      {/* Background Radial Veil */}
+      <div className="radial-veil" aria-hidden="true" />
 
-      {/* Minimal Top Bar */}
+      {/* Top Header */}
       <AssistantHeader
         state={state}
         mood={mood}
@@ -257,6 +228,28 @@ export default function App() {
         onOpenRightDrawer={() => setIsRightDrawerOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
       />
+
+      {/* State Readout Badge */}
+      <div className="state-readout" id="stateReadout">
+        <span className={`state-dot ${state !== 'disconnected' || previewState ? 'active' : ''}`} />
+        <span>{currentLabel}</span>
+      </div>
+
+      {/* Preview State Selector Pills */}
+      <div className="preview-strip">
+        <span className="preview-label">Preview state</span>
+        <div className="preview-pills">
+          {['idle', 'listening', 'thinking', 'speaking', 'executing', 'memory', 'error'].map((st) => (
+            <button
+              key={st}
+              onClick={() => setPreviewState(previewState === st ? null : st)}
+              className={`preview-pill ${previewState === st || (!previewState && st === 'idle') ? 'active' : ''}`}
+            >
+              {st.charAt(0).toUpperCase() + st.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Tool Action Banner */}
       <ToolActionBanner events={toolEvents} />
@@ -275,7 +268,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Center Interactive Hologram Consciousness (70% viewport hero) */}
+      {/* Center 2040 Intelligent Hologram Orb */}
       <main className="relative z-10 flex-1 flex flex-col items-center justify-center w-full max-w-3xl px-4 my-auto">
         <AssistantOrb
           state={state}
@@ -286,18 +279,14 @@ export default function App() {
           isMuted={isMuted}
           onToggleConnection={handleToggleMic}
           onToggleMute={() => setIsMuted((prev) => !prev)}
+          previewStateOverride={previewState}
         />
-
-        {/* Live Audio Spectrum */}
-        <div className="w-full max-w-sm mt-2">
-          <AudioVisualizer volume={activeAudioVolume} isActive={state !== 'disconnected'} />
-        </div>
       </main>
 
       {/* Visual Floating Cards Overlay */}
       <VisualCardOverlay cards={cards} onDismissCard={handleDismissCard} />
 
-      {/* Floating Glass Bottom Dock */}
+      {/* Floating Command Dock */}
       <BottomDock
         state={state}
         isScreenSharing={isScreenSharing}
@@ -318,7 +307,7 @@ export default function App() {
         onSendTypedText={handleSendMessage}
       />
 
-      {/* Power Shutdown Confirmation Modal */}
+      {/* Power Shutdown Modal */}
       <PowerShutdownModal
         isOpen={isPowerModalOpen}
         onClose={() => setIsPowerModalOpen(false)}
@@ -326,7 +315,7 @@ export default function App() {
         onPauseAssistant={() => setIsMuted(true)}
       />
 
-      {/* Slide-out Drawers */}
+      {/* Drawers & Modals */}
       <LeftDrawer
         isOpen={isLeftDrawerOpen}
         onClose={() => setIsLeftDrawerOpen(false)}
@@ -355,9 +344,6 @@ export default function App() {
         }}
       />
 
-
-
-      {/* Transcript Drawer */}
       <TranscriptDrawer
         isOpen={isTranscriptOpen}
         messages={transcripts}
@@ -366,7 +352,6 @@ export default function App() {
         onClearHistory={handleClearHistory}
       />
 
-      {/* Settings Modal */}
       <SettingsModal
         isOpen={isSettingsOpen}
         state={state}
@@ -376,7 +361,6 @@ export default function App() {
         onTriggerTestTool={handleTriggerTestTool}
       />
 
-      {/* Autonomous AI Sandbox Workspace Browser */}
       <AISandboxBrowser
         isOpen={isSandboxOpen}
         onClose={() => setIsSandboxOpen(false)}
@@ -384,7 +368,6 @@ export default function App() {
         onExecutePrompt={handleSendMessage}
       />
 
-      {/* Voice Identity Enrollment Modal */}
       <VoiceEnrollmentModal
         isOpen={isEnrollmentOpen}
         onClose={() => setIsEnrollmentOpen(false)}
@@ -401,7 +384,6 @@ export default function App() {
         }}
       />
 
-      {/* 🎓 Study Studio Learning Ecosystem Modal */}
       <StudyStudioModal
         isOpen={isDocWorkspaceOpen}
         onClose={() => setIsDocWorkspaceOpen(false)}
@@ -410,4 +392,3 @@ export default function App() {
     </div>
   );
 }
-
