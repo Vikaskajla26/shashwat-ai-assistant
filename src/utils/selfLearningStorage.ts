@@ -11,28 +11,25 @@ const FOUR_SYSTEMS_KEY = 'shashwat_four_systems_learning_v1';
 export const INITIAL_FOUR_SYSTEMS_STATE: FourSystemsLearningState = {
   system1ExperienceMemory: {
     totalTasksExecuted: 0,
-    averageExecutionTimeMs: 0,
-    overallSuccessRate: 1.0,
-    topSuccessfulTasks: [],
-    recentTaskRuns: [],
+    avgExecutionTimeMs: 0,
+    experiences: [],
   },
   system2ErrorIntelligence: {
     totalErrorsAnalyzed: 0,
     groupedErrorPatternsCount: 0,
-    verifiedFixesCount: 0,
-    recentRootCauseLogs: [],
-    activeVerifiedFixes: [],
+    errorLogs: [],
+    verifiedFixes: [],
   },
   system3WorkflowLearning: {
-    totalWorkflowsDiscovered: 0,
+    learnedHabitsCount: 0,
     activeMacrosCount: 0,
-    detectedSequences: [],
+    learnedWorkflows: [],
   },
   system4ImprovementEngine: {
+    totalProposalsCount: 0,
+    promotedImprovementsCount: 0,
     overallSystemHealth: 1.0,
-    validationTestsPassed: 0,
-    validationTestsFailed: 0,
-    recentProposalReports: [],
+    proposals: [],
   },
 };
 

@@ -6,7 +6,7 @@ import path from "path";
 dotenv.config();
 dotenv.config({ path: ".env.local" });
 import { WebSocketServer, WebSocket } from "ws";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, LiveServerMessage, Modality } from "@google/genai";
 import { TOOL_DECLARATIONS } from "./server/tools/declarations";
 import { executeTool, isClientSideTool } from "./server/tools";
 import { SYSTEM_INSTRUCTION } from "./server/systemInstruction";
