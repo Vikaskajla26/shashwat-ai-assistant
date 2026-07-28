@@ -9,6 +9,7 @@ import { getSystemInfo } from "./systemInfo";
 import { getVoiceprint, deleteVoiceprint, enrollVoiceprint } from "../voice/speakerVerification";
 import { KnowledgeIndex } from "../docIntel/knowledgeIndex";
 import { StudyGenerator } from "../docIntel/studyGenerator";
+import { analyzeSanskritShloka, evaluateSanskritRecitation } from "./sanskritChant";
 
 /**
  * Central tool executor. Runs REAL actions on the OS, applies the safety
@@ -40,6 +41,7 @@ const CLIENT_SIDE_TOOLS = new Set([
   "showVisualCard",
   "enroll_voice_profile",
   "open_document_workspace",
+  "open_sanskrit_chant_studio",
 ]);
 
 export function isClientSideTool(name: string): boolean {
@@ -381,9 +383,29 @@ export async function executeTool(
         );
       }
 
+      // ---------------- Sanskrit Chant Intelligence tools ----------------
+      case "analyze_sanskrit_shloka": {
+        const res = await analyzeSanskritShloka(argsSafe);
+        return ok(res, `Analyzed Sanskrit Shloka: ${res.shlokaTitle}`, {
+          title: `Sanskrit Analysis - ${res.shlokaTitle}`,
+          content: `${res.shlokaText}\n\nMeter: ${res.matraAnalysis.detectedMeter}\nTotal Mātrās: ${res.matraAnalysis.totalMatras}\nMeaning: ${res.meaning}`,
+          category: "Sanskrit Intelligence",
+        });
+      }
+
+      case "evaluate_sanskrit_recitation": {
+        const res = await evaluateSanskritRecitation(argsSafe as any);
+        return ok(res, `Evaluated Recitation Score: ${res.evaluation.overallAccuracy}%`, {
+          title: `Recitation Report - ${res.shlokaTitle}`,
+          content: `Accuracy: ${res.evaluation.overallAccuracy}%\nMātrā Timing: ${res.evaluation.matraTimingScore}%\nFeedback: ${res.evaluation.encouragingFeedback}`,
+          category: "Sanskrit Intelligence",
+        });
+      }
+
       // ---------------- UI tools (executed on client) ----------------
       case "changeAssistantMood":
-      case "showVisualCard": {
+      case "showVisualCard":
+      case "open_sanskrit_chant_studio": {
         return ok(
           { forwarded: true, message: "Forwarded to UI." },
           `UI: ${name}`,

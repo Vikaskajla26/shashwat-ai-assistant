@@ -12,6 +12,7 @@ import { openExternalUrl } from './utils/browser';
 import { AISandboxBrowser } from './components/AISandboxBrowser';
 import { VoiceEnrollmentModal } from './components/VoiceEnrollmentModal';
 import { StudyStudioModal } from './components/docIntel/StudyStudioModal';
+import { SanskritChantStudio } from './components/SanskritChantStudio';
 import { LeftDrawer, RightDrawer } from './components/CinematicPanels';
 import { BottomDock } from './components/BottomDock';
 import {
@@ -41,6 +42,7 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isEnrollmentOpen, setIsEnrollmentOpen] = useState<boolean>(false);
   const [isDocWorkspaceOpen, setIsDocWorkspaceOpen] = useState<boolean>(false);
+  const [isSanskritStudioOpen, setIsSanskritStudioOpen] = useState<boolean>(false);
   const [isScreenSharing, setIsScreenSharing] = useState<boolean>(false);
   const [isSandboxOpen, setIsSandboxOpen] = useState<boolean>(false);
   const [isLeftDrawerOpen, setIsLeftDrawerOpen] = useState<boolean>(false);
@@ -234,6 +236,18 @@ export default function App() {
           timestamp: new Date().toLocaleTimeString(),
         },
       ]);
+    } else if (toolName === 'open_sanskrit_chant_studio') {
+      setIsSanskritStudioOpen(true);
+      setToolEvents((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          toolName: 'open_sanskrit_chant_studio',
+          status: 'success',
+          message: 'Opened Sanskrit Chant Intelligence Studio',
+          timestamp: new Date().toLocaleTimeString(),
+        },
+      ]);
     }
   }, []);
 
@@ -313,6 +327,7 @@ export default function App() {
         onToggleScreenShare={handleToggleScreenShare}
         onToggleSandbox={() => setIsSandboxOpen((prev) => !prev)}
         onToggleDocWorkspace={() => setIsDocWorkspaceOpen((prev) => !prev)}
+        onOpenSanskritStudio={() => setIsSanskritStudioOpen(true)}
         onOpenLeftDrawer={() => setIsLeftDrawerOpen(true)}
         onOpenRightDrawer={() => setIsRightDrawerOpen(true)}
         onSendTypedText={handleSendMessage}
@@ -407,6 +422,11 @@ export default function App() {
         onClose={() => setIsDocWorkspaceOpen(false)}
         onSendMessage={handleSendMessage}
       />
+
+      {/* 🕉️ Sanskrit Chant Intelligence Studio Modal */}
+      {isSanskritStudioOpen && (
+        <SanskritChantStudio onClose={() => setIsSanskritStudioOpen(false)} />
+      )}
     </div>
   );
 }

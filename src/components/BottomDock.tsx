@@ -21,6 +21,7 @@ interface BottomDockProps {
   onToggleScreenShare: () => void;
   onToggleSandbox: () => void;
   onToggleDocWorkspace: () => void;
+  onOpenSanskritStudio?: () => void;
   onOpenLeftDrawer: () => void;
   onOpenRightDrawer: () => void;
   onSendTypedText?: (text: string) => void;
@@ -35,6 +36,7 @@ export const BottomDock: React.FC<BottomDockProps> = ({
   onToggleScreenShare,
   onToggleSandbox,
   onToggleDocWorkspace,
+  onOpenSanskritStudio,
   onOpenLeftDrawer,
   onOpenRightDrawer,
   onSendTypedText,
@@ -131,6 +133,17 @@ export const BottomDock: React.FC<BottomDockProps> = ({
         >
           <FileSearch className="w-4 h-4" />
         </button>
+
+        {/* Sanskrit Chant Intelligence Studio Button */}
+        {onOpenSanskritStudio && (
+          <button
+            onClick={onOpenSanskritStudio}
+            className="p-2.5 rounded-full transition-all cursor-pointer border bg-white/5 border-white/10 text-amber-400 hover:text-amber-300 hover:bg-amber-500/20 hover:border-amber-400/40"
+            title="Sanskrit Chant Intelligence Studio"
+          >
+            <Brain className="w-4 h-4" />
+          </button>
+        )}
 
         {/* Power / Microphone Central Action Button */}
         <button

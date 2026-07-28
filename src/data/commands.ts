@@ -31,6 +31,9 @@ export const DEFAULT_COMMANDS: CommandItem[] = [
 
   { command: '/ayurveda', category: 'Ayurveda', description: 'Analyze Ayurvedic Samhita concepts, Dosha, Dhatu, and Dravya', syntax: '/ayurveda [concept]', example: '/ayurveda Triphala Guna Karma and Tridosha balance' },
   { command: '/shloka', category: 'Ayurveda', description: 'Explain Sanskrit Shlokas with word-by-word Anvaya and clinical commentary', syntax: '/shloka [shloka or reference]', example: '/shloka Charaka Samhita Sutrasthana Chapter 1' },
+  { command: '/chant', category: 'Sanskrit', description: 'Open Sanskrit Chant Intelligence Studio for pronunciation & mātrā practice', syntax: '/chant [shloka]', example: '/chant KarmaNyeVadhikaraste' },
+  { command: '/matra', category: 'Sanskrit', description: 'Analyze Hrasva/Dīrgha Mātrā counts and metrical Chanda structure', syntax: '/matra [shloka text]', example: '/matra Raganadirogan Satatanushaktan' },
+  { command: '/sanskrit', category: 'Sanskrit', description: 'Detailed Sanskrit phonetic analysis, Sandhi breakdown, and transliteration', syntax: '/sanskrit [text]', example: '/sanskrit Mahamrityunjaya Mantra' },
   { command: '/druginfo', category: 'Ayurveda', description: 'Provide pharmacological & herbal drug monograph profile', syntax: '/druginfo [drug name]', example: '/druginfo Ashwagandha (Withania somnifera)' },
 
   { command: '/studyplan', category: 'Planning', description: 'Generate a personalized daily & weekly exam revision schedule', syntax: '/studyplan [days until exam]', example: '/studyplan 14 days until Pharmacology final' },
