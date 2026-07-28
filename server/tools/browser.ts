@@ -155,27 +155,64 @@ export async function browserNavigate(
       }
       case "research_topic":
       case "compare_products": {
-        // Open a Google search for the target, return the top result titles + snippets.
+        // Open a Google search in Playwright Chromium, extract Direct Answer Box + Results + Snippets
         const page = await currentPage(ctx);
         const q = target || args.details || "";
         await page.goto(`https://www.google.com/search?q=${encodeURIComponent(q)}`, {
           waitUntil: "domcontentloaded",
         });
-        const results = await page
+
+        // Wait for Google SERP JS elements to settle
+        await page.waitForTimeout(1000).catch(() => null);
+
+        const pageData = await page
           .evaluate(() => {
-            const blocks = Array.from(document.querySelectorAll("h3"));
-            return blocks.slice(0, 8).map((h) => {
-              const a = h.closest("a");
-              return { title: (h.textContent || "").trim(), url: a?.href || "" };
-            });
+            // Direct Answer / Knowledge Panel Box
+            const directAnswerEl = document.querySelector(".Z0LcW, .hgKElc, .OSrRJf, .IZ65fc, .vk_bk, .VwiC3b, [data-attrid]");
+            const directAnswer = directAnswerEl ? directAnswerEl.textContent?.trim() : "";
+
+            // Result Blocks
+            const blocks = Array.from(document.querySelectorAll("div.g, div[data-sokod]"));
+            const results = blocks.slice(0, 8).map((b) => {
+              const h3 = b.querySelector("h3");
+              const a = b.querySelector("a");
+              const snippetEl = b.querySelector(".VwiC3b, .yXMda, .qVZrWe, .s3rec");
+              return {
+                title: (h3?.textContent || "").trim(),
+                url: a?.href || "",
+                snippet: (snippetEl?.textContent || "").trim(),
+              };
+            }).filter((r) => r.title.length > 0);
+
+            // Full visible page text fallback
+            const bodyText = (document.body.innerText || "").slice(0, 1500);
+
+            return { directAnswer, results, bodyText };
           })
-          .catch(() => []);
+          .catch(() => ({ directAnswer: "", results: [], bodyText: "" }));
+
+        const summaryParts: string[] = [];
+        if (pageData.directAnswer) {
+          summaryParts.push(`DIRECT GOOGLE KNOWLEDGE BOX ANSWER: ${pageData.directAnswer}`);
+        }
+        pageData.results.forEach((r, i) => {
+          summaryParts.push(`[Google Result ${i + 1}] ${r.title}: ${r.snippet || r.title}`);
+        });
+
+        const summaryText = summaryParts.length > 0
+          ? summaryParts.join("\n\n")
+          : pageData.bodyText || `Google search complete for "${q}".`;
+
         return {
           executed: true,
           action,
           target: q,
-          message: `Found ${results.length} results for "${q}".`,
-          data: { results },
+          message: `Playwright Google search complete for "${q}".`,
+          data: {
+            directAnswer: pageData.directAnswer,
+            results: pageData.results,
+            summaryText,
+          },
         };
       }
       case "video_control": {

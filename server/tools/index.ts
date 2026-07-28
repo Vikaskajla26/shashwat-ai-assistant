@@ -217,23 +217,41 @@ export async function executeTool(
         const url = `https://www.google.com/search?q=${encodeURIComponent(queryStr)}`;
         await openInDefaultBrowser(url);
 
-        // Fetch live real-time search snippets so Gemini speaks fresh results
-        const liveSearch = await fetchLiveSearchResults(queryStr);
+        // 1. Run Playwright Chromium Autonomous Sandbox Browser to scrape Google DOM directly
+        let summaryText = "";
+        let directAnswer = "";
+        try {
+          const pwResult = await sandboxExec({ action: "research_topic", target: queryStr } as any);
+          if (pwResult && pwResult.data) {
+            directAnswer = pwResult.data.directAnswer || "";
+            summaryText = pwResult.data.summaryText || "";
+          }
+        } catch (pwErr) {
+          console.warn("[searchGoogle] Playwright search notice:", pwErr);
+        }
+
+        // 2. Fallback to HTTP Live Search Fetcher if Playwright returned empty text
+        if (!summaryText) {
+          const liveSearch = await fetchLiveSearchResults(queryStr);
+          directAnswer = liveSearch.directAnswer || "";
+          summaryText = liveSearch.summaryText || "";
+        }
+
+        const instruction = `CRITICAL INSTRUCTION FOR VOICE RESPONSE: The user asked a real-time factual question ("${queryStr}"). The current live Google search results above provide the latest accurate facts. You MUST speak the current live answer in your spoken voice response. Do NOT state older pre-trained historical figures or past directors.`;
 
         return ok(
           {
             searched: true,
             query: queryStr,
             url,
-            CURRENT_FACTUAL_ANSWER_TO_SPEAK: liveSearch.directAnswer || liveSearch.summaryText,
-            liveSearchResults: liveSearch.results,
-            liveTextSummary: liveSearch.summaryText,
-            instruction: liveSearch.instruction,
+            CURRENT_FACTUAL_ANSWER_TO_SPEAK: directAnswer || summaryText,
+            liveTextSummary: summaryText,
+            instruction,
           },
           `Google search: ${queryStr}`,
           {
-            title: "Google Live Search",
-            content: liveSearch.summaryText || `Searching "${queryStr}"`,
+            title: "Google Live Search (Playwright)",
+            content: summaryText || `Searching "${queryStr}"`,
             category: "Web Search",
             url,
           }
@@ -277,8 +295,27 @@ export async function executeTool(
         const url = map[engine] || map.google;
         await openInDefaultBrowser(url);
 
-        // Fetch live real-time search snippets so Gemini speaks fresh results
-        const liveSearch = await fetchLiveSearchResults(queryStr);
+        // 1. Run Playwright Chromium Autonomous Sandbox Browser to scrape Google DOM directly
+        let summaryText = "";
+        let directAnswer = "";
+        try {
+          const pwResult = await sandboxExec({ action: "research_topic", target: queryStr } as any);
+          if (pwResult && pwResult.data) {
+            directAnswer = pwResult.data.directAnswer || "";
+            summaryText = pwResult.data.summaryText || "";
+          }
+        } catch (pwErr) {
+          console.warn("[search_web] Playwright search notice:", pwErr);
+        }
+
+        // 2. Fallback to HTTP Live Search Fetcher if Playwright returned empty text
+        if (!summaryText) {
+          const liveSearch = await fetchLiveSearchResults(queryStr);
+          directAnswer = liveSearch.directAnswer || "";
+          summaryText = liveSearch.summaryText || "";
+        }
+
+        const instruction = `CRITICAL INSTRUCTION FOR VOICE RESPONSE: The user asked a real-time factual question ("${queryStr}"). The current live Google search results above provide the latest accurate facts. You MUST speak the current live answer in your spoken voice response. Do NOT state older pre-trained historical figures or past directors.`;
 
         return ok(
           {
@@ -286,15 +323,14 @@ export async function executeTool(
             query: queryStr,
             engine,
             url,
-            CURRENT_FACTUAL_ANSWER_TO_SPEAK: liveSearch.directAnswer || liveSearch.summaryText,
-            liveSearchResults: liveSearch.results,
-            liveTextSummary: liveSearch.summaryText,
-            instruction: liveSearch.instruction,
+            CURRENT_FACTUAL_ANSWER_TO_SPEAK: directAnswer || summaryText,
+            liveTextSummary: summaryText,
+            instruction,
           },
           `${engine}: ${queryStr}`,
           {
-            title: `${engine} Live Search`,
-            content: liveSearch.summaryText || `Searching "${queryStr}"`,
+            title: `${engine} Live Search (Playwright)`,
+            content: summaryText || `Searching "${queryStr}"`,
             category: "Web Search",
             url,
           }
