@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import * as THREE from 'three';
 import { AssistantState, AssistantMood } from '../types';
 
 interface AssistantOrbProps {
@@ -10,32 +11,55 @@ interface AssistantOrbProps {
   isMuted?: boolean;
 }
 
-const TAU = Math.PI * 2;
+// 14 Sacred Maheshwar Sutras (Maheshvara Sutrani - Primal Phonemes of Creation)
+const MAHESHWAR_SUTRAS = [
+  'अइउण्',
+  'ऋऌक्',
+  'एओङ्',
+  'ऐऔच्',
+  'हयवरट्',
+  'लण्',
+  'ञमङणनम्',
+  'झभञ्',
+  'घढधष्',
+  'जबगडदश्',
+  'खफछठथचटत्',
+  'कपय्',
+  'शषसर्',
+  'हल्',
+];
 
-function rand(a = 1, b: number | null = null): number {
-  if (b === null) {
-    b = a;
-    a = 0;
-  }
-  return a + Math.random() * (b - a);
-}
+/** Create 3D Canvas Texture for a Sanskrit Holographic Text Sprite */
+function createSanskritTextTexture(text: string, colorHex: string = '#F59E0B'): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d')!;
 
-// Organic 2D Simplex-like liquid deform noise
-function noise2D(x: number, y: number, t: number): number {
-  return (
-    Math.sin(x * 1.6 + t * 0.9) * Math.cos(y * 1.6 + t * 1.0) +
-    Math.sin(x * 3.4 - t * 1.3) * 0.5 * Math.cos(y * 3.0 + t * 1.2) +
-    Math.sin((x + y) * 2.2 + t * 1.5) * 0.25
-  );
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Soft Outer Glow
+  ctx.shadowColor = colorHex;
+  ctx.shadowBlur = 24;
+
+  ctx.font = '500 48px "Noto Serif Devanagari", "Rozha One", serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
 }
 
 export const AssistantOrb: React.FC<AssistantOrbProps> = ({
   state,
   volume = 0,
 }) => {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
-  // Mouse Spring Physics State
+  // Mouse Spring Physics
   const springRef = useRef({
     x: 0,
     y: 0,
@@ -47,14 +71,12 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (!canvasRef.current) return;
-      const rect = canvasRef.current.getBoundingClientRect();
-      const relX = e.clientX - rect.left - rect.width / 2;
-      const relY = e.clientY - rect.top - rect.height / 2;
+      const { innerWidth, innerHeight } = window;
+      const relX = (e.clientX / innerWidth - 0.5) * 2;
+      const relY = (e.clientY / innerHeight - 0.5) * 2;
 
-      // Target displacement for spring follow
-      springRef.current.targetX = relX * 0.18;
-      springRef.current.targetY = relY * 0.18;
+      springRef.current.targetX = relX * 22;
+      springRef.current.targetY = -relY * 22;
     };
 
     const handleMouseLeave = () => {
@@ -71,46 +93,187 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({
   }, []);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    const container = containerRef.current;
+    if (!container) return;
+
+    const width = 540;
+    const height = 540;
+
+    // 1. Scene, Camera & WebGL Renderer
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
+    camera.position.z = 110;
+
+    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    container.appendChild(renderer.domElement);
+
+    // 2. 3D Procedural Volumetric Shader Sphere
+    const sphereGeometry = new THREE.IcosahedronGeometry(26, 48);
+
+    const customShaderMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 },
+        uAudioBoost: { value: 0 },
+        uBaseColor: { value: new THREE.Color('#F59E0B') },
+        uAccentColor: { value: new THREE.Color('#F97316') },
+        uFresnelColor: { value: new THREE.Color('#FEF08A') },
+      },
+      vertexShader: `
+        uniform float uTime;
+        uniform float uAudioBoost;
+        varying vec3 vNormal;
+        varying vec3 vPosition;
+        varying float vDisplacement;
+
+        // 3D Simplex Noise
+        vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
+        vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+
+        float snoise(vec3 v) {
+          const vec2 C = vec2(1.0/6.0, 1.0/3.0);
+          const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+          vec3 i  = floor(v + dot(v, C.yyy));
+          vec3 x0 = v - i + dot(i, C.xxx);
+          vec3 g = step(x0.yzx, x0.xyz);
+          vec3 l = 1.0 - g;
+          vec3 i1 = min(g.xyz, l.zxy);
+          vec3 i2 = max(g.xyz, l.zxy);
+          vec3 x1 = x0 - i1 + C.xxx;
+          vec3 x2 = x0 - i2 + C.yyy;
+          vec3 x3 = x0 - D.yyy;
+          i = mod289(i);
+          vec4 p = permute(permute(permute(
+                    i.z + vec4(0.0, i1.z, i2.z, 1.0))
+                  + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+                  + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+          float n_ = 0.142857142857;
+          vec3 ns = n_ * D.wyz - D.xzx;
+          vec4 j = p - 49.0 * floor(p * ns.z);
+          vec4 x_ = floor(j * ns.z);
+          vec4 y_ = floor(j - 7.0 * x_);
+          vec4 x = x_ *ns.x + ns.yyyy;
+          vec4 y = y_ *ns.x + ns.yyyy;
+          vec4 h = 1.0 - abs(x) - abs(y);
+          vec4 b0 = vec4(x.xy, y.xy);
+          vec4 b1 = vec4(x.zw, y.zw);
+          vec4 s0 = floor(b0)*2.0 + 1.0;
+          vec4 s1 = floor(b1)*2.0 + 1.0;
+          vec4 sh = -step(h, vec4(0.0));
+          vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy;
+          vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww;
+          vec3 p0 = vec3(a0.xy, h.x);
+          vec3 p1 = vec3(a0.zw, h.y);
+          vec3 p2 = vec3(a1.xy, h.z);
+          vec3 p3 = vec3(a1.zw, h.w);
+          vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+          p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
+          vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+          m = m * m;
+          return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
+        }
+
+        void main() {
+          vNormal = normalize(normalMatrix * normal);
+          vPosition = position;
+
+          float noiseFreq = 0.08;
+          float noiseAmp = 4.5 + uAudioBoost * 9.0;
+          float displacement = snoise(position * noiseFreq + vec3(uTime * 0.9)) * noiseAmp;
+          vDisplacement = displacement;
+
+          vec3 newPos = position + normal * displacement;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(newPos, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 uBaseColor;
+        uniform vec3 uAccentColor;
+        uniform vec3 uFresnelColor;
+        uniform float uAudioBoost;
+        varying vec3 vNormal;
+        varying vec3 vPosition;
+        varying float vDisplacement;
+
+        void main() {
+          vec3 viewVector = normalize(cameraPosition - vPosition);
+          float fresnel = pow(1.0 - abs(dot(vNormal, viewVector)), 2.8);
+
+          vec3 baseCol = mix(uBaseColor, uAccentColor, vDisplacement * 0.06 + 0.5);
+          vec3 finalCol = mix(baseCol, uFresnelColor, fresnel * 0.85);
+
+          float alpha = 0.85 + fresnel * 0.15 + uAudioBoost * 0.1;
+          gl_FragColor = vec4(finalCol, alpha);
+        }
+      `,
+      transparent: true,
+      depthWrite: true,
+    });
+
+    const coreMesh = new THREE.Mesh(sphereGeometry, customShaderMaterial);
+    scene.add(coreMesh);
+
+    // 3. Inner Core Sphere (High Brightness Center)
+    const innerCoreGeo = new THREE.SphereGeometry(12, 32, 32);
+    const innerCoreMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.9,
+    });
+    const innerMesh = new THREE.Mesh(innerCoreGeo, innerCoreMat);
+    scene.add(innerMesh);
+
+    // 4. 3D Maheshwar Sutras Holographic Orbiting Ring Group
+    const orbitGroup = new THREE.Group();
+    scene.add(orbitGroup);
+
+    const sutraSprites: THREE.Sprite[] = [];
+    const sutraCount = MAHESHWAR_SUTRAS.length;
+    const orbitRadius = 42;
+
+    MAHESHWAR_SUTRAS.forEach((sutra, idx) => {
+      const texture = createSanskritTextTexture(sutra, '#F59E0B');
+      const spriteMat = new THREE.SpriteMaterial({
+        map: texture,
+        transparent: true,
+        opacity: 0.75,
+        blending: THREE.AdditiveBlending,
+      });
+
+      const sprite = new THREE.Sprite(spriteMat);
+      sprite.scale.set(22, 5.5, 1);
+
+      const angle = (idx / sutraCount) * Math.PI * 2;
+      sprite.position.x = Math.cos(angle) * orbitRadius;
+      sprite.position.z = Math.sin(angle) * orbitRadius;
+      sprite.position.y = Math.sin(angle * 3) * 6; // Wave inclination
+
+      orbitGroup.add(sprite);
+      sutraSprites.push(sprite);
+    });
+
+    orbitGroup.rotation.x = 0.45; // Tilt ring relative to viewer
+
+    // State Colors (Interpolated)
+    const curBaseColor = new THREE.Color('#F59E0B');
+    const targetBaseColor = new THREE.Color('#F59E0B');
+
+    const curAccentColor = new THREE.Color('#F97316');
+    const targetAccentColor = new THREE.Color('#F97316');
 
     let animFrameId: number;
     let lastT = performance.now();
 
-    // Smooth Hue Transitioning
-    let currentHue = 38;
-
-    // 450 Blob Surface-Bound Energy Quantum Nodes
-    const NODE_COUNT = 450;
-    const surfaceNodes: Array<{
-      angle: number;
-      normRadius: number;
-      speed: number;
-      size: number;
-      alpha: number;
-      hueShift: number;
-    }> = [];
-
-    for (let i = 0; i < NODE_COUNT; i++) {
-      surfaceNodes.push({
-        angle: rand(TAU),
-        normRadius: rand(0.15, 0.96),
-        speed: rand(0.08, 0.35),
-        size: rand(1.2, 2.8),
-        alpha: rand(0.4, 0.95),
-        hueShift: rand(-15, 15),
-      });
-    }
-
-    const render = () => {
+    const animate = (time: number) => {
       const now = performance.now();
       const dt = Math.min(0.05, (now - lastT) / 1000);
       lastT = now;
-      const t = now / 1000;
+      const t = time * 0.001;
 
-      // Spring Physics Solver for Magnetic Follow
+      // Spring Physics for Mouse Magnetic Follow
       const spring = springRef.current;
       const stiffness = 0.08;
       const damping = 0.82;
@@ -122,184 +285,95 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({
       spring.x += spring.vx;
       spring.y += spring.vy;
 
-      // State Dynamics & Voice Audio Boost Spectrum
-      const isIdle = state === 'idle';
-      const isThinking = state === 'connecting';
+      // Apply 3D Translation & Tilt
+      coreMesh.position.x = spring.x * 0.6;
+      coreMesh.position.y = spring.y * 0.6;
+      innerMesh.position.x = spring.x * 0.6;
+      innerMesh.position.y = spring.y * 0.6;
+      orbitGroup.position.x = spring.x * 0.6;
+      orbitGroup.position.y = spring.y * 0.6;
+
+      coreMesh.rotation.y = t * 0.2;
+      coreMesh.rotation.x = Math.sin(t * 0.15) * 0.15;
+
+      // Audio & State Dynamics
+      const normVol = Math.min(1, volume / 100);
       const isSpeaking = state === 'speaking';
       const isListening = state === 'listening';
+      const isThinking = state === 'connecting';
 
-      const normVolume = Math.min(1, volume / 100);
-
-      // Audio Boost Spectrum (uAudioBoost)
-      const uAudioBoost = isSpeaking
-        ? 0.45 + normVolume * 0.75
+      const audioBoost = isSpeaking
+        ? 0.35 + normVol * 0.65
         : isListening
-        ? 0.25 + normVolume * 0.5
+        ? 0.2 + normVol * 0.4
         : isThinking
-        ? 0.35
-        : 0.12;
+        ? 0.3
+        : 0.1;
 
-      // State-driven Noise & Rotation Speed
-      const speedMul = isThinking ? 2.8 : isSpeaking ? 1.8 : isListening ? 1.35 : 1.0;
-      const noiseAmp = isIdle ? 0.12 : isSpeaking ? 0.28 + normVolume * 0.25 : 0.22;
+      customShaderMaterial.uniforms.uTime.value = t;
+      customShaderMaterial.uniforms.uAudioBoost.value = audioBoost;
 
-      const W = canvas.width;
-      const H = canvas.height;
-
-      // Center with Mouse Spring Translation
-      let cx = W / 2 + spring.x;
-      let cy = H / 2 + spring.y;
-
-      // Listening Lean Toward User (gently floats upward/forward)
+      // State-driven Color Palettes
       if (isListening) {
-        cy -= 14 + Math.sin(t * 3) * 6;
-      } else if (isIdle) {
-        // Idle Slow Breathing Floating Motion
-        cy += Math.sin(t * 1.5) * 12;
-      }
-
-      const scaleBase = Math.min(W, H) * 0.28;
-
-      ctx.clearRect(0, 0, W, H);
-      ctx.save();
-      ctx.translate(cx, cy);
-
-      ctx.globalCompositeOperation = 'lighter';
-
-      const breathScale = 1 + 0.05 * Math.sin(t * 1.5) + uAudioBoost * 0.22;
-
-      // WARM EYE-SOOTHING STATE-DRIVEN COLOR SYSTEM (NO CONTINUOUS ROTATION)
-      // Idle: Warm Honey Gold (Hue 38)
-      // Thinking/Executing: Solar Radiance Gold (Hue 46)
-      // Speaking: Warm Sunset Amber (Hue 28)
-      // Listening: Soft Terracotta Rose (Hue 18)
-      let targetHue = 38;
-      if (isThinking) {
-        targetHue = 46;
+        targetBaseColor.set('#F43F5E'); // Terracotta Rose
+        targetAccentColor.set('#FB7185');
       } else if (isSpeaking) {
-        targetHue = 28;
-      } else if (isListening) {
-        targetHue = 18;
+        targetBaseColor.set('#F97316'); // Warm Amber
+        targetAccentColor.set('#FBBF24');
+      } else if (isThinking) {
+        targetBaseColor.set('#6366F1'); // Indigo
+        targetAccentColor.set('#38BDF8');
+      } else {
+        targetBaseColor.set('#F59E0B'); // Honey Gold
+        targetAccentColor.set('#F97316');
       }
 
-      // Smooth Ease Transition to Target State Color
-      currentHue += (targetHue - currentHue) * 0.08;
+      curBaseColor.lerp(targetBaseColor, 0.05);
+      curAccentColor.lerp(targetAccentColor, 0.05);
 
-      // 1. RENDER FUTURISTIC MORPHING LIQUID LIGHT BLOB CORE
-      const BLOB_POINTS = 120;
-      ctx.beginPath();
-      for (let i = 0; i <= BLOB_POINTS; i++) {
-        const theta = (i / BLOB_POINTS) * TAU;
-        const nx = Math.cos(theta);
-        const ny = Math.sin(theta);
+      customShaderMaterial.uniforms.uBaseColor.value.copy(curBaseColor);
+      customShaderMaterial.uniforms.uAccentColor.value.copy(curAccentColor);
 
-        // State-Driven Surface Noise Displacement
-        const deform = noise2D(nx * 2.2, ny * 2.2, t * 1.5 * speedMul) * noiseAmp;
-        const blobR = scaleBase * (1 + deform) * breathScale;
+      // Orbit Group Motion
+      const orbitSpeed = isThinking ? 0.4 : isListening ? 0.25 : 0.12;
+      orbitGroup.rotation.y = t * orbitSpeed;
 
-        const x = nx * blobR;
-        const y = ny * blobR;
+      // Pulse Sanskrit Text Sprites
+      sutraSprites.forEach((sprite, idx) => {
+        const pulse = Math.sin(t * 2 + idx) * 0.15 + 0.85;
+        sprite.material.opacity = (0.65 + audioBoost * 0.25) * pulse;
+      });
 
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      ctx.closePath();
-
-      // Warm Eye-Soothing Radial Gradient (Warm Gold -> Amber -> Soft Terracotta)
-      const rimFlare = isSpeaking ? normVolume * 0.35 : 0;
-      const blobGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, scaleBase * (1.35 + rimFlare) * breathScale);
-      blobGrad.addColorStop(0, `hsla(${currentHue}, 88%, 62%, ${0.88 + uAudioBoost * 0.12})`);
-      blobGrad.addColorStop(0.4, `hsla(${currentHue - 12}, 82%, 56%, ${0.58 + uAudioBoost * 0.25})`);
-      blobGrad.addColorStop(0.8, `hsla(${currentHue - 22}, 78%, 48%, ${0.32 + uAudioBoost * 0.2})`);
-      blobGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      ctx.fillStyle = blobGrad;
-      ctx.fill();
-
-      // 2. INTERNAL ORGANIC LIQUID PATTERN FILAMENT LINES
-      const CONTOUR_COUNT = 8;
-      for (let c = 1; c <= CONTOUR_COUNT; c++) {
-        const cRatio = c / (CONTOUR_COUNT + 1);
-        ctx.beginPath();
-        for (let i = 0; i <= BLOB_POINTS; i++) {
-          const theta = (i / BLOB_POINTS) * TAU;
-          const nx = Math.cos(theta);
-          const ny = Math.sin(theta);
-
-          const deform = noise2D(nx * 2.2 + c * 0.4, ny * 2.2 + c * 0.4, t * 1.5 * speedMul) * noiseAmp;
-          const lineR = scaleBase * cRatio * (1 + deform) * breathScale;
-
-          const lx = nx * lineR;
-          const ly = ny * lineR;
-
-          if (i === 0) ctx.moveTo(lx, ly);
-          else ctx.lineTo(lx, ly);
-        }
-        ctx.closePath();
-
-        const contourHue = currentHue + c * 4;
-        ctx.strokeStyle = `hsla(${contourHue}, 85%, 68%, ${0.18 + (1 - cRatio) * 0.22 + uAudioBoost * 0.18})`;
-        ctx.lineWidth = 1.2;
-        ctx.stroke();
-      }
-
-      // 3. BLOB-BOUND SURFACE PATTERN ENERGY NODES
-      for (const node of surfaceNodes) {
-        node.angle += dt * node.speed * (1 + uAudioBoost * 0.6);
-
-        const nx = Math.cos(node.angle);
-        const ny = Math.sin(node.angle);
-
-        const deform = noise2D(nx * 2.2, ny * 2.2, t * 1.5 * speedMul) * noiseAmp;
-        const localBlobR = scaleBase * (1 + deform) * breathScale;
-
-        const pr = localBlobR * node.normRadius;
-        const px = nx * pr;
-        const py = ny * pr;
-
-        const nodeHue = currentHue + node.hueShift;
-
-        ctx.beginPath();
-        ctx.arc(px, py, node.size * (1 + uAudioBoost * 0.35), 0, TAU);
-        ctx.fillStyle = `hsla(${nodeHue}, 88%, 72%, ${node.alpha * (0.6 + uAudioBoost * 0.4)})`;
-        ctx.fill();
-      }
-
-      // 4. INNER INTENSE WARM CORE SPHERE
-      const coreBrightness = isListening || isThinking ? 1.0 : 0.88;
-      const innerR = scaleBase * (isListening ? 0.48 : 0.4) * (1 + 0.08 * Math.sin(t * 2.5)) * breathScale;
-      const innerGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, innerR);
-      innerGrad.addColorStop(0, `rgba(255, 253, 245, ${coreBrightness})`);
-      innerGrad.addColorStop(0.5, `hsla(${currentHue}, 92%, 68%, ${0.75 + uAudioBoost * 0.25})`);
-      innerGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      ctx.beginPath();
-      ctx.arc(0, 0, innerR, 0, TAU);
-      ctx.fillStyle = innerGrad;
-      ctx.fill();
-
-      ctx.restore();
-      animFrameId = requestAnimationFrame(render);
+      renderer.render(scene, camera);
+      animFrameId = requestAnimationFrame(animate);
     };
 
-    animFrameId = requestAnimationFrame(render);
+    animFrameId = requestAnimationFrame(animate);
 
     return () => {
       cancelAnimationFrame(animFrameId);
+      if (container.contains(renderer.domElement)) {
+        container.removeChild(renderer.domElement);
+      }
+      sphereGeometry.dispose();
+      customShaderMaterial.dispose();
+      innerCoreGeo.dispose();
+      innerCoreMat.dispose();
+      renderer.dispose();
     };
   }, [state, volume]);
 
   return (
-    <div className="relative flex items-center justify-center w-[520px] h-[520px] max-w-full select-none">
-      {/* Background Typography: Noto Serif Devanagari 30vw opacity 0.05 "शाश्वत" (Positioned slightly above) */}
+    <div className="relative flex items-center justify-center w-[540px] h-[540px] max-w-full select-none">
+      {/* Background Typography: Noto Serif Devanagari "शाश्वत" */}
       <h1 className="bg-typography">
         शाश्वत
       </h1>
 
-      {/* State-Driven Warm Eye-Soothing Blob Canvas */}
-      <canvas
-        ref={canvasRef}
-        width={520}
-        height={520}
-        className="absolute inset-0 pointer-events-none z-10"
+      {/* 3D Volumetric Three.js WebGL Canvas */}
+      <div
+        ref={containerRef}
+        className="absolute inset-0 pointer-events-none z-10 flex items-center justify-center"
       />
     </div>
   );

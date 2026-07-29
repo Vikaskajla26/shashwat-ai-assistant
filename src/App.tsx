@@ -28,6 +28,7 @@ import { AlertCircle } from 'lucide-react';
 
 import { PowerShutdownModal } from './components/PowerShutdownModal';
 import { AIProviderSetupWizard } from './components/AIProviderSetupWizard';
+import { BackgroundCanvas } from './components/BackgroundCanvas';
 
 export default function App() {
   const [state, setState] = useState<AssistantState>('disconnected');
@@ -299,6 +300,9 @@ export default function App() {
       }}
       className="relative w-screen h-screen bg-[#05070d] text-white flex flex-col items-center justify-between overflow-hidden font-sans select-none"
     >
+      {/* 3D WebGL Background Starfield & Particle Atmosphere */}
+      <BackgroundCanvas state={state} />
+
       {/* Volumetric Atmospheric Space Haze */}
       <div className="ambient-halo-1" />
       <div className="ambient-halo-2" />
