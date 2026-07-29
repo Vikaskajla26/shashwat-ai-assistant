@@ -1,4 +1,29 @@
-export type AssistantState = 'disconnected' | 'connecting' | 'listening' | 'speaking';
+/**
+ * The 13-state AI consciousness lifecycle.
+ *
+ * `disconnected` and `connecting` are retained for legacy/runtime compatibility
+ * (the WebSocket lifecycle still uses them), but the cinematic layers treat
+ * `disconnected` as `sleeping` and `connecting` as `booting`/`reasoning`.
+ */
+export type AssistantState =
+  | 'disconnected'
+  | 'connecting'
+  | 'booting'
+  | 'idle'
+  | 'wakeWord'
+  | 'listening'
+  | 'understanding'
+  | 'reasoning'
+  | 'searching'
+  | 'executing'
+  | 'speaking'
+  | 'learning'
+  | 'success'
+  | 'error'
+  | 'sleeping';
+
+/** Phases the server may push over the live socket (additive, backward-compatible). */
+export type AssistantPhase = 'understanding' | 'reasoning' | 'searching' | 'executing' | 'learning';
 
 export type AssistantMood = 'witty' | 'playful' | 'focused' | 'charming' | 'energetic';
 
