@@ -257,6 +257,55 @@ function registerAllIPCHandlers() {
       });
     });
   });
+
+  // AI Provider IPCs
+  ipcMain.handle('ai:get-providers', async () => {
+    try {
+      const res = await fetch('http://localhost:3000/api/ai/providers').then((r) => r.json());
+      return res;
+    } catch (_) {
+      return { success: false, providers: [] };
+    }
+  });
+
+  ipcMain.handle('ai:validate-provider', async (_event, payload) => {
+    try {
+      const res = await fetch('http://localhost:3000/api/ai/providers/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }).then((r) => r.json());
+      return res;
+    } catch (err) {
+      return { success: false, message: err?.message || 'Network validation error' };
+    }
+  });
+
+  ipcMain.handle('ai:save-provider', async (_event, payload) => {
+    try {
+      const res = await fetch('http://localhost:3000/api/ai/providers/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }).then((r) => r.json());
+      return res;
+    } catch (err) {
+      return { success: false, message: err?.message || 'Save error' };
+    }
+  });
+
+  ipcMain.handle('ai:reset-provider', async (_event, id) => {
+    try {
+      const res = await fetch('http://localhost:3000/api/ai/providers/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      }).then((r) => r.json());
+      return res;
+    } catch (err) {
+      return { success: false, message: err?.message || 'Reset error' };
+    }
+  });
 }
 
 module.exports = { registerAllIPCHandlers };

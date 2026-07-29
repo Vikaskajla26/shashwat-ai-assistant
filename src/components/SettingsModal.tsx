@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Bot, Wrench, Sparkles, Brain, Plus, Trash2, RefreshCw, Bookmark, FolderGit2, User, Sliders, ShieldCheck } from 'lucide-react';
 import { AssistantMood, AssistantState } from '../types';
 import { MemoryManager, MemoryFact, MemoryCategory } from '../modules/MemoryManager';
+import { AIProviderSettingsTab } from './AIProviderSettingsTab';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -29,7 +30,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onChangeMood,
   onTriggerTestTool,
 }) => {
-  const [activeTab, setActiveTab] = useState<'config' | 'memory'>('config');
+  const [activeTab, setActiveTab] = useState<'providers' | 'config' | 'memory'>('providers');
   const [memories, setMemories] = useState<MemoryFact[]>([]);
   const [filterCategory, setFilterCategory] = useState<string>('all');
 
@@ -119,6 +120,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             {/* Navigation Tabs */}
             <div className="flex items-center space-x-2 pt-4 pb-2 border-b border-white/5">
               <button
+                onClick={() => setActiveTab('providers')}
+                className={`flex-1 py-2 rounded-xl font-bold uppercase tracking-wider text-[11px] flex items-center justify-center space-x-2 transition-all ${
+                  activeTab === 'providers'
+                    ? 'bg-indigo-600/20 border border-indigo-500 text-indigo-300 shadow-md'
+                    : 'bg-white/5 border border-white/10 text-zinc-400 hover:text-white'
+                }`}
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />
+                <span>AI Providers</span>
+              </button>
+
+              <button
                 onClick={() => setActiveTab('config')}
                 className={`flex-1 py-2 rounded-xl font-bold uppercase tracking-wider text-[11px] flex items-center justify-center space-x-2 transition-all ${
                   activeTab === 'config'
@@ -139,13 +152,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 }`}
               >
                 <Brain className="w-3.5 h-3.5 text-purple-400" />
-                <span>Long-Term Memory Vault ({memories.length})</span>
+                <span>Memory Vault ({memories.length})</span>
               </button>
             </div>
 
             {/* Content Scroll */}
             <div className="flex-1 overflow-y-auto py-4 space-y-6 pr-1 text-xs">
-              {activeTab === 'config' ? (
+              {activeTab === 'providers' && <AIProviderSettingsTab />}
+
+              {activeTab === 'config' && (
                 <>
                   {/* Personality Summary */}
                   <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2">
@@ -259,7 +274,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                   </div>
                 </>
-              ) : (
+              )}
+
+              {activeTab === 'memory' && (
                 /* Memory Vault Tab */
                 <div className="space-y-4">
                   {/* Explanation Banner */}

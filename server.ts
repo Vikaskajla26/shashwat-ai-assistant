@@ -20,6 +20,13 @@ import { getAggregateStats, getAllStats } from "./server/registry/metricsStore";
 import { getFourSystemsState } from "./server/selfLearningEngine";
 import { REGISTERED_COMMANDS, processStudyCommand } from "./server/docIntel/commandProcessor";
 import { getDB, closeDB } from "./server/db/database";
+import {
+  getClientProviderMetas,
+  loadAllProviderConfigs,
+  getActiveProvider,
+  AIProviderId,
+} from "./server/providers/providerStorage";
+import { AIProviderManager } from "./server/providers/aiProviderManager";
 
 async function startServer() {
   // Initialize database on startup
@@ -173,6 +180,56 @@ async function startServer() {
     const ki = KnowledgeIndex.getInstance();
     const comparison = ki.compareDocuments(docIds);
     res.json({ success: true, comparison });
+  });
+
+  // AI Provider Management Endpoints
+  app.get("/api/ai/providers", (_req, res) => {
+    try {
+      const metas = getClientProviderMetas();
+      const active = getActiveProvider();
+      res.json({
+        success: true,
+        providers: metas,
+        active: active
+          ? { id: active.id, name: active.name, model: active.selectedModel, status: active.status }
+          : null,
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || "Failed to load provider status" });
+    }
+  });
+
+  app.post("/api/ai/providers/validate", async (req, res) => {
+    try {
+      const { id, apiKey, selectedModel, customEndpoint } = req.body || {};
+      const manager = AIProviderManager.getInstance();
+      const result = await manager.validateProvider(id, apiKey, selectedModel, customEndpoint);
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || "Validation failed" });
+    }
+  });
+
+  app.post("/api/ai/providers/save", async (req, res) => {
+    try {
+      const { id, apiKey, selectedModel, enabled, customEndpoint } = req.body || {};
+      const manager = AIProviderManager.getInstance();
+      const result = await manager.saveProvider(id, apiKey, selectedModel, enabled, customEndpoint);
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || "Failed to save provider" });
+    }
+  });
+
+  app.post("/api/ai/providers/reset", (req, res) => {
+    try {
+      const { id } = req.body || {};
+      const manager = AIProviderManager.getInstance();
+      const ok = manager.resetProvider(id);
+      res.json({ success: ok, message: ok ? "Provider reset successfully" : "Reset failed" });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || "Reset failed" });
+    }
   });
 
   // Database API endpoints for offline-first storage
@@ -474,17 +531,20 @@ async function startServer() {
   wss.on("connection", async (clientWs: WebSocket) => {
     console.log("Client connected to शाश्वत Live session");
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
+    const activeProvider = getActiveProvider();
+    if (!activeProvider || (!activeProvider.apiKey && activeProvider.id !== 'local')) {
       clientWs.send(
         JSON.stringify({
           type: "error",
-          message: "GEMINI_API_KEY environment variable is missing on server.",
+          code: "PROVIDER_NOT_CONFIGURED",
+          message: "Gemini API is not configured. Please open AI Settings to add your key.",
         })
       );
       clientWs.close();
       return;
     }
+
+    const apiKey = activeProvider.apiKey;
 
     let liveSession: any = null;
     let currentSpeakerState = getVoiceprint()

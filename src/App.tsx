@@ -27,6 +27,7 @@ import {
 import { AlertCircle } from 'lucide-react';
 
 import { PowerShutdownModal } from './components/PowerShutdownModal';
+import { AIProviderSetupWizard } from './components/AIProviderSetupWizard';
 
 export default function App() {
   const [state, setState] = useState<AssistantState>('disconnected');
@@ -50,8 +51,33 @@ export default function App() {
   const [isLeftDrawerOpen, setIsLeftDrawerOpen] = useState<boolean>(false);
   const [isRightDrawerOpen, setIsRightDrawerOpen] = useState<boolean>(false);
   const [isPowerModalOpen, setIsPowerModalOpen] = useState<boolean>(false);
+  const [isSetupWizardOpen, setIsSetupWizardOpen] = useState<boolean>(false);
   const [activePlan, setActivePlan] = useState<TaskExecutionPlan | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Startup check for AI provider configuration
+  useEffect(() => {
+    const checkProvidersOnLaunch = async () => {
+      try {
+        let res: any = null;
+        if ((window as any).electronAPI?.aiGetProviders) {
+          res = await (window as any).electronAPI.aiGetProviders();
+        } else {
+          res = await fetch('/api/ai/providers').then((r) => r.json());
+        }
+
+        if (res && res.success) {
+          const active = res.active;
+          if (!active || !active.status || active.status === 'unconfigured') {
+            setIsSetupWizardOpen(true);
+          }
+        }
+      } catch (err) {
+        console.warn('[App] Provider launch check notice:', err);
+      }
+    };
+    checkProvidersOnLaunch();
+  }, []);
 
   const [speakerStatus, setSpeakerStatus] = useState<{
     status: string;
@@ -447,6 +473,45 @@ export default function App() {
       {/* 🧠 Self Learning Engine & Improvement Dashboard Modal */}
       {isSelfLearningOpen && (
         <SelfLearningDashboard onClose={() => setIsSelfLearningOpen(false)} />
+      )}
+
+      {/* AI Provider First-Run Setup Wizard */}
+      <AIProviderSetupWizard
+        isOpen={isSetupWizardOpen}
+        onClose={() => setIsSetupWizardOpen(false)}
+        onComplete={() => {
+          setIsSetupWizardOpen(false);
+          setErrorMessage(null);
+        }}
+      />
+
+      {/* User-friendly Error Banner with Open AI Settings action */}
+      {errorMessage && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 max-w-lg w-full px-4">
+          <div className="bg-slate-900/90 border border-rose-500/30 text-white p-3.5 rounded-2xl shadow-2xl backdrop-blur-xl flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 text-xs text-rose-300">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+              <span>{errorMessage}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setErrorMessage(null);
+                  setIsSettingsOpen(true);
+                }}
+                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs rounded-xl transition-all whitespace-nowrap"
+              >
+                Open AI Settings
+              </button>
+              <button
+                onClick={() => setErrorMessage(null)}
+                className="p-1 text-slate-400 hover:text-white rounded-lg"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

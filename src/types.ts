@@ -81,3 +81,19 @@ export interface AudioVolumeEvent {
   outputVolume: number; // 0 - 100
 }
 
+export type AIProviderId = 'gemini' | 'openai' | 'anthropic' | 'groq' | 'openrouter' | 'local';
+
+export interface ClientProviderMeta {
+  id: AIProviderId;
+  name: string;
+  enabled: boolean;
+  maskedApiKey: string;
+  hasKey: boolean;
+  selectedModel: string;
+  availableModels: string[];
+  customEndpoint?: string;
+  status: 'valid' | 'invalid' | 'unconfigured' | 'error';
+  lastConnectedAt?: string;
+  lastError?: string;
+}
+

@@ -61,4 +61,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   dbGetLearningItems: () => ipcRenderer.invoke('db:get-learning-items'),
   dbAddLearningItem: (topic, question, answer) => ipcRenderer.invoke('db:add-learning-item', topic, question, answer),
   dbUpdateLearningItem: (id, easeFactor, interval, repetitions) => ipcRenderer.invoke('db:update-learning-item', id, easeFactor, interval, repetitions),
+
+  // AI Providers
+  aiGetProviders: () => ipcRenderer.invoke('ai:get-providers'),
+  aiValidateProvider: (payload) => ipcRenderer.invoke('ai:validate-provider', payload),
+  aiSaveProvider: (payload) => ipcRenderer.invoke('ai:save-provider', payload),
+  aiResetProvider: (id) => ipcRenderer.invoke('ai:reset-provider', id),
 });

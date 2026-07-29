@@ -60,6 +60,8 @@ async function withTimeout<T>(fn: () => Promise<T>, ms: number): Promise<T> {
 
 // ============ Individual probes ============
 
+import { getActiveProvider } from "../providers/providerStorage";
+
 async function checkExpress(): Promise<CheckResult> {
   const t0 = Date.now();
   // If this code is running, the Express server is up (we're inside a request handler
@@ -67,32 +69,23 @@ async function checkExpress(): Promise<CheckResult> {
   return { name: "express_server", status: "pass", detail: "Express HTTP server is running.", durationMs: Date.now() - t0 };
 }
 
-async function checkGeminiApiKey(): Promise<CheckResult> {
+async function checkAIProviderConfigured(): Promise<CheckResult> {
   const t0 = Date.now();
-  const key = process.env.GEMINI_API_KEY;
-  if (key && key.length > 5) {
-    return { name: "gemini_api_key", status: "pass", detail: "GEMINI_API_KEY is set.", durationMs: Date.now() - t0 };
+  const active = getActiveProvider();
+  if (active && (active.apiKey || active.id === 'local')) {
+    return {
+      name: "ai_provider_configured",
+      status: "pass",
+      detail: `AI Provider (${active.name}) is configured and active.`,
+      durationMs: Date.now() - t0,
+    };
   }
-  return { name: "gemini_api_key", status: "warn", detail: "GEMINI_API_KEY is missing — voice AI and study commands will not function. Set it in .env or .env.local.", durationMs: Date.now() - t0 };
-}
-
-async function checkGeminiReachable(): Promise<CheckResult> {
-  const t0 = Date.now();
-  if (!process.env.GEMINI_API_KEY) {
-    return { name: "gemini_reachable", status: "skip", detail: "Skipped — no API key configured.", durationMs: Date.now() - t0 };
-  }
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 4000);
-    const res = await fetch("https://generativelanguage.googleapis.com", { method: "HEAD", signal: controller.signal });
-    clearTimeout(timer);
-    if (res.status < 500) {
-      return { name: "gemini_reachable", status: "pass", detail: "Google AI API endpoint is reachable.", durationMs: Date.now() - t0 };
-    }
-    return { name: "gemini_reachable", status: "warn", detail: `Google AI returned HTTP ${res.status} — may be throttled or temporarily down.`, durationMs: Date.now() - t0 };
-  } catch {
-    return { name: "gemini_reachable", status: "warn", detail: "Could not reach Google AI API — check internet connection.", durationMs: Date.now() - t0 };
-  }
+  return {
+    name: "ai_provider_configured",
+    status: "warn",
+    detail: "No AI provider configured. AI features are in offline mode. Configure in AI Settings.",
+    durationMs: Date.now() - t0,
+  };
 }
 
 async function checkPowerShell(): Promise<CheckResult> {
@@ -215,8 +208,7 @@ export async function runHealthChecks(): Promise<HealthReport> {
     checkMemoryStore,
     checkKnowledgeIndex,
     checkVoiceProfile,
-    checkGeminiApiKey,
-    checkGeminiReachable,
+    checkAIProviderConfigured,
     checkPowerShell,
     checkNircmd,
     checkPlaywright,
