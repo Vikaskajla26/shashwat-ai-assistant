@@ -409,9 +409,13 @@ export default function App() {
           setIsSettingsOpen(false);
           setIsSandboxOpen(true);
         }}
+        onOpenEnrollmentModal={() => {
+          setIsSettingsOpen(false);
+          setIsEnrollmentOpen(true);
+        }}
       />
 
-      {/* Autonomous AI Sandbox Workspace Browser */}
+      {/* AI Sandbox Autonomous Browser Modal */}
       <AISandboxBrowser
         isOpen={isSandboxOpen}
         onClose={() => setIsSandboxOpen(false)}
@@ -424,6 +428,12 @@ export default function App() {
         isOpen={isEnrollmentOpen}
         onClose={() => setIsEnrollmentOpen(false)}
         onEnrollComplete={(name, samplesList) => {
+          fetch('/api/voice/enroll', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ownerName: name, samples: samplesList }),
+          }).catch((err) => console.warn('[App] Voice enroll API notice:', err));
+
           if (liveSessionRef.current) {
             if (state === 'disconnected') {
               liveSessionRef.current.connect().then(() => {

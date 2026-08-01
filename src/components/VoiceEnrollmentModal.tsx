@@ -9,10 +9,11 @@ interface VoiceEnrollmentModalProps {
 }
 
 const ENROLLMENT_PHRASES = [
-  'नमस्ते शाश्वत, I am setting up my voice identity.',
-  'मेरा नाम विकास है, I am your registered owner.',
-  'शाश्वत AI Operating System, open Google Chrome.',
-  'Check weather forecast and read today schedule.',
+  'My name is Vikas, I am setting up my persistent voice identity.',
+  'Today is a beautiful day to build intelligent spiritual technology.',
+  'Open YouTube and play Hawayein by Arijit Singh.',
+  'Search for Ayurveda, Indian Knowledge Systems, and AI News.',
+  'The quick brown fox jumps over the lazy dog to verify voice biometrics.',
 ];
 
 export const VoiceEnrollmentModal: React.FC<VoiceEnrollmentModalProps> = ({

@@ -11,7 +11,7 @@ import { TOOL_DECLARATIONS } from "./server/tools/declarations";
 import { executeTool, isClientSideTool } from "./server/tools";
 import { SYSTEM_INSTRUCTION } from "./server/systemInstruction";
 import fs from "fs";
-import { enrollVoiceprint, verifySpeaker, getVoiceprint, deleteVoiceprint } from "./server/voice/speakerVerification";
+import { enrollVoiceprint, verifySpeaker, getVoiceprint, deleteVoiceprint, getVoiceDiagnostics } from "./server/voice/speakerVerification";
 import { KnowledgeIndex } from "./server/docIntel/knowledgeIndex";
 import { StudyGenerator } from "./server/docIntel/studyGenerator";
 import { runHealthChecks } from "./server/registry/selfTest";
@@ -296,13 +296,37 @@ async function startServer() {
     }
   });
 
-  app.post("/api/browser/test-workflow", async (req, res) => {
+  // Voice Biometrics & Identity Endpoints
+  app.get("/api/voice/status", (_req, res) => {
     try {
-      const { platform } = req.body || {};
-      const result = await testAutomatedWorkflows(platform || "google");
-      res.json(result);
+      const diag = getVoiceDiagnostics();
+      res.json({ success: true, diagnostics: diag });
     } catch (err: any) {
-      res.status(500).json({ success: false, message: err?.message || "Workflow test failed" });
+      res.status(500).json({ success: false, message: err?.message || "Failed to fetch voice status" });
+    }
+  });
+
+  app.post("/api/voice/enroll", (req, res) => {
+    try {
+      const { ownerName, samples } = req.body || {};
+      if (!Array.isArray(samples) || samples.length === 0) {
+        res.status(400).json({ success: false, message: "At least 1 audio sample is required for voice enrollment." });
+        return;
+      }
+      const pcmBuffers = samples.map((b64: string) => Buffer.from(b64, "base64"));
+      const voiceprint = enrollVoiceprint(ownerName || "Vikas", pcmBuffers);
+      res.json({ success: true, message: `Voice identity enrolled for ${voiceprint.ownerName}`, voiceprint });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || "Voice enrollment failed" });
+    }
+  });
+
+  app.post("/api/voice/delete", (_req, res) => {
+    try {
+      const ok = deleteVoiceprint();
+      res.json({ success: ok, message: ok ? "Voice profile deleted" : "No profile found" });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || "Failed to delete voice profile" });
     }
   });
 
