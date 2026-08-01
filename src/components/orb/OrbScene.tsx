@@ -94,6 +94,17 @@ export function OrbScene({ stateRef, volumeRef, width = 540, height = 540 }: Orb
       // Report frame timing to the adaptive quality watchdog.
       qualityEngine.reportFrame(frameDelta);
 
+      // Intelligent liquid soft body physics step.
+      const ix = interaction.step(dt, t);
+
+      // Lazy frame skipping when idle (stationary & silent)
+      const isUserIdle = ix.speed < 0.01 && volumeRef.current === 0;
+      if (isUserIdle && dt < 0.032 && stateRef.current === 'idle') {
+        // Drop to 30 FPS when deep idle to save GPU power
+        animFrameId = requestAnimationFrame(animate);
+        return;
+      }
+
       // Live reads — smooth lerp interpolation between AI states
       const state = stateRef.current;
       const interpolator = StateInterpolator.getInstance();
@@ -113,9 +124,6 @@ export function OrbScene({ stateRef, volumeRef, width = 540, height = 540 }: Orb
           : isThinking
             ? 0.3
             : 0.1;
-
-      // Intelligent liquid soft body physics step.
-      const ix = interaction.step(dt, t);
 
       // Apply mouse follow to all layers (parallax of the whole orb).
       const follow = 0.6;
