@@ -71,28 +71,29 @@ export default function App() {
   const [activePlan, setActivePlan] = useState<TaskExecutionPlan | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Startup check for AI provider configuration
+  // Startup check for persistent application state & AI provider configuration
   useEffect(() => {
-    const checkProvidersOnLaunch = async () => {
+    const checkInitializationOnLaunch = async () => {
       try {
         let res: any = null;
-        if ((window as any).electronAPI?.aiGetProviders) {
-          res = await (window as any).electronAPI.aiGetProviders();
+        if ((window as any).electronAPI?.systemGetInitStatus) {
+          res = await (window as any).electronAPI.systemGetInitStatus();
         } else {
-          res = await fetch('/api/ai/providers').then((r) => r.json());
+          res = await fetch('/api/system/init-status').then((r) => r.json());
         }
 
         if (res && res.success) {
-          const active = res.active;
-          if (!active || !active.status || active.status === 'unconfigured') {
+          if (!res.isInitialized) {
             setIsSetupWizardOpen(true);
+          } else {
+            console.log('[App] Application initialized & persistent state restored successfully.');
           }
         }
       } catch (err) {
-        console.warn('[App] Provider launch check notice:', err);
+        console.warn('[App] Launch initialization check notice:', err);
       }
     };
-    checkProvidersOnLaunch();
+    checkInitializationOnLaunch();
   }, []);
 
   const [speakerStatus, setSpeakerStatus] = useState<{

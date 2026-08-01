@@ -28,6 +28,7 @@ import {
   AIProviderId,
 } from "./server/providers/providerStorage";
 import { AIProviderManager } from "./server/providers/aiProviderManager";
+import { loadAppState, saveAppState } from "./server/utils/persistenceManager";
 import { testAutomatedWorkflows } from "./server/tools/browser";
 
 const LIVE_MODEL = "gemini-3.1-flash-live-preview";
@@ -198,13 +199,15 @@ async function startServer() {
     res.json({ success: true, comparison });
   });
 
-  // AI Provider Management Endpoints
+  // AI Provider & Persistent Initialization Endpoints
   app.get("/api/ai/providers", (_req, res) => {
     try {
       const metas = getClientProviderMetas();
       const active = getActiveProvider();
+      const state = loadAppState();
       res.json({
         success: true,
+        isInitialized: state.isInitialized,
         providers: metas,
         active: active
           ? { id: active.id, name: active.name, model: active.selectedModel, status: active.status }
@@ -212,6 +215,37 @@ async function startServer() {
       });
     } catch (err: any) {
       res.status(500).json({ success: false, message: err?.message || "Failed to load provider status" });
+    }
+  });
+
+  app.get("/api/system/init-status", (_req, res) => {
+    try {
+      const state = loadAppState();
+      const active = getActiveProvider();
+      const hasConfiguredProvider = active && active.status !== "unconfigured";
+      res.json({
+        success: true,
+        isInitialized: state.isInitialized && Boolean(hasConfiguredProvider),
+        userProfile: state.userProfile,
+        activeProvider: active ? { id: active.id, name: active.name, model: active.selectedModel } : null,
+        browserRoutingMode: state.browserRoutingMode,
+        theme: state.theme,
+        wakeWord: state.wakeWord,
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || "Failed to check init status" });
+    }
+  });
+
+  app.post("/api/system/reset-app", (req, res) => {
+    try {
+      const { id } = req.body || {};
+      const manager = AIProviderManager.getInstance();
+      manager.resetProvider(id || "gemini");
+      saveAppState({ isInitialized: false });
+      res.json({ success: true, message: "Application state reset successfully. Setup wizard will prompt on next launch." });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || "App reset failed" });
     }
   });
 
@@ -228,9 +262,21 @@ async function startServer() {
 
   app.post("/api/ai/providers/save", async (req, res) => {
     try {
-      const { id, apiKey, selectedModel, enabled, customEndpoint } = req.body || {};
+      const { id, apiKey, selectedModel, enabled, customEndpoint, userName } = req.body || {};
       const manager = AIProviderManager.getInstance();
       const result = await manager.saveProvider(id, apiKey, selectedModel, enabled, customEndpoint);
+      if (result.success) {
+        saveAppState({
+          isInitialized: true,
+          activeProviderId: id,
+          selectedModel: selectedModel || "gemini-3.1-flash-live-preview",
+          userProfile: {
+            name: userName || "Vikas",
+            createdAt: new Date().toISOString(),
+            lastActiveAt: new Date().toISOString(),
+          },
+        });
+      }
       res.json(result);
     } catch (err: any) {
       res.status(500).json({ success: false, message: err?.message || "Failed to save provider" });
@@ -242,6 +288,7 @@ async function startServer() {
       const { id } = req.body || {};
       const manager = AIProviderManager.getInstance();
       const ok = manager.resetProvider(id);
+      saveAppState({ isInitialized: false });
       res.json({ success: ok, message: ok ? "Provider reset successfully" : "Reset failed" });
     } catch (err: any) {
       res.status(500).json({ success: false, message: err?.message || "Reset failed" });
