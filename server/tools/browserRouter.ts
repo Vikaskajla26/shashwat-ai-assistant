@@ -157,11 +157,12 @@ export async function launchSystemDefaultBrowser(
 
   const platform = os.platform();
 
-  // Tier 1: Primary OS Command via execFile (prevents & shell splitting in CMD)
+  // Tier 1: Primary OS Command via PowerShell Start-Process (handles & query params safely)
   try {
     if (platform === "win32") {
+      const safePw = formattedUrl.replace(/'/g, "''");
       await new Promise<void>((resolve, reject) => {
-        execFile("cmd.exe", ["/c", "start", "", formattedUrl], { windowsHide: true }, (err) => {
+        execFile("powershell.exe", ["-NoProfile", "-Command", `Start-Process '${safePw}'`], { windowsHide: true }, (err) => {
           if (err) reject(err);
           else resolve();
         });
@@ -176,17 +177,12 @@ export async function launchSystemDefaultBrowser(
     console.warn("[browserRouter] Primary launch failed, attempting Tier 2 fallback:", err1);
   }
 
-  // Tier 2: PowerShell Start-Process fallback (Windows)
+  // Tier 2: CMD start with explicit double-quoted URL fallback (Windows)
   try {
     if (platform === "win32") {
-      const safePw = formattedUrl.replace(/'/g, "''");
-      await new Promise<void>((resolve, reject) => {
-        execFile("powershell.exe", ["-NoProfile", "-Command", `Start-Process '${safePw}'`], { windowsHide: true }, (err) => {
-          if (err) reject(err);
-          else resolve();
-        });
-      });
-      return { success: true, message: `Opened ${formattedUrl} in System Default Browser via PowerShell.` };
+      const safeCmdUrl = formattedUrl.replace(/&/g, "^&");
+      await execAsync(`cmd.exe /c start "" "${formattedUrl}"`);
+      return { success: true, message: `Opened ${formattedUrl} in System Default Browser via CMD.` };
     }
   } catch (err2) {
     console.warn("[browserRouter] Tier 2 launch failed:", err2);
