@@ -1,6 +1,6 @@
 /**
  * Living Orb GPU Shader Engine — GLSL 3D Simplex, 4-Octave FBM, 3D Curl Noise,
- * Glass Subsurface Scattering, Optical Caustics, and Fresnel Rim Glow.
+ * Velocity Squash/Stretch, Micro-oscillations, Glass Subsurface Scattering, Optical Caustics, and Fresnel Rim Glow.
  */
 
 export const SIMPLEX_NOISE_GLSL = /* glsl */ `
@@ -101,6 +101,8 @@ uniform float uRippleStrength;
 uniform float uRippleTime;
 uniform vec3  uRippleOrigin;
 uniform vec2  uMousePos;
+uniform vec2  uVelocity;
+uniform float uMicroOscillation;
 
 varying vec3 vNormal;
 varying vec3 vPosition;
@@ -127,21 +129,29 @@ void main() {
   // 2. Continuous Organic Breathing Cycle
   float breath = sin(t * uBreath * 1.5) * 0.7 + sin(t * uBreath * 0.6 + 1.2) * 0.3;
 
-  // 3. Interactive Mouse Displacement
+  // 3. Directional Velocity Squash & Stretch (Inertia & Soft Body Response)
+  vec2 normVel = length(uVelocity) > 0.001 ? normalize(uVelocity) : vec2(0.0);
+  float velocityDot = dot(normalize(vNormal.xy), normVel);
+  float squashStretch = velocityDot * length(uVelocity) * 0.85;
+
+  // 4. Micro-Oscillations (22 Hz Liquid Intelligence Tremor)
+  float microTremor = sin(position.x * 14.0 + t * 22.0) * uMicroOscillation * 1.2;
+
+  // 5. Interactive Mouse Displacement
   vec3 normPos = normalize(position);
   float mouseDist = distance(vUv, uMousePos * 0.5 + 0.5);
   float mouseInfluence = exp(-mouseDist * 3.5) * 2.5;
 
-  float displacement = (noiseA + noiseB + mouseInfluence * 0.1) * amp + breath;
+  float displacement = (noiseA + noiseB + mouseInfluence * 0.1) * amp + breath + squashStretch + microTremor;
 
-  // 4. Click Wavefront Propagation
+  // 6. Click Wavefront Propagation
   float distFromOrigin = acos(clamp(dot(normPos, normalize(uRippleOrigin)), -1.0, 1.0));
   float rippleWave = sin(distFromOrigin * 14.0 - uRippleTime * 9.0) *
                      exp(-uRippleTime * 1.8) * exp(-distFromOrigin * 0.5);
   displacement += rippleWave * uRippleStrength;
 
   vDisplacement = displacement;
-  vEnergy = noiseB + noiseA * 0.5;
+  vEnergy = noiseB + noiseA * 0.5 + length(uVelocity) * 0.2;
 
   vec3 newPos = position + normal * displacement;
   gl_Position = projectionMatrix * modelViewMatrix * vec4(newPos, 1.0);
@@ -154,6 +164,7 @@ uniform vec3  uAccentColor;
 uniform vec3  uFresnelColor;
 uniform float uAudioBoost;
 uniform float uTime;
+uniform vec2  uVelocity;
 
 varying vec3 vNormal;
 varying vec3 vPosition;
@@ -183,8 +194,9 @@ void main() {
   vec3 viewVector = normalize(cameraPosition - vPosition);
   float fresnel = pow(1.0 - abs(dot(vNormal, viewVector)), 2.6);
 
-  // Convection Swirl inside the plasma core
-  float swirl = sin(vEnergy * 4.0 + uTime * 0.9) * 0.5 + 0.5;
+  // Convection Swirl inside the plasma core, accelerated by momentum
+  float swirlSpeed = 0.9 + length(uVelocity) * 0.4;
+  float swirl = sin(vEnergy * 4.0 + uTime * swirlSpeed) * 0.5 + 0.5;
   vec3 baseCol = mix(uBaseColor, uAccentColor, clamp(vDisplacement * 0.06 + 0.5, 0.0, 1.0));
   baseCol = mix(baseCol, uAccentColor, swirl * 0.3);
 

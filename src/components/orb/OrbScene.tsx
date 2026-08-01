@@ -110,8 +110,8 @@ export function OrbScene({ stateRef, volumeRef, width = 540, height = 540 }: Orb
             ? 0.3
             : 0.1;
 
-      // Interaction spring + ripple.
-      const ix = interaction.step(dt);
+      // Intelligent liquid soft body physics step.
+      const ix = interaction.step(dt, t);
 
       // Apply mouse follow to all layers (parallax of the whole orb).
       const follow = 0.6;
@@ -127,7 +127,15 @@ export function OrbScene({ stateRef, volumeRef, width = 540, height = 540 }: Orb
       // Reactivity for sutras: bump during listening/reasoning.
       const sutraReactivity = isListening ? 0.8 : isThinking ? 1.0 : 0.2;
 
-      plasma.update(t, dt, audioBoost, theme, ix.ripple, { x: ix.normX, y: ix.normY });
+      plasma.update(
+        t,
+        dt,
+        audioBoost,
+        theme,
+        ix.ripple,
+        { x: ix.normX, y: ix.normY },
+        { vx: ix.vx, vy: ix.vy, microOscillation: ix.microOscillation }
+      );
       particles.update(t, audioBoost, theme);
       halo.update(t, audioBoost, theme);
       sutras.update(t, theme, sutraReactivity);

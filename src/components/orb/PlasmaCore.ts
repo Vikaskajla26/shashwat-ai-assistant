@@ -19,7 +19,8 @@ export interface PlasmaCoreHandle {
     audioBoost: number,
     theme: StateTheme,
     ripple: { strength: number; time: number; origin: THREE.Vector3 },
-    mousePos?: { x: number; y: number }
+    mousePos?: { x: number; y: number },
+    physics?: { vx: number; vy: number; microOscillation: number }
   ) => void;
   dispose: () => void;
 }
@@ -39,6 +40,8 @@ export function createPlasmaCore(subdivisions: number): PlasmaCoreHandle {
       uRippleTime: { value: 0 },
       uRippleOrigin: { value: new THREE.Vector3(0, 0, 1) },
       uMousePos: { value: new THREE.Vector2(0, 0) },
+      uVelocity: { value: new THREE.Vector2(0, 0) },
+      uMicroOscillation: { value: 0 },
       uBaseColor: { value: new THREE.Color('#F59E0B') },
       uAccentColor: { value: new THREE.Color('#F97316') },
       uFresnelColor: { value: new THREE.Color('#FEF08A') },
@@ -67,7 +70,7 @@ export function createPlasmaCore(subdivisions: number): PlasmaCoreHandle {
   const curAccent = new THREE.Color('#F97316');
   const curFresnel = new THREE.Color('#FEF08A');
 
-  const update: PlasmaCoreHandle['update'] = (t, _dt, audioBoost, theme, ripple, mousePos) => {
+  const update: PlasmaCoreHandle['update'] = (t, _dt, audioBoost, theme, ripple, mousePos, physics) => {
     const u = membraneMat.uniforms;
     u.uTime.value = t;
     u.uAudioBoost.value = audioBoost;
@@ -78,6 +81,10 @@ export function createPlasmaCore(subdivisions: number): PlasmaCoreHandle {
     u.uRippleOrigin.value.copy(ripple.origin);
     if (mousePos) {
       u.uMousePos.value.set(mousePos.x, mousePos.y);
+    }
+    if (physics) {
+      u.uVelocity.value.set(physics.vx, physics.vy);
+      u.uMicroOscillation.value = physics.microOscillation;
     }
 
     curBase.lerp(new THREE.Color(theme.baseColor), 0.05);

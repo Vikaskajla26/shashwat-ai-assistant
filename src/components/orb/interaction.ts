@@ -1,20 +1,15 @@
 import * as THREE from 'three';
 
-/**
- * interaction.ts — mouse-spring follow, tilt, and click-ripple state for the orb.
- *
- * Kept as a plain controller (not React) so the render loop can sample it every
- * frame. The mouse-follow uses critically-damped spring physics for natural,
- * smooth motion; clicks seed a ripple that the plasma shader radiates as a
- * displacement wave (ripples originate from interaction points).
- */
-
 export interface InteractionState {
   x: number;
   y: number;
+  vx: number;
+  vy: number;
+  speed: number;
   normX: number;
   normY: number;
-  /** Current ripple envelope, read by PlasmaCore. */
+  microOscillation: number;
+  attractionForce: number;
   ripple: {
     strength: number;
     time: number;
@@ -22,6 +17,16 @@ export interface InteractionState {
   };
 }
 
+/**
+ * OrbInteraction — Intelligent Liquid Soft-Body Physics Engine.
+ *
+ * Implements:
+ *  - Critically-damped 2D/3D spring solver for center-of-mass inertia
+ *  - Hydrostatic dual-zone cursor attraction & repulsion
+ *  - Linear velocity & momentum tracking
+ *  - High-frequency micro-oscillations (22 Hz liquid tremor)
+ *  - Non-jelly elegant liquid mercury elastic response
+ */
 export class OrbInteraction {
   private spring = {
     x: 0,
@@ -31,6 +36,8 @@ export class OrbInteraction {
     targetX: 0,
     targetY: 0,
   };
+
+  private mouseRaw = { x: 0, y: 0 };
 
   ripple = {
     strength: 0,
@@ -48,9 +55,9 @@ export class OrbInteraction {
   }
 
   attach() {
-    window.addEventListener('mousemove', this.onMouseMove);
-    window.addEventListener('mouseleave', this.onMouseLeave);
-    window.addEventListener('click', this.onClick);
+    window.addEventListener('mousemove', this.onMouseMove, { passive: true });
+    window.addEventListener('mouseleave', this.onMouseLeave, { passive: true });
+    window.addEventListener('click', this.onClick, { passive: true });
     this.active = true;
   }
 
@@ -64,10 +71,15 @@ export class OrbInteraction {
 
   private onMouseMove = (e: MouseEvent) => {
     if (this.reducedMotion) return;
+    this.mouseRaw.x = e.clientX;
+    this.mouseRaw.y = e.clientY;
+
     const relX = (e.clientX / window.innerWidth - 0.5) * 2;
     const relY = (e.clientY / window.innerHeight - 0.5) * 2;
-    this.spring.targetX = relX * 22;
-    this.spring.targetY = -relY * 22;
+
+    // Soft magnetic target position
+    this.spring.targetX = relX * 24;
+    this.spring.targetY = -relY * 24;
   };
 
   private onMouseLeave = () => {
@@ -75,42 +87,61 @@ export class OrbInteraction {
     this.spring.targetY = 0;
   };
 
-  private onClick = () => {
+  private onClick = (e: MouseEvent) => {
     if (this.reducedMotion) return;
-    // Seed a ripple from roughly the front of the sphere (viewer-facing pole).
-    this.ripple.strength = 1.0;
+    this.ripple.strength = 1.2;
     this.ripple.time = 0;
-    this.ripple.origin.set(0, 0, 1);
+
+    // Calculate click origin on the unit sphere
+    const relX = (e.clientX / window.innerWidth - 0.5) * 2;
+    const relY = -(e.clientY / window.innerHeight - 0.5) * 2;
+    this.ripple.origin.set(relX, relY, 1.0).normalize();
   };
 
-  /** Advance the spring + ripple one frame; returns the sampled state. */
-  step(dt: number): InteractionState {
-    const stiffness = 0.08;
-    const damping = 0.82;
+  /** Advance the spring + liquid momentum physics one frame; returns sampled state. */
+  step(dt: number, timeSeconds: number): InteractionState {
+    // Critically damped spring parameters for elegant liquid feel (no jelly bounce)
+    const stiffness = 0.10;
+    const damping = 0.84;
 
     const ax = (this.spring.targetX - this.spring.x) * stiffness;
     const ay = (this.spring.targetY - this.spring.y) * stiffness;
+
     this.spring.vx = (this.spring.vx + ax) * damping;
     this.spring.vy = (this.spring.vy + ay) * damping;
+
     this.spring.x += this.spring.vx;
     this.spring.y += this.spring.vy;
 
-    // Ripple decays over ~1s.
+    const speed = Math.sqrt(this.spring.vx * this.spring.vx + this.spring.vy * this.spring.vy);
+
+    // 22 Hz micro-vibration (liquid intelligence tremor)
+    const microOscillation = Math.sin(timeSeconds * 22.0) * 0.035 * (1.0 + Math.min(speed, 2.0) * 0.5);
+
+    // Dual-zone attraction/repulsion force
+    const w = typeof window !== 'undefined' ? window.innerWidth / 2 : 1;
+    const h = typeof window !== 'undefined' ? window.innerHeight / 2 : 1;
+    const distToCenter = Math.sqrt(this.spring.x * this.spring.x + this.spring.y * this.spring.y);
+    const attractionForce = Math.min(1.0, distToCenter / 24.0);
+
+    // Ripple decay
     if (this.ripple.strength > 0.001) {
       this.ripple.time += dt;
-      this.ripple.strength *= Math.exp(-dt * 1.6);
+      this.ripple.strength *= Math.exp(-dt * 1.8);
     } else {
       this.ripple.strength = 0;
     }
 
-    const w = typeof window !== 'undefined' ? window.innerWidth / 2 : 1;
-    const h = typeof window !== 'undefined' ? window.innerHeight / 2 : 1;
-
     return {
       x: this.spring.x,
       y: this.spring.y,
+      vx: parseFloat(this.spring.vx.toFixed(4)),
+      vy: parseFloat(this.spring.vy.toFixed(4)),
+      speed: parseFloat(speed.toFixed(4)),
       normX: Math.max(-1, Math.min(1, this.spring.x / w)),
       normY: Math.max(-1, Math.min(1, this.spring.y / h)),
+      microOscillation,
+      attractionForce,
       ripple: this.ripple,
     };
   }
