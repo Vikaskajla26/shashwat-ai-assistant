@@ -27,6 +27,7 @@ import {
   AIProviderId,
 } from "./server/providers/providerStorage";
 import { AIProviderManager } from "./server/providers/aiProviderManager";
+import { testAutomatedWorkflows } from "./server/tools/browser";
 
 async function startServer() {
   // Initialize database on startup
@@ -229,6 +230,16 @@ async function startServer() {
       res.json({ success: ok, message: ok ? "Provider reset successfully" : "Reset failed" });
     } catch (err: any) {
       res.status(500).json({ success: false, message: err?.message || "Reset failed" });
+    }
+  });
+
+  app.post("/api/browser/test-workflow", async (req, res) => {
+    try {
+      const { platform } = req.body || {};
+      const result = await testAutomatedWorkflows(platform || "google");
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || "Workflow test failed" });
     }
   });
 
