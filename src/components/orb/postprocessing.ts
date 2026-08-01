@@ -5,15 +5,6 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import type { QualityProfile } from '../../perf/useRenderQuality';
 
-/**
- * Volumetric bloom postprocessing for the orb.
- *
- * Wraps EffectComposer (RenderPass → UnrealBloomPass → OutputPass) so the orb
- * gains the soft, cinematic "volumetric glow / refraction" look the spec asks
- * for. At the Low quality tier (or reduced-motion) the composer is skipped and
- * the caller falls back to a direct `renderer.render(...)`.
- */
-
 export interface BloomHandle {
   composer: EffectComposer | null;
   bloomPass: UnrealBloomPass | null;
@@ -32,7 +23,6 @@ export function createBloomPipeline(
   height: number,
   quality: QualityProfile,
 ): BloomHandle {
-  // Low tier / reduced-motion: no composer. Caller renders directly.
   if (!quality.bloom) {
     const noop = () => {};
     return {
@@ -46,14 +36,29 @@ export function createBloomPipeline(
     };
   }
 
-  const composer = new EffectComposer(renderer);
-  composer.addPass(new RenderPass(scene, camera));
+  // 1. Create transparent RGBA render target to prevent opaque black/blue screen clear quad
+  const renderTarget = new THREE.WebGLRenderTarget(width, height, {
+    minFilter: THREE.LinearFilter,
+    magFilter: THREE.LinearFilter,
+    format: THREE.RGBAFormat,
+    type: THREE.HalfFloatType,
+    stencilBuffer: false,
+    depthBuffer: true,
+  });
 
+  const composer = new EffectComposer(renderer, renderTarget);
+
+  // 2. RenderPass with 100% transparent clear alpha
+  const renderPass = new RenderPass(scene, camera);
+  renderPass.clearAlpha = 0;
+  composer.addPass(renderPass);
+
+  // 3. UnrealBloomPass configured for volumetric orb glow without clearing canvas to solid color
   const bloomPass = new UnrealBloomPass(
     new THREE.Vector2(width, height),
-    0.9, // strength
-    0.6, // radius
-    0.2, // threshold
+    0.85, // strength
+    0.5,  // radius
+    0.25  // threshold
   );
   composer.addPass(bloomPass);
   composer.addPass(new OutputPass());
@@ -72,9 +77,6 @@ export function createBloomPipeline(
     bloomPass.strength = strength;
     bloomPass.radius = radius;
     bloomPass.threshold = threshold;
-    // Tint the bloom toward the state's bloom color via the cleared scene fog-less
-    // approach: UnrealBloomPass doesn't expose a direct color, so we modulate
-    // strength by luminance and let the orb material colors carry the hue.
     void color;
   };
   const dispose = () => {

@@ -50,7 +50,8 @@ export function createPlasmaCore(subdivisions: number): PlasmaCoreHandle {
     vertexShader: PLASMA_VERTEX_SHADER,
     fragmentShader: PLASMA_FRAGMENT_SHADER,
     transparent: true,
-    depthWrite: true,
+    depthWrite: false,
+    depthTest: true,
   });
   const membrane = new THREE.Mesh(membraneGeo, membraneMat);
   group.add(membrane);

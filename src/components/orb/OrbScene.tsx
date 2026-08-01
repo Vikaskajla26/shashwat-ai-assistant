@@ -42,14 +42,19 @@ export function OrbScene({ stateRef, volumeRef, width = 540, height = 540 }: Orb
 
     const profile = qualityRef.current;
 
-    // 1. Renderer
+    // 1. Renderer — fully transparent background, filmic tone mapping, sRGB color space
     const renderer = new THREE.WebGLRenderer({
       alpha: true,
       antialias: profile.antialias,
       powerPreference: 'high-performance',
+      premultipliedAlpha: false,
     });
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, profile.pixelRatioCap));
+    renderer.setClearColor(0x000000, 0); // 100% transparent clear color
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
     container.appendChild(renderer.domElement);
 
     // 2. Scene + camera
@@ -204,7 +209,8 @@ export function OrbScene({ stateRef, volumeRef, width = 540, height = 540 }: Orb
   return (
     <div
       ref={containerRef}
-      className="absolute inset-0 pointer-events-none z-10 flex items-center justify-center"
+      className="relative pointer-events-none z-10 flex items-center justify-center"
+      style={{ width: `${width}px`, height: `${height}px` }}
     />
   );
 }
