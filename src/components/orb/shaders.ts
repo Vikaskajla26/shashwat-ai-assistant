@@ -216,40 +216,71 @@ void main() {
 export const ENERGY_PARTICLE_VERTEX = /* glsl */ `
 attribute float aSeed;
 attribute float aRadius;
+attribute float aLifeSpeed;
+
 uniform float uTime;
 uniform float uAudioBoost;
 uniform float uSpeed;
 uniform float uIntensity;
+uniform float uRepulsion;
+uniform float uAttraction;
+
 varying float vAlpha;
+varying float vLife;
+
+${SIMPLEX_NOISE_GLSL}
 
 void main() {
-  float t = uTime * uSpeed + aSeed * 6.2831;
-  float r = aRadius + sin(t * 0.7 + aSeed * 9.0) * (3.0 + uAudioBoost * 6.0);
-  float inc = aSeed * 3.1415;
-  float yaw = t * (0.6 + aSeed * 0.4);
+  // 1. Procedural Life Phase (0..1) with non-repeating individual cycle
+  float life = fract(uTime * aLifeSpeed * 0.15 + aSeed * 10.0);
+  vLife = life;
 
-  vec3 pos;
-  pos.x = cos(yaw) * cos(inc) * r;
-  pos.z = sin(yaw) * cos(inc) * r;
-  pos.y = sin(inc) * r + sin(t * 1.3 + aSeed * 4.0) * 2.0;
+  // 2. Base Spherical Shell Coordinates
+  float theta = aSeed * 6.283185;
+  float phi = acos(clamp(2.0 * fract(aSeed * 37.0) - 1.0, -1.0, 1.0));
+
+  // 3. GPU Vector Field Drift (Curl Noise + FBM turbulence)
+  vec3 sphereDir = vec3(sin(phi) * cos(theta), sin(phi) * sin(theta), cos(phi));
+  vec3 curl = curlNoise(sphereDir * 0.15 + vec3(uTime * 0.05));
+
+  // 4. Attraction & Repulsion Forces
+  float radialOffset = (aRadius + sin(uTime * 0.4 + aSeed * 12.0) * 4.0);
+  radialOffset += (uRepulsion * 18.0 * life) - (uAttraction * 8.0 * (1.0 - life));
+  radialOffset += uAudioBoost * 14.0 * life;
+
+  vec3 pos = sphereDir * radialOffset + curl * (6.0 + life * 12.0);
 
   vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
-  float size = (2.2 + aSeed * 2.5) * (1.0 + uAudioBoost * 1.6) * uIntensity;
-  gl_PointSize = size * (240.0 / -mvPosition.z);
+
+  // 5. Life-dependent Point Size Attenuation
+  float fadeInOut = sin(life * 3.14159265);
+  float size = (2.4 + aSeed * 3.0) * (1.0 + uAudioBoost * 1.5) * uIntensity * fadeInOut;
+
+  gl_PointSize = size * (280.0 / -mvPosition.z);
   gl_Position = projectionMatrix * mvPosition;
 
-  vAlpha = (0.35 + 0.65 * abs(sin(t * 1.7 + aSeed * 8.0))) * uIntensity;
+  vAlpha = fadeInOut * uIntensity * (0.4 + 0.6 * sin(uTime * 2.0 + aSeed * 15.0));
 }
 `;
 
 export const ENERGY_PARTICLE_FRAGMENT = /* glsl */ `
 uniform vec3 uColor;
 varying float vAlpha;
+varying float vLife;
+
 void main() {
-  float dist = length(gl_PointCoord - vec2(0.5));
+  // Soft Gaussian Radial Glow Point Sprite
+  vec2 coord = gl_PointCoord - vec2(0.5);
+  float dist = length(coord);
   if (dist > 0.5) discard;
-  float opacity = (1.0 - smoothstep(0.0, 0.5, dist)) * vAlpha;
-  gl_FragColor = vec4(uColor, opacity * 0.85);
+
+  float softEdge = smoothstep(0.5, 0.0, dist);
+  float innerCore = smoothstep(0.2, 0.0, dist);
+
+  vec3 col = mix(uColor, vec3(1.0), innerCore * 0.5);
+  float opacity = softEdge * vAlpha;
+
+  gl_FragColor = vec4(col, opacity * 0.9);
 }
 `;
 
@@ -277,3 +308,4 @@ void main() {
   gl_FragColor = vec4(uColor, a * 0.55);
 }
 `;
+

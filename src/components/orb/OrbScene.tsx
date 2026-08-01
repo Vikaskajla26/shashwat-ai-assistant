@@ -146,7 +146,7 @@ export function OrbScene({ stateRef, volumeRef, width = 540, height = 540 }: Orb
           trebleNorm: spectrum.trebleNorm,
         }
       );
-      particles.update(t, Math.max(audioBoost, spectrum.trebleNorm), theme);
+      particles.update(t, Math.max(audioBoost, spectrum.trebleNorm), theme, state);
       halo.update(t, Math.max(audioBoost, spectrum.volumeNorm), theme);
       sutras.update(t, theme, sutraReactivity);
 
