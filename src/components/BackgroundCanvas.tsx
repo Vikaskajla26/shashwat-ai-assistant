@@ -259,7 +259,6 @@ export const BackgroundCanvas: React.FC<BackgroundCanvasProps> = ({ state }) => 
         nebulaMat.dispose();
       }
       renderer.dispose();
-      renderer.forceContextLoss();
       if (container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
       }

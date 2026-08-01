@@ -30,7 +30,7 @@ export interface OrbSceneProps {
  * the previous pattern of rebuilding the whole scene on every state/volume
  * change (which tore down geometry, shaders and the GL context dozens of times
  * per second during audio). Layers are modular and individually disposable, so
- * StrictMode double-mount in dev is leak-free (forceContextLoss on teardown).
+ * StrictMode double-mount in dev is leak-free and safe from context loss races.
  */
 export function OrbScene({ stateRef, volumeRef, width = 540, height = 540, onError }: OrbSceneProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -202,8 +202,6 @@ export function OrbScene({ stateRef, volumeRef, width = 540, height = 540, onErr
       sutras.dispose();
       bloom.dispose();
       renderer.dispose();
-      // Force-loss the GL context to guarantee no dev-mode leak under StrictMode.
-      renderer.forceContextLoss();
       if (container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
       }
