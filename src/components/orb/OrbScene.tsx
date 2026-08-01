@@ -12,6 +12,7 @@ import { createSutraOrbiters } from './SutraOrbiters';
 import { createBloomPipeline, type BloomHandle } from './postprocessing';
 import { OrbInteraction } from './interaction';
 import { AudioContextEngine } from '../../engine/voice/AudioContextEngine';
+import { StateInterpolator } from '../../engine/state/StateInterpolator';
 
 export interface OrbSceneProps {
   /** Live state, read via ref each frame (no scene rebuild on change). */
@@ -93,9 +94,11 @@ export function OrbScene({ stateRef, volumeRef, width = 540, height = 540 }: Orb
       // Report frame timing to the adaptive quality watchdog.
       qualityEngine.reportFrame(frameDelta);
 
-      // Live reads — these change without remounting anything.
+      // Live reads — smooth lerp interpolation between AI states
       const state = stateRef.current;
-      theme = getStateTheme(state);
+      const interpolator = StateInterpolator.getInstance();
+      interpolator.setTargetState(state);
+      theme = interpolator.update(dt);
 
       const normVol = Math.min(1, volumeRef.current / 100);
       const isSpeaking = state === 'speaking';
