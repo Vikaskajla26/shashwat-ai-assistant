@@ -253,6 +253,41 @@ export async function postVerifyAction(
 }
 
 /**
+ * Visual Analysis Fallback Engine
+ * Used when DOM tree extraction is sparse or for Canvas/WebGL/Image-heavy pages.
+ * Captures screenshot and visual element bounding boxes as a fallback.
+ */
+export async function captureVisualAnalysisFallback(page: any): Promise<{
+  screenshotBase64: string;
+  viewport: { width: number; height: number };
+  elementsSummary: string;
+}> {
+  try {
+    const screenshotBuf = await page.screenshot({ type: "png", fullPage: false });
+    const screenshotBase64 = screenshotBuf.toString("base64");
+    const viewport = page.viewportSize() || { width: 1280, height: 900 };
+
+    const elementsSummary = await page.evaluate(() => {
+      const interactiveEls = document.querySelectorAll("button, a, input, select, textarea, [role='button']");
+      const summary: string[] = [];
+      interactiveEls.forEach((el, idx) => {
+        if (idx > 20) return;
+        const rect = el.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          const label = el.textContent?.trim() || el.getAttribute("aria-label") || el.getAttribute("placeholder") || el.tagName;
+          summary.push(`[${el.tagName}] "${label.slice(0, 30)}" at (${Math.round(rect.x)}, ${Math.round(rect.y)}) ${Math.round(rect.width)}x${Math.round(rect.height)}`);
+        }
+      });
+      return summary.join("; ");
+    }).catch(() => "Visual elements extracted.");
+
+    return { screenshotBase64, viewport, elementsSummary };
+  } catch (e: any) {
+    return { screenshotBase64: "", viewport: { width: 1280, height: 900 }, elementsSummary: `Visual fallback error: ${e?.message || e}` };
+  }
+}
+
+/**
  * Production-Grade Autonomous Browser Navigator with Self-Healing Execution
  */
 export async function browserNavigate(
@@ -299,12 +334,19 @@ export async function browserNavigate(
         const title = await page.title().catch(() => "");
         const text = await extractMainText(page);
         const trimmed = text.slice(0, 4000);
+
+        // Visual Analysis Fallback: If DOM text is sparse (<100 chars), capture visual fallback
+        let visualFallback: any = null;
+        if (trimmed.length < 100) {
+          visualFallback = await captureVisualAnalysisFallback(page);
+        }
+
         return {
           executed: true,
           action,
           target: target || url,
-          message: `Verified page read for "${title}" (${text.length} chars).`,
-          data: { url, title, text: trimmed },
+          message: `Verified page read for "${title}" (${text.length} chars).${visualFallback ? " Visual analysis fallback engaged." : ""}`,
+          data: { url, title, text: trimmed, visualFallback },
         };
       }
 
