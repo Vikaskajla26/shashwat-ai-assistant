@@ -34,28 +34,29 @@ export class AIProviderManager {
     customEndpoint?: string
   ): Promise<ValidationResult> {
     const timestamp = new Date().toISOString();
+    const cleanKey = (typeof apiKey === 'string' ? apiKey : '').trim();
 
     try {
       switch (id) {
         case 'gemini': {
-          if (!apiKey.trim()) {
+          if (!cleanKey) {
             return { success: false, message: 'Gemini API key is required.', timestamp };
           }
-          const ai = new GoogleGenAI({ apiKey: apiKey.trim() });
+          const ai = new GoogleGenAI({ apiKey: cleanKey });
           // Test generation with lightweight prompt
           await ai.models.generateContent({
-            model: model || 'gemini-2.5-flash',
+            model: model || 'gemini-2.0-flash',
             contents: 'ping',
           });
           return { success: true, message: 'Gemini API key validated successfully!', timestamp };
         }
 
         case 'openai': {
-          if (!apiKey.trim()) {
+          if (!cleanKey) {
             return { success: false, message: 'OpenAI API key is required.', timestamp };
           }
           const res = await fetch('https://api.openai.com/v1/models', {
-            headers: { Authorization: `Bearer ${apiKey.trim()}` },
+            headers: { Authorization: `Bearer ${cleanKey}` },
           });
           if (res.ok) {
             return { success: true, message: 'OpenAI API key validated successfully!', timestamp };
@@ -69,13 +70,13 @@ export class AIProviderManager {
         }
 
         case 'anthropic': {
-          if (!apiKey.trim()) {
+          if (!cleanKey) {
             return { success: false, message: 'Anthropic API key is required.', timestamp };
           }
           const res = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
             headers: {
-              'x-api-key': apiKey.trim(),
+              'x-api-key': cleanKey,
               'anthropic-version': '2023-06-01',
               'content-type': 'application/json',
             },
@@ -97,11 +98,11 @@ export class AIProviderManager {
         }
 
         case 'groq': {
-          if (!apiKey.trim()) {
+          if (!cleanKey) {
             return { success: false, message: 'Groq API key is required.', timestamp };
           }
           const res = await fetch('https://api.groq.com/openai/v1/models', {
-            headers: { Authorization: `Bearer ${apiKey.trim()}` },
+            headers: { Authorization: `Bearer ${cleanKey}` },
           });
           if (res.ok) {
             return { success: true, message: 'Groq API key validated successfully!', timestamp };
@@ -110,11 +111,11 @@ export class AIProviderManager {
         }
 
         case 'openrouter': {
-          if (!apiKey.trim()) {
+          if (!cleanKey) {
             return { success: false, message: 'OpenRouter API key is required.', timestamp };
           }
           const res = await fetch('https://openrouter.ai/api/v1/auth/key', {
-            headers: { Authorization: `Bearer ${apiKey.trim()}` },
+            headers: { Authorization: `Bearer ${cleanKey}` },
           });
           if (res.ok) {
             return { success: true, message: 'OpenRouter API key validated successfully!', timestamp };
@@ -166,7 +167,7 @@ export class AIProviderManager {
     let lastError: string | undefined = existing.lastError;
     let lastConnectedAt: string | undefined = existing.lastConnectedAt;
 
-    const keyToUse = apiKey.trim() ? apiKey.trim() : existing.apiKey;
+    const keyToUse = (typeof apiKey === 'string' && apiKey.trim()) ? apiKey.trim() : existing.apiKey;
 
     if (enabled && (id !== 'local' && !keyToUse)) {
       return { success: false, message: `API key is required to enable ${existing.name}.` };

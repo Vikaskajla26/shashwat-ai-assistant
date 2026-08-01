@@ -1,15 +1,13 @@
 import React, { useEffect, useRef } from 'react';
-import { getStateTheme, type StateTheme } from '../theme/aiState';
-
-import type { AssistantState } from '../types';
+import type { StateTheme } from '../theme/aiState';
 
 interface AudioVisualizerProps {
   /** Live audio level 0..100 (input or output depending on state). */
   volume: number;
   /** Whether the assistant session is active (drives base amplitude). */
   isActive: boolean;
-  /** Current state — drives the spectrum color + behavior. */
-  state: AssistantState;
+  /** Current state theme — drives the spectrum color + behavior. */
+  stateTheme: StateTheme;
 }
 
 /**
@@ -25,19 +23,16 @@ interface AudioVisualizerProps {
 export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
   volume,
   isActive,
-  state,
+  stateTheme,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  
+  // Keep the latest theme in a ref so the rAF loop reads it without restarting.
+  const themeRef = useRef(stateTheme);
+  themeRef.current = stateTheme;
   const volumeRef = useRef(volume);
   volumeRef.current = volume;
   const activeRef = useRef(isActive);
   activeRef.current = isActive;
-  const themeRef = useRef(getStateTheme(state));
-
-  useEffect(() => {
-    themeRef.current = getStateTheme(state);
-  }, [state]);
 
   useEffect(() => {
     const canvas = canvasRef.current;

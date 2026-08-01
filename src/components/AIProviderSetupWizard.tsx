@@ -23,7 +23,7 @@ interface AIProviderSetupWizardProps {
 }
 
 const PROVIDERS_LIST: { id: AIProviderId; name: string; desc: string; icon: any; defaultModel: string }[] = [
-  { id: 'gemini', name: 'Google Gemini', desc: 'Real-time Live Audio Voice & Multimodal Intelligence', icon: Zap, defaultModel: 'gemini-2.5-flash' },
+  { id: 'gemini', name: 'Google Gemini', desc: 'Real-time Live Audio Voice & Multimodal Intelligence', icon: Zap, defaultModel: 'gemini-2.0-flash' },
   { id: 'openai', name: 'OpenAI', desc: 'GPT-4o & GPT-4o-mini High Intelligence', icon: Cpu, defaultModel: 'gpt-4o' },
   { id: 'anthropic', name: 'Anthropic', desc: 'Claude 3.5 Sonnet & Haiku Reasoning', icon: ShieldCheck, defaultModel: 'claude-3-5-sonnet-20241022' },
   { id: 'groq', name: 'Groq', desc: 'Ultra-fast LLaMA 3.3 70B & Mixtral Inference', icon: Zap, defaultModel: 'llama-3.3-70b-versatile' },

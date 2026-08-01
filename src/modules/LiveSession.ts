@@ -114,7 +114,7 @@ export class LiveSession {
     try {
       // Build WebSocket URL relative to window.location
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/api/live`;
+      const wsUrl = `${protocol}//${window.location.host}/live`;
 
       this.ws = new WebSocket(wsUrl);
 

@@ -2,10 +2,6 @@ import dotenv from "dotenv";
 import express from "express";
 import http from "http";
 import path from "path";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 dotenv.config();
 dotenv.config({ path: ".env.local" });
@@ -523,7 +519,7 @@ async function startServer() {
   server.on("upgrade", (request, socket, head) => {
     const pathname = new URL(request.url || "", `http://${request.headers.host}`).pathname;
 
-    if (pathname === "/live") {
+    if (pathname === "/live" || pathname === "/api/live" || pathname.endsWith("/live")) {
       wss.handleUpgrade(request, socket, head, (ws) => {
         wss.emit("connection", ws, request);
       });
@@ -554,12 +550,6 @@ async function startServer() {
     let currentSpeakerState = getVoiceprint()
       ? { status: "LIKELY_OWNER", confidence: 0.6, ownerName: getVoiceprint()!.ownerName, message: "Awaiting audio..." }
       : { status: "UNENROLLED", confidence: 1.0, ownerName: "Guest", message: "Open mode" };
-
-    // Per-connection flag for the "understanding" phase signal. Emitted once per
-    // turn before the first audio chunk, then reset on turn-complete/interrupt
-    // so the silent gap between user speech and the model's first audio response
-    // is no longer blank on the client. Additive; old clients ignore it.
-    let understandingSentThisTurn = false;
 
     try {
       const ai = new GoogleGenAI({
@@ -601,13 +591,6 @@ async function startServer() {
             if (serverContent?.modelTurn?.parts) {
               for (const part of serverContent.modelTurn.parts) {
                 if (part.inlineData?.data) {
-                  // Signal the "understanding" phase once, right as the model
-                  // begins to respond, so the client can show it during the
-                  // lead-in to speech.
-                  if (!understandingSentThisTurn) {
-                    understandingSentThisTurn = true;
-                    clientWs.send(JSON.stringify({ type: "phase", phase: "understanding" }));
-                  }
                   clientWs.send(
                     JSON.stringify({
                       type: "audio",
@@ -620,25 +603,17 @@ async function startServer() {
 
             // 2. Interruption flag
             if (serverContent?.interrupted) {
-              understandingSentThisTurn = false;
               clientWs.send(JSON.stringify({ type: "interrupted" }));
             }
 
             // 3. Turn complete
             if (serverContent?.turnComplete) {
-              understandingSentThisTurn = false;
               clientWs.send(JSON.stringify({ type: "turnComplete" }));
             }
 
             // 4. Tool Call requests from model → EXECUTE ON SERVER
             const toolCall = message.toolCall;
             if (toolCall?.functionCalls) {
-              // The model has decided to act → emit the "reasoning" phase once
-              // per turn so the client can reflect cognition before execution.
-              if (!understandingSentThisTurn) {
-                understandingSentThisTurn = true;
-                clientWs.send(JSON.stringify({ type: "phase", phase: "reasoning" }));
-              }
               // Process all tool calls from this message
               const processCalls = async () => {
                 const responses: any[] = [];
@@ -662,21 +637,6 @@ async function startServer() {
                       // The client's toolResponse message will be forwarded when it arrives.
                       continue;
                     }
-
-                    // Signal the active execution phase. Known search/browser
-                    // tools surface as "searching"; everything else "executing".
-                    const SEARCH_TOOLS = new Set([
-                      "browser_navigate",
-                      "browser_sandbox_exec",
-                      "live_search",
-                      "openWebsite",
-                    ]);
-                    clientWs.send(
-                      JSON.stringify({
-                        type: "phase",
-                        phase: SEARCH_TOOLS.has(name) ? "searching" : "executing",
-                      })
-                    );
 
                     // Real tools → execute server-side (gated by speaker verification)
                     const result = await executeTool(name, args || {}, currentSpeakerState);
@@ -899,10 +859,11 @@ async function startServer() {
   });
 
   // Serve compiled production frontend directly from dist/
+  const currentDir = typeof __dirname !== "undefined" ? __dirname : process.cwd();
   const candidatePaths = [
     path.resolve(process.cwd(), "dist"),
-    path.resolve(__dirname, "dist"),
-    path.resolve(__dirname, "../dist"),
+    path.resolve(currentDir, "dist"),
+    path.resolve(currentDir, "../dist"),
     path.resolve(process.cwd(), "resources/app/dist"),
     path.resolve(process.cwd(), "resources/app.asar/dist")
   ];
