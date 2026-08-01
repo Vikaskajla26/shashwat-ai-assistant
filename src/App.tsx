@@ -16,6 +16,7 @@ import { SanskritChantStudio } from './components/SanskritChantStudio';
 import { SelfLearningDashboard } from './components/SelfLearningDashboard';
 import { LeftDrawer, RightDrawer } from './components/CinematicPanels';
 import { BottomDock } from './components/BottomDock';
+import { ShashwatDittoDashboard } from './components/ShashwatDittoDashboard';
 import { CinematicLivingEnvironment } from './components/CinematicLivingEnvironment';
 import {
   AssistantState,
@@ -363,19 +364,15 @@ export default function App() {
       {/* Visual Floating Cards Overlay */}
       <VisualCardOverlay cards={cards} onDismissCard={handleDismissCard} />
 
-      {/* Floating Glass Bottom Dock */}
-      <BottomDock
+      {/* Ditto Reference UI Dashboard Overlay */}
+      <ShashwatDittoDashboard
         state={state}
+        inputVolume={inputVolume}
+        outputVolume={outputVolume}
         isScreenSharing={isScreenSharing}
         isSandboxOpen={isSandboxOpen}
         isDocWorkspaceOpen={isDocWorkspaceOpen}
-        onToggleMic={() => {
-          if (state === 'disconnected') {
-            handleToggleMic();
-          } else {
-            setIsPowerModalOpen(true);
-          }
-        }}
+        onToggleMic={handleToggleMic}
         onToggleScreenShare={handleToggleScreenShare}
         onToggleSandbox={() => setIsSandboxOpen((prev) => !prev)}
         onToggleDocWorkspace={() => setIsDocWorkspaceOpen((prev) => !prev)}
@@ -383,6 +380,7 @@ export default function App() {
         onOpenSelfLearning={() => setIsSelfLearningOpen(true)}
         onOpenLeftDrawer={() => setIsLeftDrawerOpen(true)}
         onOpenRightDrawer={() => setIsRightDrawerOpen(true)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
         onSendTypedText={handleSendMessage}
       />
 
