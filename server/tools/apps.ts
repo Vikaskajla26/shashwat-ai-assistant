@@ -1,11 +1,27 @@
 import { runPowerShell } from "./powershell";
 import { exec, execFile } from "child_process";
+import { launchSystemDefaultBrowser } from "./browserRouter";
 
 /**
- * Maps common natural-language app names to Windows executable / start tokens.
+ * Maps common natural-language app names and web sites to Windows executables or URLs.
  * Anything not here is resolved dynamically via Start Menu + App Paths registry.
  */
 const APP_ALIASES: Record<string, string> = {
+  // Common Web Services / Web Apps (Open in default browser)
+  youtube: "https://www.youtube.com",
+  "youtube.com": "https://www.youtube.com",
+  yt: "https://www.youtube.com",
+  "youtube music": "https://music.youtube.com",
+  gmail: "https://mail.google.com",
+  google: "https://www.google.com",
+  amazon: "https://www.amazon.com",
+  github: "https://github.com",
+  twitter: "https://x.com",
+  x: "https://x.com",
+  linkedin: "https://www.linkedin.com",
+  reddit: "https://www.reddit.com",
+  chatgpt: "https://chatgpt.com",
+
   // Browsers
   chrome: "chrome",
   "google chrome": "chrome",
@@ -13,11 +29,13 @@ const APP_ALIASES: Record<string, string> = {
   "microsoft edge": "msedge",
   firefox: "firefox",
   brave: "brave",
-  // Dev
+
+  // Dev Tools
   "vs code": "code",
   vscode: "code",
   cursor: "cursor",
   "visual studio code": "code",
+
   // Editors / Office
   notepad: "notepad",
   word: "winword",
@@ -26,7 +44,8 @@ const APP_ALIASES: Record<string, string> = {
   "microsoft excel": "excel",
   powerpoint: "powerpnt",
   "microsoft powerpoint": "powerpnt",
-  // System
+
+  // System Apps
   calculator: "calc",
   calc: "calc",
   terminal: "wt",
@@ -38,7 +57,8 @@ const APP_ALIASES: Record<string, string> = {
   settings: "ms-settings:",
   "file explorer": "explorer",
   explorer: "explorer",
-  // Media / creative
+
+  // Media / Creative Desktop Apps
   spotify: "spotify",
   obs: "obs64",
   "obs studio": "obs64",
@@ -49,9 +69,7 @@ const APP_ALIASES: Record<string, string> = {
   premiere: "Adobe Premiere Pro",
   photoshop: "Photoshop",
   capcut: "CapCut",
-  "youtube music": "YouTube Music",
-  // AI tools
-  chatgpt: "https://chatgpt.com",
+
   // Camera / device
   camera: "microsoft.windows.camera:",
 };
@@ -60,16 +78,27 @@ const APP_ALIASES: Record<string, string> = {
 function resolveAlias(rawApp: string): string | undefined {
   const key = rawApp.toLowerCase().trim();
   if (APP_ALIASES[key]) return APP_ALIASES[key];
-  // Partial match
-  for (const k of Object.keys(APP_ALIASES)) {
-    if (key.includes(k) || k.includes(key)) return APP_ALIASES[k];
+
+  const cleaned = key.replace(/^(open|launch|run|start|go to)\s+/i, "").trim();
+  if (APP_ALIASES[cleaned]) return APP_ALIASES[cleaned];
+
+  // Word boundary exact match
+  for (const [k, val] of Object.entries(APP_ALIASES)) {
+    const regex = new RegExp(`\\b${k}\\b`, "i");
+    if (regex.test(cleaned) || regex.test(key)) return val;
   }
+
+  // Fallback inclusion match
+  for (const [k, val] of Object.entries(APP_ALIASES)) {
+    if (cleaned.includes(k) || key.includes(k)) return val;
+  }
+
   return undefined;
 }
 
 /**
- * Launch a desktop application for real. Strategy:
- *  1. If alias maps to a URL -> open in default browser.
+ * Launch a desktop application or web app natively. Strategy:
+ *  1. If alias or input maps to a URL -> open in default browser.
  *  2. If alias maps to an app token -> Start-Process it.
  *  3. Otherwise resolve via Start Menu (App Execution Aliases + shortcuts) and
  *     the HKLM/HKCU "App Paths" registry; launch the first hit.
@@ -84,15 +113,16 @@ export async function launchApp(rawApp: string): Promise<{
   const app = rawApp.trim();
   const alias = resolveAlias(app);
 
-  // 1. URL alias -> default browser
-  if (alias && /^https?:\/\//i.test(alias)) {
-    await openInDefaultBrowser(alias);
+  // 1. URL alias or domain input -> open in system default browser
+  if ((alias && /^https?:\/\//i.test(alias)) || app.includes(".com") || app.includes(".org") || app.includes(".net")) {
+    const targetUrl = (alias && /^https?:\/\//i.test(alias)) ? alias : (app.startsWith("http") ? app : `https://${app}`);
+    await openInDefaultBrowser(targetUrl);
     return {
       launched: true,
       app,
       method: "browser",
-      message: `Opened ${app} in the default browser.`,
-      detail: alias,
+      message: `Opened ${app} (${targetUrl}) in your default browser.`,
+      detail: targetUrl,
     };
   }
 
@@ -108,7 +138,7 @@ export async function launchApp(rawApp: string): Promise<{
         detail: alias,
       };
     } catch (e: any) {
-      // fall through to resolution
+      // fall through to system resolution
     }
   }
 
@@ -134,11 +164,32 @@ export async function launchApp(rawApp: string): Promise<{
     };
   }
 
+  // Fallback: If app name is common like "youtube", "google", "gmail"
+  const webFallback: Record<string, string> = {
+    youtube: "https://www.youtube.com",
+    google: "https://www.google.com",
+    gmail: "https://mail.google.com",
+    amazon: "https://www.amazon.com",
+  };
+
+  const cleanLower = app.toLowerCase().trim();
+  if (webFallback[cleanLower]) {
+    const targetUrl = webFallback[cleanLower];
+    await openInDefaultBrowser(targetUrl);
+    return {
+      launched: true,
+      app,
+      method: "web_fallback",
+      message: `Opened ${app} in your default browser.`,
+      detail: targetUrl,
+    };
+  }
+
   return {
     launched: false,
     app,
     method: "not_found",
-    message: `I couldn't find an application named "${app}". Try the exact name.`,
+    message: `I couldn't find an application named "${app}". Try the exact name or URL.`,
   };
 }
 
@@ -148,7 +199,6 @@ export async function launchApp(rawApp: string): Promise<{
  */
 async function resolveFromSystem(app: string): Promise<string | null> {
   const name = app.replace(/'/g, "''");
-  // Look for a shortcut whose filename contains the app name; resolve its target.
   const script = `
 $ErrorActionPreference = 'SilentlyContinue'
 $name = '${name}'
@@ -187,12 +237,14 @@ if ($hit) { $hit } else { '' }
   return out || null;
 }
 
-import { launchSystemDefaultBrowser } from "./browserRouter";
-
 /** Open a URL in the user's real default system browser safely and instantly. */
 export async function openInDefaultBrowser(url: string): Promise<void> {
   if (!url) return;
-  const res = await launchSystemDefaultBrowser(url);
+  let target = url.trim();
+  if (!target.startsWith("http://") && !target.startsWith("https://") && !target.startsWith("file://")) {
+    target = "https://" + target;
+  }
+  const res = await launchSystemDefaultBrowser(target);
   if (!res.success) {
     console.warn("[openInDefaultBrowser] Launch result notice:", res.message);
   }
