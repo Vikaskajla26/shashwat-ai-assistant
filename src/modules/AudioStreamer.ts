@@ -40,7 +40,7 @@ export class AudioStreamer {
 
       // Target 16kHz sample rate for Gemini Live PCM input
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      this.audioContext = new AudioCtx({ sampleRate: 16000 });
+      this.audioContext = new AudioCtx({ sampleRate: 16000, latencyHint: 'interactive' });
 
       if (this.audioContext.state === 'suspended') {
         await this.audioContext.resume();
@@ -48,8 +48,8 @@ export class AudioStreamer {
 
       this.mediaStreamSource = this.audioContext.createMediaStreamSource(this.mediaStream);
       
-      // ScriptProcessor with 2048 buffer size gives ~128ms chunks at 16kHz
-      this.processorNode = this.audioContext.createScriptProcessor(2048, 1, 1);
+      // 256-sample buffer = 16ms chunks at 16kHz → ultra-low latency for Gemini Live
+      this.processorNode = this.audioContext.createScriptProcessor(256, 1, 1);
 
       this.processorNode.onaudioprocess = (e) => {
         if (!this.isRecording || this.isMuted) return;

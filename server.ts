@@ -23,11 +23,14 @@ import { getDB, closeDB } from "./server/db/database";
 import {
   getClientProviderMetas,
   loadAllProviderConfigs,
+  saveAllProviderConfigs,
   getActiveProvider,
   AIProviderId,
 } from "./server/providers/providerStorage";
 import { AIProviderManager } from "./server/providers/aiProviderManager";
 import { testAutomatedWorkflows } from "./server/tools/browser";
+
+const LIVE_MODEL = "gemini-3.1-flash-live-preview";
 
 async function startServer() {
   // Initialize database on startup
@@ -37,6 +40,18 @@ async function startServer() {
   } catch (err) {
     console.error('[Database] Failed to initialize database:', err);
   }
+
+  // ── Migrate stored Gemini model to Live-preview if still on old text-only default ──
+  try {
+    const configs = loadAllProviderConfigs();
+    const gemini = configs['gemini'];
+    if (gemini && gemini.selectedModel !== LIVE_MODEL) {
+      const oldModel = gemini.selectedModel;
+      configs['gemini'] = { ...gemini, selectedModel: LIVE_MODEL, status: 'unconfigured', lastError: undefined };
+      saveAllProviderConfigs(configs);
+      console.log(`[Provider] Migrated Gemini model: ${oldModel} → ${LIVE_MODEL}`);
+    }
+  } catch (_) {}
 
   const app = express();
   const PORT = 3000;

@@ -34,8 +34,14 @@ export interface ClientProviderMeta {
 export const DEFAULT_PROVIDERS: Record<AIProviderId, { name: string; defaultModel: string; availableModels: string[]; requiresKey: boolean }> = {
   gemini: {
     name: 'Google Gemini',
-    defaultModel: 'gemini-2.0-flash',
-    availableModels: ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash-exp'],
+    defaultModel: 'gemini-3.1-flash-live-preview',
+    availableModels: [
+      'gemini-3.1-flash-live-preview',
+      'gemini-2.5-flash-native-audio-latest',
+      'gemini-2.0-flash-exp',
+      'gemini-2.0-flash',
+      'gemini-1.5-flash',
+    ],
     requiresKey: true,
   },
   openai: {

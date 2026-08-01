@@ -42,13 +42,17 @@ export class AIProviderManager {
           if (!cleanKey) {
             return { success: false, message: 'Gemini API key is required.', timestamp };
           }
-          const ai = new GoogleGenAI({ apiKey: cleanKey });
-          // Test generation with lightweight prompt
-          await ai.models.generateContent({
-            model: model || 'gemini-2.0-flash',
-            contents: 'ping',
-          });
-          return { success: true, message: 'Gemini API key validated successfully!', timestamp };
+          // Validate via models.list() — works for ALL model types including Live-only models.
+          // generateContent() fails for gemini-3.1-flash-live-preview (Live API only).
+          const res = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(cleanKey)}&pageSize=1`,
+          );
+          if (res.ok) {
+            return { success: true, message: 'Gemini API key validated successfully!', timestamp };
+          }
+          const errData: any = await res.json().catch(() => ({}));
+          const errMsg: string = errData?.error?.message || `Gemini validation failed (${res.status})`;
+          return { success: false, message: errMsg, timestamp };
         }
 
         case 'openai': {

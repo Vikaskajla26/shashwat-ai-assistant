@@ -22,13 +22,30 @@ export class AudioPlayer {
   private initAudioContext(): AudioContext {
     if (!this.audioContext || this.audioContext.state === 'closed') {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      // Gemini Live model outputs 24kHz PCM audio
-      this.audioContext = new AudioCtx({ sampleRate: 24000 });
+      // Gemini Live model outputs 24kHz PCM audio; interactive hint minimizes output latency
+      this.audioContext = new AudioCtx({ sampleRate: 24000, latencyHint: 'interactive' });
     }
     if (this.audioContext.state === 'suspended') {
-      this.audioContext.resume();
+      // Browser blocks autoplay — resume on gesture or force with unlockAudio
+      this.audioContext.resume().catch(() => {});
     }
     return this.audioContext;
+  }
+
+  /** Call once after a user gesture (click/key) to unlock audio output. */
+  public unlockAudio(): void {
+    const ctx = this.initAudioContext();
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+    // Play a silent buffer to kick the audio graph alive in Safari/Chromium
+    try {
+      const buf = ctx.createBuffer(1, 1, 24000);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      src.start(0);
+    } catch (_) {}
   }
 
   public playChunk(base64Pcm: string): void {

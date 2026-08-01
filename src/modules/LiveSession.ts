@@ -121,6 +121,10 @@ export class LiveSession {
       this.ws.onopen = async () => {
         this.isConnecting = false;
 
+        // Pre-unlock audio output context (browser autoplay policy)
+        // This is inside the user-gesture call chain so it will succeed.
+        this.audioPlayer?.unlockAudio();
+
         // Start microphone streamer
         try {
           await this.audioStreamer?.start();
