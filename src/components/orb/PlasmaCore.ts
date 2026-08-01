@@ -29,29 +29,15 @@ export interface PlasmaCoreHandle {
 export function createPlasmaCore(subdivisions: number): PlasmaCoreHandle {
   const group = new THREE.Group();
 
-  // Outer membrane — high-subdivision icosahedron driven by the plasma shader.
-  const membraneGeo = new THREE.IcosahedronGeometry(26, subdivisions);
-  const membraneMat = new THREE.ShaderMaterial({
-    uniforms: {
-      uTime: { value: 0 },
-      uAudioBoost: { value: 0 },
-      uAmp: { value: 0.55 },
-      uBreath: { value: 1 },
-      uRippleStrength: { value: 0 },
-      uRippleTime: { value: 0 },
-      uRippleOrigin: { value: new THREE.Vector3(0, 0, 1) },
-      uMousePos: { value: new THREE.Vector2(0, 0) },
-      uVelocity: { value: new THREE.Vector2(0, 0) },
-      uMicroOscillation: { value: 0 },
-      uBaseColor: { value: new THREE.Color('#F59E0B') },
-      uAccentColor: { value: new THREE.Color('#F97316') },
-      uFresnelColor: { value: new THREE.Color('#FEF08A') },
-    },
-    vertexShader: PLASMA_VERTEX_SHADER,
-    fragmentShader: PLASMA_FRAGMENT_SHADER,
+  // Outer membrane — MeshPhysicalMaterial glass test
+  const membraneMat = new THREE.MeshPhysicalMaterial({
+    color: 0x7c3aed,
+    transmission: 0.9,
+    thickness: 2,
+    roughness: 0.1,
+    metalness: 0,
     transparent: true,
-    depthWrite: false,
-    depthTest: true,
+    opacity: 0.9,
   });
   const membrane = new THREE.Mesh(membraneGeo, membraneMat);
   group.add(membrane);
@@ -85,36 +71,36 @@ export function createPlasmaCore(subdivisions: number): PlasmaCoreHandle {
   const curFresnel = new THREE.Color('#FEF08A');
 
   const update: PlasmaCoreHandle['update'] = (t, _dt, audioBoost, theme, ripple, mousePos, physics, spectrum) => {
-    const u = membraneMat.uniforms;
-
     // Use FFT spectrum if available, otherwise fall back to audioBoost
     const bass = spectrum ? spectrum.bassNorm : audioBoost;
     const mid = spectrum ? spectrum.midNorm : audioBoost;
     const vol = spectrum ? spectrum.volumeNorm : audioBoost;
-
     const totalAudioBoost = Math.max(audioBoost, bass * 0.85);
 
-    u.uTime.value = t;
-    u.uAudioBoost.value = totalAudioBoost;
-    u.uAmp.value = theme.orbAmp;
-    u.uBreath.value = theme.orbBreath;
-    u.uRippleStrength.value = ripple.strength;
-    u.uRippleTime.value = ripple.time;
-    u.uRippleOrigin.value.copy(ripple.origin);
-    if (mousePos) {
-      u.uMousePos.value.set(mousePos.x, mousePos.y);
+    // Guard uniforms if using ShaderMaterial vs MeshPhysicalMaterial
+    if ('uniforms' in membraneMat && (membraneMat as any).uniforms) {
+      const u = (membraneMat as THREE.ShaderMaterial).uniforms;
+      u.uTime.value = t;
+      u.uAudioBoost.value = totalAudioBoost;
+      u.uAmp.value = theme.orbAmp;
+      u.uBreath.value = theme.orbBreath;
+      u.uRippleStrength.value = ripple.strength;
+      u.uRippleTime.value = ripple.time;
+      u.uRippleOrigin.value.copy(ripple.origin);
+      if (mousePos) {
+        u.uMousePos.value.set(mousePos.x, mousePos.y);
+      }
+      if (physics) {
+        u.uVelocity.value.set(physics.vx, physics.vy);
+        u.uMicroOscillation.value = physics.microOscillation;
+      }
+      curBase.lerp(new THREE.Color(theme.baseColor), 0.05);
+      curAccent.lerp(new THREE.Color(theme.accentColor), 0.05);
+      curFresnel.lerp(new THREE.Color(theme.fresnelColor), 0.05);
+      u.uBaseColor.value.copy(curBase);
+      u.uAccentColor.value.copy(curAccent);
+      u.uFresnelColor.value.copy(curFresnel);
     }
-    if (physics) {
-      u.uVelocity.value.set(physics.vx, physics.vy);
-      u.uMicroOscillation.value = physics.microOscillation;
-    }
-
-    curBase.lerp(new THREE.Color(theme.baseColor), 0.05);
-    curAccent.lerp(new THREE.Color(theme.accentColor), 0.05);
-    curFresnel.lerp(new THREE.Color(theme.fresnelColor), 0.05);
-    u.uBaseColor.value.copy(curBase);
-    u.uAccentColor.value.copy(curAccent);
-    u.uFresnelColor.value.copy(curFresnel);
 
     const speedMultiplier = 1.0 + mid * 0.8;
     membrane.rotation.y = t * theme.orbSpeed * speedMultiplier;
