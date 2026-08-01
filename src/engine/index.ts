@@ -7,6 +7,8 @@ export * from './rendering/ViewportEngine';
 // ── Animation Engine ──
 export * from './animation/GSAPOrchestrator';
 export * from './animation/SpringPhysicsRig';
+export * from './animation/UnifiedPhysicsEngine';
+export * from './animation/MotionPresets';
 
 // ── Shader Engine ──
 export * from './shaders/ShaderRegistry';
