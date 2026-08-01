@@ -1,21 +1,10 @@
 import * as THREE from 'three';
-import { MAHESHWAR_SUTRAS, createSanskritTextTexture } from './sutraTexture';
+import { MAHESHWAR_SUTRAS, SUTRA_COLOR_PALETTES, createSanskritTextTexture } from './sutraTexture';
 import type { StateTheme } from '../../theme/aiState';
-
-/**
- * SutraOrbiters — the 14 Maheshwar Sutras as holographic streams orbiting the
- * AI core.
- *
- * Upgraded from the previous static tilted ring into drifting wave paths: each
- * sutra rides a Lissajous-style orbit with its own radius, inclination and
- * phase, gently fades in/out (sin envelopes), and reacts to listening /
- * reasoning (opacity + speed step up). Low base opacity keeps them spiritual
- * and futuristic rather than distracting.
- */
 
 export interface SutraOrbitersHandle {
   group: THREE.Group;
-  update: (t: number, theme: StateTheme, reactivity: number) => void;
+  update: (t: number, theme: StateTheme, reactivity: number, isReasoning?: boolean) => void;
   dispose: () => void;
 }
 
@@ -30,23 +19,32 @@ interface SutraConfig {
   yAmp: number;
 }
 
+/**
+ * SutraOrbiters — Holographic Devanagari Maheshwar Sutras Streams.
+ * Renders 14 primal phoneme streams orbiting the orb on 3D wave trajectories.
+ * Features ultra-low opacity (0.12 - 0.28), spiritual technology aesthetic, and
+ * subtle voice/reasoning wave response.
+ */
 export function createSutraOrbiters(): SutraOrbitersHandle {
   const group = new THREE.Group();
-  group.rotation.x = 0.45; // tilt the whole field relative to the viewer
+  group.rotation.x = 0.40; // Master tilt relative to viewer
 
   const configs: SutraConfig[] = [];
 
   MAHESHWAR_SUTRAS.forEach((sutra, idx) => {
-    const texture = createSanskritTextTexture(sutra, '#F59E0B');
+    const paletteColor = SUTRA_COLOR_PALETTES[idx % SUTRA_COLOR_PALETTES.length];
+    const texture = createSanskritTextTexture(sutra, paletteColor);
+
     const material = new THREE.SpriteMaterial({
       map: texture,
       transparent: true,
-      opacity: 0.2,
+      opacity: 0.18, // Ethereal low opacity
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     });
+
     const sprite = new THREE.Sprite(material);
-    sprite.scale.set(22, 5.5, 1);
+    sprite.scale.set(28, 7.0, 1);
 
     const count = MAHESHWAR_SUTRAS.length;
     const baseAngle = (idx / count) * Math.PI * 2;
@@ -55,37 +53,42 @@ export function createSutraOrbiters(): SutraOrbitersHandle {
       sprite,
       material,
       texture,
-      radius: 40 + (idx % 3) * 4, // varied radii → layered streams
-      inclination: 0.3 + (idx % 4) * 0.18,
+      radius: 42 + (idx % 3) * 6, // 3 distinct orbital planes (42, 48, 54)
+      inclination: 0.25 + (idx % 4) * 0.16,
       phase: baseAngle,
-      speedJitter: 0.8 + (idx % 5) * 0.12,
-      yAmp: 5 + (idx % 4) * 2.5,
+      speedJitter: 0.85 + (idx % 5) * 0.10,
+      yAmp: 6 + (idx % 3) * 3.0,
     });
 
     group.add(sprite);
   });
 
-  const update: SutraOrbitersHandle['update'] = (t, theme, reactivity) => {
-    // reactivity ∈ [0..1] — bumps during listening/reasoning.
-    const speed = theme.sutraSpeed * (1 + reactivity * 1.4);
-    const baseOpacity = theme.sutraOpacity * (1 + reactivity * 0.6);
+  const update: SutraOrbitersHandle['update'] = (t, theme, reactivity, isReasoning) => {
+    // Reactivity: voice spectrum / listening increases drift speed (+25%)
+    const speed = theme.sutraSpeed * (1.0 + reactivity * 0.8);
+    const baseOpacity = theme.sutraOpacity * (1.0 + reactivity * 0.4);
+
+    // Reasoning wave pulse
+    const reasoningPulse = isReasoning ? Math.sin(t * 2.5) * 3.0 : 0;
+    const reasoningShimmer = isReasoning ? 0.08 : 0;
 
     configs.forEach((cfg, idx) => {
       const angle = cfg.phase + t * speed * cfg.speedJitter;
-      const r = cfg.radius;
-      // Lissajous-style drift: x/z orbit + sinusoidal y for an elegant wave path.
+      const r = cfg.radius + reasoningPulse;
+
+      // 3D Procedural Lissajous Wave Trajectory
       cfg.sprite.position.x = Math.cos(angle) * r;
       cfg.sprite.position.z = Math.sin(angle) * r;
       cfg.sprite.position.y =
-        Math.sin(angle * 2 + idx) * cfg.yAmp +
-        Math.sin(t * 0.4 + idx) * 3 * cfg.inclination;
+        Math.sin(angle * 2.2 + idx) * cfg.yAmp +
+        Math.sin(t * 0.35 + idx) * 3.5 * cfg.inclination;
 
-      // Gentle, non-uniform fade envelope so sutras breathe in and out.
-      const fade = Math.sin(t * 0.6 + idx * 0.9) * 0.35 + 0.65;
-      cfg.material.opacity = baseOpacity * fade;
+      // Non-uniform breathing fade envelope (0.12 - 0.28 range)
+      const fade = Math.sin(t * 0.5 + idx * 0.8) * 0.25 + 0.75;
+      cfg.material.opacity = Math.min(0.35, (baseOpacity + reasoningShimmer) * fade);
     });
 
-    group.rotation.y = t * speed * 0.25;
+    group.rotation.y = t * speed * 0.20;
   };
 
   const dispose = () => {

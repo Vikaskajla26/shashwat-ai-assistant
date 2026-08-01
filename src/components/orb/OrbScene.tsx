@@ -148,7 +148,7 @@ export function OrbScene({ stateRef, volumeRef, width = 540, height = 540 }: Orb
       );
       particles.update(t, Math.max(audioBoost, spectrum.trebleNorm), theme, state);
       halo.update(t, Math.max(audioBoost, spectrum.volumeNorm), theme);
-      sutras.update(t, theme, sutraReactivity);
+      sutras.update(t, theme, sutraReactivity, isThinking);
 
       // Drive bloom strength from the state theme (e.g. success flares).
       if (bloom.enabled) {
