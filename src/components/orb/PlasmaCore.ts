@@ -20,7 +20,8 @@ export interface PlasmaCoreHandle {
     theme: StateTheme,
     ripple: { strength: number; time: number; origin: THREE.Vector3 },
     mousePos?: { x: number; y: number },
-    physics?: { vx: number; vy: number; microOscillation: number }
+    physics?: { vx: number; vy: number; microOscillation: number },
+    spectrum?: { volumeNorm: number; bassNorm: number; midNorm: number; trebleNorm: number }
   ) => void;
   dispose: () => void;
 }
@@ -70,10 +71,18 @@ export function createPlasmaCore(subdivisions: number): PlasmaCoreHandle {
   const curAccent = new THREE.Color('#F97316');
   const curFresnel = new THREE.Color('#FEF08A');
 
-  const update: PlasmaCoreHandle['update'] = (t, _dt, audioBoost, theme, ripple, mousePos, physics) => {
+  const update: PlasmaCoreHandle['update'] = (t, _dt, audioBoost, theme, ripple, mousePos, physics, spectrum) => {
     const u = membraneMat.uniforms;
+
+    // Use FFT spectrum if available, otherwise fall back to audioBoost
+    const bass = spectrum ? spectrum.bassNorm : audioBoost;
+    const mid = spectrum ? spectrum.midNorm : audioBoost;
+    const vol = spectrum ? spectrum.volumeNorm : audioBoost;
+
+    const totalAudioBoost = Math.max(audioBoost, bass * 0.85);
+
     u.uTime.value = t;
-    u.uAudioBoost.value = audioBoost;
+    u.uAudioBoost.value = totalAudioBoost;
     u.uAmp.value = theme.orbAmp;
     u.uBreath.value = theme.orbBreath;
     u.uRippleStrength.value = ripple.strength;
@@ -94,14 +103,15 @@ export function createPlasmaCore(subdivisions: number): PlasmaCoreHandle {
     u.uAccentColor.value.copy(curAccent);
     u.uFresnelColor.value.copy(curFresnel);
 
-    membrane.rotation.y = t * theme.orbSpeed;
+    const speedMultiplier = 1.0 + mid * 0.8;
+    membrane.rotation.y = t * theme.orbSpeed * speedMultiplier;
     membrane.rotation.x = Math.sin(t * theme.orbSpeed * 0.7) * 0.15;
 
-    // Inner core gently counter-rotates and pulses with audio.
-    inner.rotation.y = -t * theme.orbSpeed * 0.5;
-    const innerPulse = 1 + audioBoost * 0.12 + Math.sin(t * theme.orbBreath * 1.6) * 0.02;
+    // Inner core counter-rotates and pulses with FFT bass + volume
+    inner.rotation.y = -t * theme.orbSpeed * 0.6 * speedMultiplier;
+    const innerPulse = 1 + totalAudioBoost * 0.15 + Math.sin(t * theme.orbBreath * 1.6) * 0.02;
     inner.scale.setScalar(innerPulse);
-    innerMat.opacity = 0.8 + audioBoost * 0.15;
+    innerMat.opacity = 0.8 + vol * 0.18;
   };
 
   const dispose = () => {

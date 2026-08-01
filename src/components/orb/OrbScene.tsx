@@ -11,6 +11,7 @@ import { createHaloField } from './HaloField';
 import { createSutraOrbiters } from './SutraOrbiters';
 import { createBloomPipeline, type BloomHandle } from './postprocessing';
 import { OrbInteraction } from './interaction';
+import { AudioContextEngine } from '../../engine/voice/AudioContextEngine';
 
 export interface OrbSceneProps {
   /** Live state, read via ref each frame (no scene rebuild on change). */
@@ -127,6 +128,9 @@ export function OrbScene({ stateRef, volumeRef, width = 540, height = 540 }: Orb
       // Reactivity for sutras: bump during listening/reasoning.
       const sutraReactivity = isListening ? 0.8 : isThinking ? 1.0 : 0.2;
 
+      // Web Audio API Voice Engine FFT Band Extraction
+      const spectrum = AudioContextEngine.getInstance().getSpectrum();
+
       plasma.update(
         t,
         dt,
@@ -134,10 +138,16 @@ export function OrbScene({ stateRef, volumeRef, width = 540, height = 540 }: Orb
         theme,
         ix.ripple,
         { x: ix.normX, y: ix.normY },
-        { vx: ix.vx, vy: ix.vy, microOscillation: ix.microOscillation }
+        { vx: ix.vx, vy: ix.vy, microOscillation: ix.microOscillation },
+        {
+          volumeNorm: spectrum.volumeNorm,
+          bassNorm: spectrum.bassNorm,
+          midNorm: spectrum.midNorm,
+          trebleNorm: spectrum.trebleNorm,
+        }
       );
-      particles.update(t, audioBoost, theme);
-      halo.update(t, audioBoost, theme);
+      particles.update(t, Math.max(audioBoost, spectrum.trebleNorm), theme);
+      halo.update(t, Math.max(audioBoost, spectrum.volumeNorm), theme);
       sutras.update(t, theme, sutraReactivity);
 
       // Drive bloom strength from the state theme (e.g. success flares).

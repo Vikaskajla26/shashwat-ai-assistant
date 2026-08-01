@@ -5,9 +5,10 @@ export function useAudioSpectrum(isActive: boolean): AudioSpectrumData {
   const [spectrum, setSpectrum] = useState<AudioSpectrumData>({
     frequencyData: new Uint8Array(64),
     volume: 0,
-    bassLevel: 0,
-    midLevel: 0,
-    trebleLevel: 0,
+    volumeNorm: 0,
+    bassNorm: 0,
+    midNorm: 0,
+    trebleNorm: 0,
   });
 
   useEffect(() => {
