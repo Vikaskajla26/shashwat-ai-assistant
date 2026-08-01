@@ -54,7 +54,7 @@ async function startServer() {
   } catch (_) {}
 
   const app = express();
-  const PORT = 3000;
+  const preferredPort = parseInt(process.env.PORT || "3000", 10);
   const HOST = "0.0.0.0";
 
   app.use(express.json({ limit: "50mb" }));
@@ -906,27 +906,108 @@ async function startServer() {
     }
   });
 
-  server.listen(PORT, () => {
-    console.log(`शाश्वत AI Assistant server running on http://localhost:${PORT} and http://127.0.0.1:${PORT}`);
+  // Helper to check if a healthy Shashwat AI Assistant server is ALREADY running on a given port
+  const isShashwatServerRunning = async (port: number): Promise<boolean> => {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 800);
+      const res = await fetch(`http://127.0.0.1:${port}/api/health`, { signal: controller.signal }).catch(() => null);
+      clearTimeout(timeoutId);
+      if (res && res.ok) {
+        const data: any = await res.json().catch(() => ({}));
+        return !!(data && (data.assistant === "शाश्वत AI Assistant" || data.status === "ok"));
+      }
+    } catch (_) {}
+    return false;
+  };
 
-    // Fire-and-forget startup self-test. Never blocks boot; results appear in
-    // GET /api/health/detailed and are logged to the console.
-    runHealthChecks()
-      .then((report) => {
-        const { passed, failed, warned, skipped, score } = report.summary;
-        const pct = Math.round(score * 100);
-        console.log(
-          `[SelfTest] ${passed} pass, ${failed} fail, ${warned} warn, ${skipped} skip — ${pct}% score`
-        );
-        // Log individual warnings/failures for quick diagnosis.
-        for (const c of report.checks) {
-          if (c.status === "warn" || c.status === "fail") {
-            console.log(`  [${c.status.toUpperCase()}] ${c.name}: ${c.detail}`);
+  // Helper to clear stale/orphaned processes on Windows if port is stuck
+  const killStaleProcessOnPort = (port: number) => {
+    if (process.platform !== "win32") return;
+    try {
+      const { execSync } = require("child_process");
+      const output = execSync(`netstat -ano | findstr :${port}`, { encoding: "utf8" }).catch(() => "");
+      if (output && output.includes("LISTENING")) {
+        const lines = output.split("\n");
+        for (const line of lines) {
+          if (line.includes("LISTENING")) {
+            const parts = line.trim().split(/\s+/);
+            const pid = parts[parts.length - 1];
+            if (pid && pid !== "0" && pid !== process.pid.toString()) {
+              console.log(`[Server] Clearing stale process on port ${port} (PID: ${pid})...`);
+              execSync(`taskkill /F /PID ${pid}`);
+            }
           }
         }
-      })
-      .catch((err) => console.warn("[SelfTest] health checks failed:", err));
-  });
+      }
+    } catch (err: any) {
+      console.warn(`[Server] Notice when clearing port ${port}:`, err?.message || err);
+    }
+  };
+
+  // Resilient binding function with EADDRINUSE prevention & port fallback
+  const bindServerWithFallback = async (targetPort: number): Promise<number> => {
+    // 1. Check if a healthy Shashwat server is ALREADY running on targetPort
+    const alreadyRunning = await isShashwatServerRunning(targetPort);
+    if (alreadyRunning) {
+      console.log(`[Server] Active Shashwat AI Assistant server detected on port ${targetPort}. Attaching to existing instance.`);
+      (global as any).SHASHWAT_SERVER_PORT = targetPort;
+      process.env.SHASHWAT_SERVER_PORT = targetPort.toString();
+      return targetPort;
+    }
+
+    // 2. Try clearing any non-responsive stale process on targetPort
+    killStaleProcessOnPort(targetPort);
+
+    // 3. Attempt binding with EADDRINUSE catch + port escalation fallback
+    return new Promise<number>((resolve) => {
+      let currentPort = targetPort;
+
+      const tryListen = (p: number) => {
+        const onError = (err: any) => {
+          server.removeListener("listening", onListening);
+          if (err.code === "EADDRINUSE") {
+            console.warn(`[Server] Port ${p} in use (${err.message}). Attempting next port ${p + 1}...`);
+            currentPort = p + 1;
+            setTimeout(() => tryListen(currentPort), 150);
+          } else {
+            console.error(`[Server] Critical server error on port ${p}:`, err);
+            resolve(p);
+          }
+        };
+
+        const onListening = () => {
+          server.removeListener("error", onError);
+          (global as any).SHASHWAT_SERVER_PORT = p;
+          process.env.SHASHWAT_SERVER_PORT = p.toString();
+          console.log(`शाश्वत AI Assistant server running on http://localhost:${p} and http://127.0.0.1:${p}`);
+
+          runHealthChecks()
+            .then((report) => {
+              const { passed, failed, warned, skipped, score } = report.summary;
+              const pct = Math.round(score * 100);
+              console.log(`[SelfTest] ${passed} pass, ${failed} fail, ${warned} warn, ${skipped} skip — ${pct}% score`);
+              for (const c of report.checks) {
+                if (c.status === "warn" || c.status === "fail") {
+                  console.log(`  [${c.status.toUpperCase()}] ${c.name}: ${c.detail}`);
+                }
+              }
+            })
+            .catch((err) => console.warn("[SelfTest] health checks failed:", err));
+
+          resolve(p);
+        };
+
+        server.once("error", onError);
+        server.once("listening", onListening);
+        server.listen(p);
+      };
+
+      tryListen(currentPort);
+    });
+  };
+
+  await bindServerWithFallback(preferredPort);
 
   // Graceful shutdown
   process.on('SIGINT', async () => {

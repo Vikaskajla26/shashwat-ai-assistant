@@ -11,11 +11,15 @@ try {
   console.warn('[Electron Main] electron-updater notice:', e.message);
 }
 
-let mainWindow = null;
-let tray = null;
-let serverStarted = false;
+process.on('uncaughtException', (err) => {
+  console.error('[Electron Main] Uncaught exception trapped:', err?.message || err);
+});
 
-const PORT = 3000;
+process.on('unhandledRejection', (reason) => {
+  console.error('[Electron Main] Unhandled rejection trapped:', reason);
+});
+
+const PORT = parseInt(process.env.PORT || '3000', 10);
 
 function startBackendServer() {
   if (serverStarted) return;
@@ -109,7 +113,8 @@ function createMainWindow() {
     });
   }
 
-  const appUrl = `http://localhost:${PORT}`;
+  const activePort = global.SHASHWAT_SERVER_PORT || process.env.SHASHWAT_SERVER_PORT || PORT;
+  const appUrl = `http://localhost:${activePort}`;
   let retries = 0;
 
   const loadApp = () => {
