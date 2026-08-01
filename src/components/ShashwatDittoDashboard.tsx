@@ -33,9 +33,12 @@ import {
 } from 'lucide-react';
 import { AssistantState } from '../types';
 import { getStateTheme } from '../theme/aiState';
+import { OrbScene } from './orb/OrbScene';
 
 interface ShashwatDittoDashboardProps {
   state: AssistantState;
+  stateRef: React.MutableRefObject<AssistantState>;
+  volumeRef: React.MutableRefObject<number>;
   inputVolume: number;
   outputVolume: number;
   isScreenSharing: boolean;
@@ -55,6 +58,8 @@ interface ShashwatDittoDashboardProps {
 
 export const ShashwatDittoDashboard: React.FC<ShashwatDittoDashboardProps> = ({
   state,
+  stateRef,
+  volumeRef,
   inputVolume,
   outputVolume,
   isScreenSharing,
@@ -266,11 +271,14 @@ export const ShashwatDittoDashboard: React.FC<ShashwatDittoDashboardProps> = ({
           </div>
         </div>
 
-        {/* ── CENTER SPACER (3D Living Orb renders behind this in 3D Canvas) ── */}
-        <div className="flex-1 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-xs tracking-[0.25em] font-mono text-purple-300/60 uppercase mb-48">
+        {/* ── CENTER HERO: 3D LIVING PLASMA ORB & MAHESHWAR SUTRAS RING ── */}
+        <div className="flex-1 flex flex-col items-center justify-center relative min-h-[460px] w-full pointer-events-none">
+          <span className="absolute top-4 text-[11px] tracking-[0.3em] font-mono text-purple-300/60 uppercase z-20">
             MAHESHWAR SUTRAS
           </span>
+          <div className="w-[580px] h-[580px] flex items-center justify-center relative">
+            <OrbScene stateRef={stateRef} volumeRef={volumeRef} width={580} height={580} />
+          </div>
         </div>
 
         {/* ── RIGHT DASHBOARD GLASS CARDS ── */}

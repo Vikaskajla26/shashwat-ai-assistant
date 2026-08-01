@@ -39,6 +39,19 @@ export default function App() {
   const [outputVolume, setOutputVolume] = useState<number>(0);
   const [isMuted, setIsMuted] = useState<boolean>(false);
 
+  const activeAudioVolume = state === 'speaking' ? outputVolume : inputVolume;
+
+  const stateRef = useRef<AssistantState>(state);
+  const volumeRef = useRef<number>(activeAudioVolume);
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  useEffect(() => {
+    volumeRef.current = activeAudioVolume;
+  }, [activeAudioVolume]);
+
   const [cards, setCards] = useState<VisualCardData[]>([]);
   const [toolEvents, setToolEvents] = useState<ToolExecutionEvent[]>([]);
   const [transcripts, setTranscripts] = useState<TranscriptMessage[]>([]);
@@ -282,7 +295,6 @@ export default function App() {
     }
   }, []);
 
-  const activeAudioVolume = state === 'speaking' ? outputVolume : inputVolume;
   const latestEvent = toolEvents.length > 0 ? toolEvents[toolEvents.length - 1] : null;
 
   return (
@@ -310,63 +322,17 @@ export default function App() {
       <div className="ambient-halo-2" />
       <div className="ambient-halo-3" />
 
-      {/* Minimal Top Bar */}
-      <AssistantHeader
-        state={state}
-        mood={mood}
-        speakerStatus={speakerStatus}
-        isScreenSharing={isScreenSharing}
-        onOpenLeftDrawer={() => setIsLeftDrawerOpen(true)}
-        onOpenRightDrawer={() => setIsRightDrawerOpen(true)}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-      />
-
       {/* Tool Action Banner */}
       <ToolActionBanner events={toolEvents} />
-
-      {/* Error Toast */}
-      {errorMessage && (
-        <div className="absolute top-20 z-50 p-3.5 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-200 text-xs flex items-center space-x-2 backdrop-blur-xl max-w-md shadow-2xl">
-          <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-          <span>{errorMessage}</span>
-          <button
-            onClick={() => setErrorMessage(null)}
-            className="ml-auto text-zinc-400 hover:text-white text-xs cursor-pointer"
-          >
-            ✕
-          </button>
-        </div>
-      )}
-
-      {/* Center Interactive Hologram Consciousness (70% viewport hero) */}
-      <main className="relative z-10 flex-1 flex flex-col items-center justify-center w-full max-w-3xl px-4 my-auto">
-        <AssistantOrb
-          state={state}
-          mood={mood}
-          volume={activeAudioVolume}
-          inputVolume={inputVolume}
-          outputVolume={outputVolume}
-          isMuted={isMuted}
-          onToggleConnection={handleToggleMic}
-          onToggleMute={() => setIsMuted((prev) => !prev)}
-        />
-
-        {/* Live Audio Spectrum */}
-        <div className="w-full max-w-sm mt-2">
-          <AudioVisualizer
-            volume={activeAudioVolume}
-            isActive={state !== 'disconnected'}
-            stateTheme={getStateTheme(state)}
-          />
-        </div>
-      </main>
 
       {/* Visual Floating Cards Overlay */}
       <VisualCardOverlay cards={cards} onDismissCard={handleDismissCard} />
 
-      {/* Ditto Reference UI Dashboard Overlay */}
+      {/* Ditto Reference UI Dashboard Overlay (3D Bioluminescent Orb + Full Interface) */}
       <ShashwatDittoDashboard
         state={state}
+        stateRef={stateRef}
+        volumeRef={volumeRef}
         inputVolume={inputVolume}
         outputVolume={outputVolume}
         isScreenSharing={isScreenSharing}
