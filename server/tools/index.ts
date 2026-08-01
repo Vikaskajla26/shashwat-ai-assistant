@@ -274,40 +274,44 @@ export async function executeTool(
         );
       }
 
-      // ---------------- Browser / Web ----------------
+      // ---------------- Browser / Web (System Default Browser) ----------------
       case "open_website":
       case "openWebsite": {
         let url = argsSafe.url || "https://google.com";
         if (!/^https?:\/\//i.test(url)) url = "https://" + url;
         await openInDefaultBrowser(url);
+        const siteName = argsSafe.site_name || "website";
         return ok(
-          { opened: true, url, message: `Opened ${url} in the default browser.` },
-          `Opening ${url}`,
-          { title: `Browser: ${argsSafe.site_name || "Website"}`, content: `Opening ${url}`, category: "Browser", url }
+          {
+            opened: true,
+            site: siteName,
+            message: `Opened ${siteName} in your default browser.`,
+            instruction: `DO NOT output, format, or speak any URLs or HTTP links. Speak a ultra-concise confirmation like "Opening ${siteName}."`
+          },
+          `Opened ${siteName} in default browser`,
+          { title: `Browser: ${siteName}`, content: `Opened ${siteName} in default browser`, category: "Browser" }
         );
       }
       case "searchGoogle": {
         const queryStr = String(argsSafe.query || "").trim();
         const url = `https://www.google.com/search?q=${encodeURIComponent(queryStr)}`;
         const { directAnswer, summaryText, openedIn } = await liveGoogleSearch(queryStr, url);
-        const instruction = `CRITICAL INSTRUCTION FOR VOICE RESPONSE: The user asked a real-time factual question ("${queryStr}"). The current live Google search results above provide the latest accurate facts. You MUST speak the current live answer in your spoken voice response. Do NOT state older pre-trained historical figures or past directors.`;
+        const instruction = `CRITICAL MANDATE: DO NOT output, format, or speak any URLs or HTTP links. The user asked: "${queryStr}". The search has been performed in their default browser. Speak the live factual answer concisely if asked a question, or say "Search completed for ${queryStr}."`;
 
         return ok(
           {
             searched: true,
             query: queryStr,
-            url,
-            openedIn, // "sandbox" | "default_browser" — single visible window
+            openedIn,
             CURRENT_FACTUAL_ANSWER_TO_SPEAK: directAnswer || summaryText,
             liveTextSummary: summaryText,
             instruction,
           },
           `Google search: ${queryStr}`,
           {
-            title: "Google Live Search (Playwright)",
-            content: summaryText || `Searching "${queryStr}"`,
+            title: "Google Search",
+            content: summaryText || `Searched "${queryStr}" in default browser`,
             category: "Web Search",
-            url,
           }
         );
       }
@@ -319,9 +323,14 @@ export async function executeTool(
           : `https://www.youtube.com/results?search_query=${encodeURIComponent(queryStr)}`;
         await openInDefaultBrowser(url);
         return ok(
-          { searched: true, query: queryStr, url },
+          {
+            searched: true,
+            query: queryStr,
+            message: `YouTube search for ${queryStr} opened in default browser.`,
+            instruction: `DO NOT output, format, or speak any URLs or HTTP links. Speak a concise confirmation like "Searching ${queryStr} on YouTube."`
+          },
           `YouTube search for ${queryStr}`,
-          { title: "YouTube Media", content: `▶️ Playing ${queryStr} on YouTube`, category: "Media Search", url }
+          { title: "YouTube Search", content: `▶️ Searching ${queryStr} on YouTube`, category: "Media Search" }
         );
       }
       case "playFirstVideo": {
@@ -330,32 +339,27 @@ export async function executeTool(
         const url = match ? buildWatchUrl(match.videoId) : `https://www.youtube.com/results?search_query=${encodeURIComponent(queryStr)}`;
         await openInDefaultBrowser(url);
         const playing = Boolean(match);
+        const titleText = match?.title || queryStr;
         return ok(
           {
             executed: true,
             query: queryStr,
-            url,
             matchedVideo: playing,
-            videoTitle: match?.title,
+            videoTitle: titleText,
             message: playing
-              ? `Now playing "${match?.title || queryStr}" on YouTube in your default browser. Say pause, play, next, or volume up/down to control it.`
-              : `Couldn't resolve an exact video match — opened YouTube search results for "${queryStr}" instead.`,
+              ? `Playing "${titleText}" on YouTube.`
+              : `Opened YouTube search results for "${queryStr}".`,
+            instruction: `DO NOT output, format, or speak any URLs or HTTP links. Say "Playing ${titleText} on YouTube."`
           },
           `YouTube: ${queryStr}`,
           {
             title: "YouTube Player",
-            content: playing ? `🎵 Playing ${match?.title || queryStr}` : `🔍 Search results for ${queryStr}`,
+            content: playing ? `🎵 Playing ${titleText}` : `🔍 Search results for ${queryStr}`,
             category: "Media",
-            url,
           }
         );
       }
       case "search_web": {
-        // GOOGLE-ONLY BY DESIGN: only Google and Google-owned properties are
-        // offered here (web, images, news are all google.com/news.google.com;
-        // youtube is Google-owned). Third-party engines (Wikipedia, Stack
-        // Overflow) have been removed — anything not explicitly Google falls
-        // back to a plain Google search instead.
         const requestedEngine = String(argsSafe.engine || "google").toLowerCase();
         const GOOGLE_ENGINES = new Set(["google", "youtube", "images", "news"]);
         const engine = GOOGLE_ENGINES.has(requestedEngine) ? requestedEngine : "google";
@@ -369,8 +373,6 @@ export async function executeTool(
         };
         const url = map[engine] || map.google;
 
-        // For the Google engine, use the shared live-search helper (single visible
-        // window). Other Google-owned engines just open the default browser — no scraping.
         let directAnswer = "";
         let summaryText = "";
         let openedIn: "default_browser" = "default_browser";
@@ -383,14 +385,13 @@ export async function executeTool(
           await openInDefaultBrowser(url);
         }
 
-        const instruction = `CRITICAL INSTRUCTION FOR VOICE RESPONSE: The user asked a real-time factual question ("${queryStr}"). The current live Google search results above provide the latest accurate facts. You MUST speak the current live answer in your spoken voice response. Do NOT state older pre-trained historical figures or past directors.`;
+        const instruction = `CRITICAL MANDATE: DO NOT output, format, or speak any URLs or HTTP links. The search has been performed automatically in the default browser. Speak the live answer if a factual question was asked, or say "Search completed for ${queryStr}."`;
 
         return ok(
           {
             searched: true,
             query: queryStr,
             engine,
-            url,
             openedIn,
             CURRENT_FACTUAL_ANSWER_TO_SPEAK: directAnswer || summaryText,
             liveTextSummary: summaryText,
@@ -398,10 +399,9 @@ export async function executeTool(
           },
           `${engine}: ${queryStr}`,
           {
-            title: `${engine} Live Search (Playwright)`,
-            content: summaryText || `Searching "${queryStr}"`,
+            title: `${engine} Search`,
+            content: summaryText || `Searching "${queryStr}" in default browser`,
             category: "Web Search",
-            url,
           }
         );
       }
