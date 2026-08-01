@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { AssistantState, AssistantMood } from '../types';
+import { getStateTheme } from '../theme/aiState';
 
 interface AssistantOrbProps {
   state: AssistantState;
@@ -287,20 +288,57 @@ export const AssistantOrb: React.FC<AssistantOrbProps> = ({
     };
   }, [state, volume]);
 
+  const theme = getStateTheme(state);
+
   return (
     <div className="relative flex items-center justify-center w-[520px] h-[520px] max-w-full select-none">
-      {/* Background Typography: Noto Serif Devanagari 30vw opacity 0.05 "शाश्वत" (Positioned slightly above) */}
-      <h1 className="bg-typography">
-        शाश्वत
-      </h1>
+      {/* ── Ghost Sanskrit Background Typography ── */}
+      <h1 className="bg-typography">शाश्वत</h1>
 
-      {/* State-Driven Warm Eye-Soothing Blob Canvas */}
+      {/* ── Outer Atmospheric Halo Ring (state-reactive) ── */}
+      <div
+        className="absolute inset-0 rounded-full pointer-events-none"
+        style={{
+          background: `radial-gradient(circle, ${theme.baseColor}12 0%, ${theme.accentColor}08 40%, transparent 70%)`,
+          filter: 'blur(32px)',
+          transform: 'scale(1.35)',
+          transition: 'background 1.2s ease',
+        }}
+      />
+
+      {/* ── State Accent Ring (subtle border pulse) ── */}
+      <div
+        className="absolute inset-8 rounded-full pointer-events-none"
+        style={{
+          border: `1px solid ${theme.hudAccent}18`,
+          boxShadow: `0 0 60px ${theme.hudAccent}12, inset 0 0 40px ${theme.hudAccent}08`,
+          transition: 'border-color 1s ease, box-shadow 1s ease',
+          animation: state === 'listening' || state === 'speaking'
+            ? 'orb-ripple 2s ease-in-out infinite'
+            : 'none',
+        }}
+      />
+
+      {/* ── State-Driven Warm Eye-Soothing Blob Canvas ── */}
       <canvas
         ref={canvasRef}
         width={520}
         height={520}
         className="absolute inset-0 pointer-events-none z-10"
       />
+
+      {/* ── HUD State Label (ultra-minimal) ── */}
+      <div
+        className="absolute bottom-10 left-1/2 -translate-x-1/2 z-20 pointer-events-none"
+        style={{ opacity: state === 'disconnected' ? 0 : 0.6, transition: 'opacity 0.8s ease' }}
+      >
+        <span
+          className="text-[9px] font-mono tracking-[0.3em] uppercase"
+          style={{ color: theme.hudAccent, fontFamily: 'var(--font-code)' }}
+        >
+          {theme.hudLabel}
+        </span>
+      </div>
     </div>
   );
 };

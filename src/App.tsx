@@ -16,6 +16,7 @@ import { SanskritChantStudio } from './components/SanskritChantStudio';
 import { SelfLearningDashboard } from './components/SelfLearningDashboard';
 import { LeftDrawer, RightDrawer } from './components/CinematicPanels';
 import { BottomDock } from './components/BottomDock';
+import { CinematicLivingEnvironment } from './components/CinematicLivingEnvironment';
 import {
   AssistantState,
   AssistantMood,
@@ -300,7 +301,10 @@ export default function App() {
       }}
       className="relative w-screen h-screen bg-[#05070d] text-white flex flex-col items-center justify-between overflow-hidden font-sans select-none"
     >
-      {/* Volumetric Atmospheric Space Haze */}
+      {/* Cinematic Living Environment — state-reactive volumetric background */}
+      <CinematicLivingEnvironment state={state} />
+
+      {/* Volumetric Atmospheric Space Halos */}
       <div className="ambient-halo-1" />
       <div className="ambient-halo-2" />
       <div className="ambient-halo-3" />

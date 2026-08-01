@@ -1,6 +1,7 @@
 import React from 'react';
-import { Settings, Brain, Sliders, ShieldCheck } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 import { AssistantState, AssistantMood } from '../types';
+import { getStateTheme } from '../theme/aiState';
 
 interface AssistantHeaderProps {
   state: AssistantState;
@@ -19,92 +20,117 @@ export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
   onOpenRightDrawer,
   onOpenSettings,
 }) => {
-  const statusText =
-    state === 'disconnected'
-      ? 'STANDBY'
-      : state === 'connecting'
-      ? 'CONNECTING'
-      : state === 'listening'
-      ? 'LISTENING'
-      : 'ACTIVE';
-
-  const statusDotColor =
-    state === 'disconnected'
-      ? 'bg-zinc-600'
-      : state === 'listening'
-      ? 'bg-[#00E0FF] shadow-[0_0_10px_#00E0FF] animate-pulse'
-      : state === 'speaking'
-      ? 'bg-[#FF4D8D] shadow-[0_0_10px_#FF4D8D] animate-ping'
-      : 'bg-[#A78BFA] animate-pulse';
-
+  const theme = getStateTheme(state);
   const [healthScore, setHealthScore] = React.useState<number | null>(null);
 
   React.useEffect(() => {
     fetch('/api/health')
       .then((r) => r.json())
       .then((d) => {
-        if (typeof d.score === 'number') {
-          setHealthScore(Math.round(d.score * 100));
-        }
+        if (typeof d.score === 'number') setHealthScore(Math.round(d.score * 100));
       })
       .catch(() => {});
   }, []);
 
   return (
-    <header className="w-full z-30 px-6 py-5 sm:px-10 flex items-center justify-between bg-transparent pointer-events-auto border-b border-white/5 backdrop-blur-md">
-      {/* Brand & Left Drawer Trigger */}
-      <div className="flex items-center space-x-4">
-        <button
-          onClick={onOpenLeftDrawer}
-          className="p-2 rounded-xl bg-white/5 border border-white/10 hover:border-[#00E0FF] text-zinc-300 hover:text-[#00E0FF] transition-all cursor-pointer"
-          title="Open Workspace & History Drawer"
-        >
-          <Brain className="w-4 h-4" />
-        </button>
-
-        <div className="flex items-baseline gap-2">
-          <span className="font-serif text-2xl font-bold text-[#00E0FF] tracking-wider text-shadow-[0_0_20px_rgba(0,224,255,0.6)]">
+    <header
+      className="w-full z-30 px-6 py-4 sm:px-10 flex items-center justify-between pointer-events-auto"
+      style={{
+        background: 'linear-gradient(180deg, rgba(3,7,18,0.85) 0%, rgba(3,7,18,0) 100%)',
+        backdropFilter: 'blur(0px)',
+      }}
+    >
+      {/* ── Brand Mark ── */}
+      <button
+        onClick={onOpenLeftDrawer}
+        className="flex items-center gap-3 group cursor-pointer"
+        style={{ background: 'none', border: 'none', padding: 0 }}
+      >
+        {/* Sanskrit Wordmark */}
+        <div className="flex flex-col items-start">
+          <span
+            className="text-xl font-bold tracking-wide leading-none transition-all duration-300"
+            style={{
+              fontFamily: 'var(--font-deva)',
+              color: theme.hudAccent,
+              textShadow: `0 0 24px ${theme.hudAccent}60`,
+              transition: 'color 0.8s ease, text-shadow 0.8s ease',
+            }}
+          >
             शाश्वत
           </span>
-          <span className="font-mono text-[10px] text-zinc-500 uppercase tracking-[0.25em] hidden sm:inline">
-            DIGITAL CONSCIOUSNESS
+          <span
+            className="text-[9px] tracking-[0.28em] uppercase mt-0.5 opacity-40"
+            style={{ fontFamily: 'var(--font-code)' }}
+          >
+            AI OPERATING SYSTEM
           </span>
         </div>
+      </button>
+
+      {/* ── Center: HUD State Pill ── */}
+      <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-3">
+        {/* State Pill */}
+        <div
+          className="hud-pill transition-all duration-700"
+          style={{
+            color: theme.hudAccent,
+            borderColor: `${theme.hudAccent}40`,
+            background: `${theme.hudAccent}0A`,
+          }}
+        >
+          <span
+            className="dot"
+            style={{
+              background: theme.hudAccent,
+              boxShadow: `0 0 8px ${theme.hudAccent}`,
+            }}
+          />
+          {theme.hudLabel}
+        </div>
+
+        {/* System Health */}
+        <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-emerald-500/20 bg-emerald-500/08 text-emerald-400 text-[9px] font-mono font-bold tracking-widest uppercase">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          {healthScore !== null ? `${healthScore}%` : '—'}
+        </div>
       </div>
 
-      {/* Center Status Dot & Live System Health Pill */}
-      <div className="flex items-center space-x-3 sm:space-x-4 font-mono text-[11px] tracking-[0.2em] uppercase">
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
-          <span className={`w-2 h-2 rounded-full ${statusDotColor}`} />
-          <span className="text-[#ffffff] font-bold">{statusText}</span>
-        </div>
-
-        {/* Live System Health Pill */}
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-bold shadow-[0_0_12px_rgba(16,185,129,0.2)]">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span>HEALTHY • {healthScore !== null ? `${healthScore}%` : '98%'}</span>
-        </div>
-
+      {/* ── Right: Speaker & Settings ── */}
+      <div className="flex items-center gap-2">
+        {/* Speaker Verified Badge */}
         {speakerStatus?.status === 'VERIFIED_OWNER' && (
-          <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>OWNER: {speakerStatus.ownerName.toUpperCase()}</span>
+          <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/08 border border-emerald-500/25 text-emerald-400 text-[9px] font-mono font-bold tracking-widest uppercase">
+            <ShieldCheck className="w-3 h-3" />
+            {speakerStatus.ownerName.toUpperCase()}
           </div>
         )}
-      </div>
 
-      {/* Right Drawer Trigger & Settings */}
-      <div className="flex items-center gap-3">
-        <div className="hidden lg:block px-3.5 py-1.5 rounded-full border border-white/10 bg-white/5 text-[10px] font-mono font-bold tracking-[0.1em] text-zinc-400 uppercase">
-          gemini-3.1-flash-live-preview
-        </div>
-
+        {/* Settings Button */}
         <button
-          onClick={onOpenRightDrawer}
-          className="p-2 rounded-xl bg-white/5 border border-white/10 hover:border-[#A78BFA] text-zinc-300 hover:text-[#A78BFA] transition-all cursor-pointer"
-          title="Open Themes & Settings Drawer"
+          onClick={onOpenSettings}
+          className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer"
+          style={{
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            color: 'rgba(255,255,255,0.4)',
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.08)';
+            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.18)';
+            (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.9)';
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.04)';
+            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.08)';
+            (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.4)';
+          }}
+          title="Settings"
         >
-          <Sliders className="w-4 h-4" />
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
         </button>
       </div>
     </header>
