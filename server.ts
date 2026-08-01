@@ -222,10 +222,11 @@ async function startServer() {
     try {
       const state = loadAppState();
       const active = getActiveProvider();
-      const hasConfiguredProvider = active && active.status !== "unconfigured";
+      const hasKey = active && (active.apiKey || process.env.GEMINI_API_KEY || active.id === "local" || active.status === "valid");
+      const initialized = state.isInitialized && Boolean(hasKey);
       res.json({
         success: true,
-        isInitialized: state.isInitialized && Boolean(hasConfiguredProvider),
+        isInitialized: initialized,
         userProfile: state.userProfile,
         activeProvider: active ? { id: active.id, name: active.name, model: active.selectedModel } : null,
         browserRoutingMode: state.browserRoutingMode,

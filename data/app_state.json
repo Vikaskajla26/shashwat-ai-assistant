@@ -1,0 +1,23 @@
+{
+  "isInitialized": true,
+  "userProfile": {
+    "name": "Vikas",
+    "createdAt": "2026-08-01T15:28:34.567Z",
+    "lastActiveAt": "2026-08-01T15:29:01.226Z"
+  },
+  "activeProviderId": "gemini",
+  "selectedModel": "gemini-3.1-flash-live-preview",
+  "browserRoutingMode": "system_default",
+  "theme": "witty",
+  "wakeWord": "शाश्वत",
+  "voiceSettings": {
+    "pitch": 1,
+    "rate": 1,
+    "voice": "Puck"
+  },
+  "windowState": {
+    "width": 1280,
+    "height": 800
+  },
+  "updatedAt": "2026-08-01T15:29:01.226Z"
+}
