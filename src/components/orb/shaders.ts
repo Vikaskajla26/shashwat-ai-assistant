@@ -1,21 +1,8 @@
 /**
- * GLSL shader library for the Living Orb.
- *
- * Upgraded from the original monolithic orb shader with:
- *  - a second, lower-frequency simplex-noise octave for layered deformation,
- *  - fractional Brownian motion (fBm) so the surface flows organically and
- *    never visibly loops ("procedural motion"),
- *  - an enhanced fresnel rim term for volumetric glow,
- *  - an energy-circulation swirl in the fragment shader (inner convection),
- *  - a click-ripple uniform so interactions radiate a displacement wave.
- *
- * The simplex-noise implementation is the canonical Ashima/Stefan Gustavson
- * snoise (kept verbatim from the previous working orb for stability).
+ * Living Orb GPU Shader Engine — GLSL 3D Simplex, 4-Octave FBM, 3D Curl Noise,
+ * Glass Subsurface Scattering, Optical Caustics, and Fresnel Rim Glow.
  */
 
-/* --------------------------- shared GLSL chunks -------------------------- */
-
-/** Canonical 3D simplex noise (GLSL). */
 export const SIMPLEX_NOISE_GLSL = /* glsl */ `
 vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
@@ -65,76 +52,101 @@ float snoise(vec3 v) {
   return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
 }
 
-/** Fractional Brownian motion built from snoise for organic, non-looping flow. */
+// Fractional Brownian Motion (4 octaves)
 float fbm(vec3 p) {
   float v = 0.0;
   float a = 0.5;
+  vec3 shift = vec3(100.0);
   for (int i = 0; i < 4; i++) {
     v += a * snoise(p);
-    p *= 2.0;
+    p = p * 2.02 + shift;
     a *= 0.5;
   }
   return v;
 }
-`;
 
-/* ----------------------------- plasma vertex ----------------------------- */
+// 3D Curl Noise for fluid-like non-divergent surface flow
+vec3 snoiseVec3(vec3 x) {
+  float s  = snoise(vec3(x));
+  float s1 = snoise(vec3(x.y - 19.1, x.z + 33.4, x.x + 47.2));
+  float s2 = snoise(vec3(x.z + 74.2, x.x - 124.5, x.y + 99.4));
+  return vec3(s, s1, s2);
+}
+
+vec3 curlNoise(vec3 p) {
+  const float e = 0.1;
+  vec3 dx = vec3(e, 0.0, 0.0);
+  vec3 dy = vec3(0.0, e, 0.0);
+  vec3 dz = vec3(0.0, 0.0, e);
+
+  vec3 p0 = snoiseVec3(p);
+  vec3 p1 = snoiseVec3(p + dx);
+  vec3 p2 = snoiseVec3(p + dy);
+  vec3 p3 = snoiseVec3(p + dz);
+
+  float x = (p2.z - p0.z) - (p3.y - p0.y);
+  float y = (p3.x - p0.x) - (p1.z - p0.z);
+  float z = (p1.y - p0.y) - (p2.x - p0.x);
+
+  return normalize(vec3(x, y, z) / (2.0 * e));
+}
+`;
 
 export const PLASMA_VERTEX_SHADER = /* glsl */ `
 uniform float uTime;
-uniform float uAudioBoost;     // 0..1 voice/state reactivity
-uniform float uAmp;            // deformation amplitude multiplier (from StateTheme)
-uniform float uBreath;         // breathing rate (from StateTheme)
-uniform float uRippleStrength; // click-ripple intensity
-uniform float uRippleTime;     // seconds since last ripple
-uniform vec3  uRippleOrigin;   // ripple origin on the unit sphere
+uniform float uAudioBoost;
+uniform float uAmp;
+uniform float uBreath;
+uniform float uRippleStrength;
+uniform float uRippleTime;
+uniform vec3  uRippleOrigin;
+uniform vec2  uMousePos;
 
 varying vec3 vNormal;
 varying vec3 vPosition;
+varying vec2 vUv;
 varying float vDisplacement;
 varying float vEnergy;
 
 ${SIMPLEX_NOISE_GLSL}
 
 void main() {
+  vUv = uv;
   vNormal = normalize(normalMatrix * normal);
   vPosition = position;
 
   float t = uTime;
 
-  // Layered fluid deformation: two noise octaves at different frequencies +
-  // an fBm term, so the surface never repeats (procedural motion).
-  float freqA = 0.08;
-  float freqB = 0.21;
-  float nA = snoise(position * freqA + vec3(t * 0.9));
-  float nB = snoise(position * freqB + vec3(-t * 0.6, t * 0.4, t * 0.3)) * 0.45;
-  float nC = fbm(position * 0.05 + vec3(t * 0.15)) * 0.5;
+  // 1. Organic Curl Noise + FBM fluid flow
+  vec3 curl = curlNoise(position * 0.08 + vec3(t * 0.2, t * 0.15, t * 0.1));
+  float noiseA = snoise(position * 0.06 + curl * 0.5 + vec3(t * 0.6));
+  float noiseB = fbm(position * 0.04 + vec3(-t * 0.25, t * 0.3, t * 0.15)) * 0.5;
 
-  float amp = 3.4 + uAudioBoost * 8.5;
-  amp *= uAmp;
+  float amp = (3.5 + uAudioBoost * 9.0) * uAmp;
 
-  // Slow breathing oscillation modulating the whole body.
-  float breath = sin(t * uBreath * 1.6) * 0.6 + sin(t * uBreath * 0.7 + 1.3) * 0.3;
+  // 2. Continuous Organic Breathing Cycle
+  float breath = sin(t * uBreath * 1.5) * 0.7 + sin(t * uBreath * 0.6 + 1.2) * 0.3;
 
-  float displacement = (nA + nB + nC) * amp + breath;
+  // 3. Interactive Mouse Displacement
+  vec3 normPos = normalize(position);
+  float mouseDist = distance(vUv, uMousePos * 0.5 + 0.5);
+  float mouseInfluence = exp(-mouseDist * 3.5) * 2.5;
 
-  // Click ripple: a wave radiating from the interaction point on the sphere.
-  float distFromOrigin = acos(clamp(dot(normalize(position), normalize(uRippleOrigin)), -1.0, 1.0));
-  float rippleWave = sin(distFromOrigin * 12.0 - uRippleTime * 8.0) *
-                     exp(-uRippleTime * 1.6) * exp(-distFromOrigin * 0.6);
+  float displacement = (noiseA + noiseB + mouseInfluence * 0.1) * amp + breath;
+
+  // 4. Click Wavefront Propagation
+  float distFromOrigin = acos(clamp(dot(normPos, normalize(uRippleOrigin)), -1.0, 1.0));
+  float rippleWave = sin(distFromOrigin * 14.0 - uRippleTime * 9.0) *
+                     exp(-uRippleTime * 1.8) * exp(-distFromOrigin * 0.5);
   displacement += rippleWave * uRippleStrength;
 
   vDisplacement = displacement;
-
-  // Energy field drives fragment convection coloring.
-  vEnergy = nC + nB * 0.5;
+  vEnergy = noiseB + noiseA * 0.5;
 
   vec3 newPos = position + normal * displacement;
   gl_Position = projectionMatrix * modelViewMatrix * vec4(newPos, 1.0);
 }
 `;
-
-/* ---------------------------- plasma fragment ---------------------------- */
 
 export const PLASMA_FRAGMENT_SHADER = /* glsl */ `
 uniform vec3  uBaseColor;
@@ -145,33 +157,53 @@ uniform float uTime;
 
 varying vec3 vNormal;
 varying vec3 vPosition;
+varying vec2 vUv;
 varying float vDisplacement;
 varying float vEnergy;
 
+// Optical Caustics pattern simulation
+float caustics(vec2 uv, float time) {
+  vec2 p = mod(uv * 6.28318530718, 6.28318530718) - 250.0;
+  vec2 i = vec2(p);
+  float c = 1.0;
+  float inten = 0.005;
+
+  for (int n = 0; n < 3; n++) {
+    float t = time * (1.0 - (3.5 / float(n + 1)));
+    i = p + vec2(cos(t - i.x) + sin(t + i.y), sin(t - i.y) + cos(t + i.x));
+    c += 1.0 / length(vec2(p.x / (sin(i.x + t) / inten), p.y / (cos(i.y + t) / inten)));
+  }
+
+  c /= 3.0;
+  c = 1.17 - pow(c, 1.4);
+  return clamp(pow(abs(c), 6.0), 0.0, 1.0);
+}
+
 void main() {
   vec3 viewVector = normalize(cameraPosition - vPosition);
-  float fresnel = pow(1.0 - abs(dot(vNormal, viewVector)), 2.8);
+  float fresnel = pow(1.0 - abs(dot(vNormal, viewVector)), 2.6);
 
-  // Base body color mixed by displacement + an energy-circulation swirl so the
-  // interior appears to convect (inner energy circulation).
-  float swirl = sin(vEnergy * 3.0 + uTime * 0.8) * 0.5 + 0.5;
+  // Convection Swirl inside the plasma core
+  float swirl = sin(vEnergy * 4.0 + uTime * 0.9) * 0.5 + 0.5;
   vec3 baseCol = mix(uBaseColor, uAccentColor, clamp(vDisplacement * 0.06 + 0.5, 0.0, 1.0));
-  baseCol = mix(baseCol, uAccentColor, swirl * 0.25);
+  baseCol = mix(baseCol, uAccentColor, swirl * 0.3);
 
-  // Fresnel rim glow + perceptual brightening toward the silhouette.
-  vec3 finalCol = mix(baseCol, uFresnelColor, fresnel * 0.85);
-  finalCol += uFresnelColor * uAudioBoost * fresnel * 0.4;
+  // Subsurface Caustics Highlight
+  float causticsPattern = caustics(vUv * 2.0, uTime * 0.4);
+  baseCol += uFresnelColor * causticsPattern * 0.25;
 
-  float alpha = 0.86 + fresnel * 0.14 + uAudioBoost * 0.08;
+  // Fresnel Rim Light + Volumetric Bloom envelope
+  vec3 finalCol = mix(baseCol, uFresnelColor, fresnel * 0.88);
+  finalCol += uFresnelColor * uAudioBoost * fresnel * 0.5;
+
+  float alpha = 0.88 + fresnel * 0.12 + uAudioBoost * 0.08;
   gl_FragColor = vec4(finalCol, clamp(alpha, 0.0, 1.0));
 }
 `;
 
-/* ----------------------- energy particle (points) ------------------------ */
-
 export const ENERGY_PARTICLE_VERTEX = /* glsl */ `
-attribute float aSeed;       // per-particle random 0..1
-attribute float aRadius;     // orbital radius offset
+attribute float aSeed;
+attribute float aRadius;
 uniform float uTime;
 uniform float uAudioBoost;
 uniform float uSpeed;
@@ -180,12 +212,9 @@ varying float vAlpha;
 
 void main() {
   float t = uTime * uSpeed + aSeed * 6.2831;
-
-  // Spiral path: particles flow inward then outward around the core
-  // (inner energy circulation), each phase-offset by its seed.
   float r = aRadius + sin(t * 0.7 + aSeed * 9.0) * (3.0 + uAudioBoost * 6.0);
-  float inc = aSeed * 3.1415;            // inclination
-  float yaw = t * (0.6 + aSeed * 0.4);   // angular speed varies per particle
+  float inc = aSeed * 3.1415;
+  float yaw = t * (0.6 + aSeed * 0.4);
 
   vec3 pos;
   pos.x = cos(yaw) * cos(inc) * r;
@@ -193,11 +222,10 @@ void main() {
   pos.y = sin(inc) * r + sin(t * 1.3 + aSeed * 4.0) * 2.0;
 
   vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
-  float size = (2.0 + aSeed * 2.5) * (1.0 + uAudioBoost * 1.6) * uIntensity;
+  float size = (2.2 + aSeed * 2.5) * (1.0 + uAudioBoost * 1.6) * uIntensity;
   gl_PointSize = size * (240.0 / -mvPosition.z);
   gl_Position = projectionMatrix * mvPosition;
 
-  // Twinkle / fade envelope.
   vAlpha = (0.35 + 0.65 * abs(sin(t * 1.7 + aSeed * 8.0))) * uIntensity;
 }
 `;
@@ -213,9 +241,6 @@ void main() {
 }
 `;
 
-/* --------------------------- halo / glow sprite -------------------------- */
-
-/** Vertex/fragment for soft additive halos around the orb (faked refraction). */
 export const HALO_VERTEX = /* glsl */ `
 varying vec3 vNormal;
 varying vec3 vPosition;

@@ -19,6 +19,7 @@ export interface PlasmaCoreHandle {
     audioBoost: number,
     theme: StateTheme,
     ripple: { strength: number; time: number; origin: THREE.Vector3 },
+    mousePos?: { x: number; y: number }
   ) => void;
   dispose: () => void;
 }
@@ -37,6 +38,7 @@ export function createPlasmaCore(subdivisions: number): PlasmaCoreHandle {
       uRippleStrength: { value: 0 },
       uRippleTime: { value: 0 },
       uRippleOrigin: { value: new THREE.Vector3(0, 0, 1) },
+      uMousePos: { value: new THREE.Vector2(0, 0) },
       uBaseColor: { value: new THREE.Color('#F59E0B') },
       uAccentColor: { value: new THREE.Color('#F97316') },
       uFresnelColor: { value: new THREE.Color('#FEF08A') },
@@ -65,7 +67,7 @@ export function createPlasmaCore(subdivisions: number): PlasmaCoreHandle {
   const curAccent = new THREE.Color('#F97316');
   const curFresnel = new THREE.Color('#FEF08A');
 
-  const update: PlasmaCoreHandle['update'] = (t, _dt, audioBoost, theme, ripple) => {
+  const update: PlasmaCoreHandle['update'] = (t, _dt, audioBoost, theme, ripple, mousePos) => {
     const u = membraneMat.uniforms;
     u.uTime.value = t;
     u.uAudioBoost.value = audioBoost;
@@ -74,6 +76,9 @@ export function createPlasmaCore(subdivisions: number): PlasmaCoreHandle {
     u.uRippleStrength.value = ripple.strength;
     u.uRippleTime.value = ripple.time;
     u.uRippleOrigin.value.copy(ripple.origin);
+    if (mousePos) {
+      u.uMousePos.value.set(mousePos.x, mousePos.y);
+    }
 
     curBase.lerp(new THREE.Color(theme.baseColor), 0.05);
     curAccent.lerp(new THREE.Color(theme.accentColor), 0.05);

@@ -127,7 +127,7 @@ export function OrbScene({ stateRef, volumeRef, width = 540, height = 540 }: Orb
       // Reactivity for sutras: bump during listening/reasoning.
       const sutraReactivity = isListening ? 0.8 : isThinking ? 1.0 : 0.2;
 
-      plasma.update(t, dt, audioBoost, theme, ix.ripple);
+      plasma.update(t, dt, audioBoost, theme, ix.ripple, { x: ix.normX, y: ix.normY });
       particles.update(t, audioBoost, theme);
       halo.update(t, audioBoost, theme);
       sutras.update(t, theme, sutraReactivity);
