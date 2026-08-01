@@ -55,7 +55,18 @@ export function OrbScene({ stateRef, volumeRef, width = 540, height = 540 }: Orb
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.1;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    container.appendChild(renderer.domElement);
+
+    // Explicit HTML Canvas Element Transparency & Reset
+    const canvas = renderer.domElement;
+    canvas.style.display = 'block';
+    canvas.style.background = 'transparent';
+    canvas.style.backgroundColor = 'transparent';
+    canvas.style.border = 'none';
+    canvas.style.outline = 'none';
+    canvas.style.boxShadow = 'none';
+    canvas.style.pointerEvents = 'none';
+
+    container.appendChild(canvas);
 
     // 2. Scene + camera
     const scene = new THREE.Scene();
