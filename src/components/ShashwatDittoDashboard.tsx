@@ -41,465 +41,495 @@ interface ShashwatDittoDashboardProps {
   state: AssistantState;
   stateRef: React.MutableRefObject<AssistantState>;
   volumeRef: React.MutableRefObject<number>;
-  inputVolume: number;
-  outputVolume: number;
-  isScreenSharing: boolean;
-  isSandboxOpen: boolean;
-  isDocWorkspaceOpen: boolean;
+  isListening: boolean;
+  transcript: string;
   onToggleMic: () => void;
-  onToggleScreenShare: () => void;
-  onToggleSandbox: () => void;
-  onToggleDocWorkspace: () => void;
-  onOpenSanskritStudio: () => void;
-  onOpenSelfLearning: () => void;
-  onOpenLeftDrawer: () => void;
-  onOpenRightDrawer: () => void;
+  onAwake: () => void;
   onOpenSettings: () => void;
-  onSendTypedText: (text: string) => void;
-  onAwake?: () => void;
+  onOpenMemory: () => void;
+  onOpenLeftDrawer?: () => void;
+  onOpenRightDrawer?: () => void;
 }
+
+const MAHESHWAR_SUTRAS_TEXT = [
+  "अ इ उ ण्", "ऋ ऌ क्", "ए ओ ङ्", "ऐ औ च्", "ह य व र ट्", "ल ण्",
+  "ञ म ङ ण न म्", "झ भ ञ्", "घ ढ ध ष्", "ज ब ग ड द श्",
+  "ख फ छ ठ थ च ट त व्", "क प य्", "श ष स र्", "ह ल्"
+].join("   ।   ") + "   ।   ";
 
 export const ShashwatDittoDashboard: React.FC<ShashwatDittoDashboardProps> = ({
   state,
   stateRef,
   volumeRef,
-  inputVolume,
-  outputVolume,
-  isScreenSharing,
-  isSandboxOpen,
-  isDocWorkspaceOpen,
+  isListening,
+  transcript,
   onToggleMic,
-  onToggleScreenShare,
-  onToggleSandbox,
-  onToggleDocWorkspace,
-  onOpenSanskritStudio,
-  onOpenSelfLearning,
+  onAwake,
+  onOpenSettings,
+  onOpenMemory,
   onOpenLeftDrawer,
   onOpenRightDrawer,
-  onOpenSettings,
-  onSendTypedText,
-  onAwake,
 }) => {
-  const [typedText, setTypedText] = useState('');
-  const [activeTab, setActiveTab] = useState<'home' | 'memory' | 'learn' | 'system' | 'settings'>('home');
-  const [currentTime, setCurrentTime] = useState('10:30 PM');
-  const [focusMode, setFocusMode] = useState(true);
-  const [vitalityClosed, setVitalityClosed] = useState(false);
+  const [activeTab, setActiveTab] = useState<'Home' | 'Memory' | 'Learn' | 'System' | 'Settings'>('Home');
+  const [currentTime, setCurrentTime] = useState<string>('');
+  const [focusMode, setFocusMode] = useState<boolean>(true);
+  const [showVitality, setShowVitality] = useState<boolean>(true);
 
-  const theme = getStateTheme(state);
-  const isActive = state !== 'disconnected';
-  const isListening = state === 'listening';
+  // Sparkline canvas ref
+  const sparklineRef = useRef<HTMLCanvasElement | null>(null);
+  // Starfield canvas ref
+  const starCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // Live time updater
+  // Real-time Clock
   useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      setCurrentTime(
-        now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })
-      );
+    const updateClock = () => {
+      const d = new Date();
+      let h = d.getHours();
+      const m = d.getMinutes();
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      h = h % 12;
+      if (h === 0) h = 12;
+      setCurrentTime(`${h}:${String(m).padStart(2, '0')} ${ampm}`);
     };
-    updateTime();
-    const interval = setInterval(updateTime, 10000);
-    return () => clearInterval(interval);
+    updateClock();
+    const timer = setInterval(updateClock, 15000);
+    return () => clearInterval(timer);
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (typedText.trim()) {
-      onSendTypedText(typedText.trim());
-      setTypedText('');
-    }
-  };
+  // 2D Starfield Canvas Effect
+  useEffect(() => {
+    const canvas = starCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-  const activeVol = state === 'speaking' ? outputVolume : inputVolume;
+    let animId: number;
+    let stars: Array<{ x: number; y: number; r: number; p: number; s: number }> = [];
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      stars = [];
+      const count = Math.floor((window.innerWidth * window.innerHeight) / 6500);
+      for (let i = 0; i < count; i++) {
+        stars.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height * 0.75,
+          r: Math.random() * 1.3 + 0.2,
+          p: Math.random() * Math.PI * 2,
+          s: Math.random() * 0.02 + 0.008,
+        });
+      }
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    let t = 0;
+    const render = () => {
+      t += 0.016;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (const st of stars) {
+        const tw = 0.5 + 0.5 * Math.sin(t * st.s * 100 + st.p);
+        ctx.globalAlpha = 0.15 + tw * 0.55;
+        ctx.fillStyle = '#cfe0ff';
+        ctx.beginPath();
+        ctx.arc(st.x, st.y, st.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      animId = requestAnimationFrame(render);
+    };
+    render();
+
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener('resize', resize);
+    };
+  }, []);
+
+  // Real-time Sparkline Graph Canvas
+  useEffect(() => {
+    const canvas = sparklineRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animId: number;
+    const data: number[] = Array.from({ length: 40 }, () => 10 + Math.random() * 20);
+
+    const renderSparkline = () => {
+      data.push(Math.max(6, Math.min(34, data[data.length - 1] + (Math.random() - 0.5) * 6)));
+      data.shift();
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.beginPath();
+      data.forEach((v, i) => {
+        const x = (i / (data.length - 1)) * canvas.width;
+        const y = canvas.height - v;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = '#7be6b0';
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
+
+      const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      grad.addColorStop(0, 'rgba(123, 230, 176, 0.25)');
+      grad.addColorStop(1, 'rgba(123, 230, 176, 0)');
+      ctx.lineTo(canvas.width, canvas.height);
+      ctx.lineTo(0, canvas.height);
+      ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      animId = requestAnimationFrame(renderSparkline);
+    };
+
+    renderSparkline();
+    return () => cancelAnimationFrame(animId);
+  }, [showVitality]);
+
+  const stateTheme = getStateTheme(state);
 
   return (
-    <div className="fixed inset-0 z-20 pointer-events-none flex flex-col justify-between p-4 sm:p-6 overflow-hidden select-none font-sans text-white">
-      {/* ── TOP HEADER BAR ── */}
-      <header className="w-full flex items-center justify-between pointer-events-auto z-30">
-        {/* Left: Brand Mark */}
-        <div className="flex items-center gap-3">
-          <div className="flex flex-col">
-            <span
-              className="text-2xl font-bold tracking-wide leading-none text-white drop-shadow-[0_0_18px_rgba(168,85,247,0.6)]"
-              style={{ fontFamily: '"Noto Serif Devanagari", serif' }}
-            >
-              शाश्वत
-            </span>
-            <span className="text-[10px] tracking-[0.32em] text-white/50 font-mono mt-0.5 uppercase">
-              SHASHWAT <span className="text-purple-400 font-semibold ml-1">AI OS</span>
-            </span>
-          </div>
+    <div className="relative w-screen h-screen overflow-hidden bg-[#03040a] font-sans text-white select-none">
+      {/* ── BACKGROUND LAYERS ── */}
+      <div
+        className="absolute inset-0 pointer-events-none transition-all duration-1000"
+        style={{
+          background: `
+            radial-gradient(ellipse 70% 50% at 50% 8%, rgba(90,70,160,0.20), transparent 60%),
+            radial-gradient(ellipse 90% 60% at 50% 100%, rgba(30,20,60,0.55), transparent 65%),
+            radial-gradient(ellipse 120% 90% at 50% 45%, rgba(10,14,30,0.9), #03040a 80%)
+          `,
+        }}
+      />
+
+      {/* 2D Starfield Canvas */}
+      <canvas ref={starCanvasRef} className="absolute inset-0 pointer-events-none z-0" />
+
+      {/* Dynamic State Orb Ambient Glow */}
+      <div
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[60vw] max-w-[760px] max-h-[760px] pointer-events-none transition-all duration-1000 blur-[40px] opacity-25"
+        style={{
+          background: `radial-gradient(circle, ${stateTheme.coreColor} 0%, transparent 62%)`,
+        }}
+      />
+
+      {/* 3D WebGL Canvas Layer */}
+      <div className="absolute inset-0 z-0">
+        <OrbScene stateRef={stateRef} volumeRef={volumeRef} width={window.innerWidth} height={window.innerHeight} />
+      </div>
+
+      {/* ── MAHESHWAR SUTRAS SVG ROTATING RINGS ── */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10 mix-blend-screen opacity-65">
+        {/* Outer Ring — 840px, 90s Spin */}
+        <div className="w-[840px] h-[840px] animate-[spin_90s_linear_infinite]">
+          <svg viewBox="0 0 880 880" className="w-full h-full">
+            <defs>
+              <path id="ring-outer-path" d="M 40,440 a 400,400 0 1,1 800,0 a 400,400 0 1,1 -800,0" />
+            </defs>
+            <circle cx="440" cy="440" r="400" fill="none" stroke="rgba(140,170,255,0.12)" strokeWidth="1" />
+            <text className="font-sans text-[15px] tracking-[2px] fill-[#6fd8ff] opacity-55 font-normal">
+              <textPath href="#ring-outer-path">{MAHESHWAR_SUTRAS_TEXT + MAHESHWAR_SUTRAS_TEXT}</textPath>
+            </text>
+          </svg>
+        </div>
+      </div>
+
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10 mix-blend-screen opacity-45">
+        {/* Inner Ring — 600px, 60s Reverse Spin */}
+        <div className="w-[600px] h-[600px] animate-[spin_60s_linear_infinite_reverse]">
+          <svg viewBox="0 0 640 640" className="w-full h-full">
+            <defs>
+              <path id="ring-inner-path" d="M 40,320 a 280,280 0 1,1 560,0 a 280,280 0 1,1 -560,0" />
+            </defs>
+            <circle cx="320" cy="320" r="280" fill="none" stroke="rgba(185,139,255,0.12)" strokeWidth="1" />
+            <text className="font-sans text-[13px] tracking-[2px] fill-[#b98bff] opacity-55 font-normal">
+              <textPath href="#ring-inner-path">{MAHESHWAR_SUTRAS_TEXT + MAHESHWAR_SUTRAS_TEXT + MAHESHWAR_SUTRAS_TEXT}</textPath>
+            </text>
+          </svg>
+        </div>
+      </div>
+
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[270px] text-[#6c7599] text-[12px] tracking-[4px] uppercase opacity-60 pointer-events-none z-10">
+        Maheshwar Sutras
+      </div>
+
+      {/* ── WATER REFLECTION HORIZON & LOTUS GLOW ── */}
+      <div className="absolute left-0 right-0 bottom-0 h-[32%] pointer-events-none z-0 bg-gradient-to-b from-transparent via-[#060812]/55 to-[#030410]/92">
+        <div className="absolute inset-0 opacity-50 mix-blend-screen bg-[repeating-linear-gradient(100deg,rgba(120,150,255,0.03)_0px,rgba(120,150,255,0.03)_2px,transparent_2px,transparent_26px)]" />
+      </div>
+
+      <div className="absolute right-[6.5%] bottom-[6%] w-[220px] h-[220px] rounded-full pointer-events-none blur-[6px] animate-[lotusPulse_6s_ease-in-out_infinite] bg-[radial-gradient(circle,rgba(232,176,106,0.35),rgba(232,176,106,0.05)_55%,transparent_70%)]" />
+
+      {/* ── TOP BAR ── */}
+      <header className="absolute top-0 left-0 right-0 h-[88px] flex items-center justify-between px-10 z-20">
+        {/* Brand Mark */}
+        <div className="flex flex-col leading-tight">
+          <div className="text-[26px] font-medium tracking-[1px] text-white">शाश्वत</div>
+          <div className="text-[11px] tracking-[3px] text-[#6c7599] mt-0.5">SHASHWAT · AI OS</div>
         </div>
 
-        {/* Center: Audio Waveform & Status */}
-        <div className="flex flex-col items-center gap-1.5">
-          <span className="text-xs font-medium tracking-wide text-white/70">
-            {isListening ? 'Listening…' : state === 'speaking' ? 'Speaking…' : state === 'reasoning' ? 'Reasoning…' : 'Shashwat AI'}
-          </span>
-          {/* Animated Waveform */}
-          <div className="flex items-center gap-1 h-3 px-3">
-            {[0.4, 0.7, 1.0, 0.6, 0.85, 0.5, 0.9, 0.3, 0.75, 0.4].map((h, i) => (
-              <motion.div
-                key={i}
-                animate={{
-                  height: isActive ? `${Math.max(3, h * (12 + activeVol * 0.2))}px` : '3px',
-                  opacity: isActive ? 0.9 : 0.3,
-                }}
-                transition={{ duration: 0.15, repeat: Infinity, repeatType: 'reverse', delay: i * 0.04 }}
-                className="w-0.5 rounded-full bg-gradient-to-t from-purple-500 to-cyan-400"
+        {/* Status Center */}
+        <div className="flex flex-col items-center gap-2">
+          <div className="text-[13px] text-[#a9b3d6] tracking-[1px]">
+            {stateTheme.label}…
+          </div>
+
+          {/* Waveform Animation */}
+          <div className="flex items-end gap-0.5 h-[16px] opacity-85">
+            {[0, 0.1, 0.2, 0.3, 0.15, 0.05, 0.25, 0.35].map((delay, idx) => (
+              <span
+                key={idx}
+                className="w-[3px] rounded-[2px] bg-[#6fd8ff] animate-[wave_1.1s_ease-in-out_infinite]"
+                style={{ animationDelay: `${delay}s` }}
               />
             ))}
           </div>
         </div>
 
-        {/* Right: Status Icons & User Profile */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2.5 text-white/60 text-xs font-mono">
-            <Wifi className="w-3.5 h-3.5 text-white/80" />
-            <span>{currentTime}</span>
-            <Bluetooth className="w-3.5 h-3.5 text-white/80" />
-            <div className="flex items-center gap-1">
-              <span className="text-[11px]">100%</span>
-              <Battery className="w-4 h-4 text-emerald-400" />
-            </div>
+        {/* Top Right Controls */}
+        <div className="flex items-center gap-4 text-[#a9b3d6] text-[13px]">
+          <span className="flex items-center gap-1.5">{currentTime}</span>
+          <span className="flex items-center gap-1.5">100%</span>
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#5a6a9a] to-[#2c3457] border border-[rgba(140,170,255,0.28)] flex items-center justify-center text-xs font-semibold text-white shadow-lg">
+            V
           </div>
-
-          {/* User Profile Avatar */}
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            className="w-9 h-9 rounded-full overflow-hidden border border-white/20 shadow-[0_0_15px_rgba(168,85,247,0.3)] bg-gradient-to-br from-purple-600 to-indigo-900 flex items-center justify-center cursor-pointer"
-            onClick={onOpenRightDrawer}
-          >
-            <span className="text-xs font-bold text-white">V</span>
-          </motion.div>
         </div>
       </header>
 
-      {/* ── MAIN CONTENT GRID ── */}
-      <div className="w-full flex-1 flex items-center justify-between my-auto relative z-20 pointer-events-none">
-        {/* ── LEFT RAIL + LEFT PANELS CLUSTER ── */}
-        <div className="flex items-center gap-4 pointer-events-auto">
-          {/* Left Vertical Dock Rail */}
-          <div className="flex flex-col items-center gap-4 p-2 rounded-3xl bg-[#0d0e19]/60 border border-white/10 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-            {/* Top Glowing Orb Badge */}
+      {/* ── SIDEBAR NAVIGATION ── */}
+      <aside className="absolute top-[96px] left-[24px] bottom-[110px] w-[76px] flex flex-col items-center pt-2 gap-1.5 z-20">
+        {[
+          { name: 'Home', icon: Home },
+          { name: 'Memory', icon: Database, action: onOpenMemory },
+          { name: 'Learn', icon: GraduationCap },
+          { name: 'System', icon: Activity },
+          { name: 'Settings', icon: Settings, action: onOpenSettings },
+        ].map((item) => {
+          const IconComponent = item.icon;
+          const isActive = activeTab === item.name;
+          return (
             <button
-              onClick={onOpenLeftDrawer}
-              className="w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-600/30 to-indigo-900/40 border border-purple-500/40 flex items-center justify-center text-purple-300 shadow-[0_0_20px_rgba(168,85,247,0.4)]"
+              key={item.name}
+              onClick={() => {
+                setActiveTab(item.name as any);
+                if (item.action) item.action();
+              }}
+              className={`w-full py-3 flex flex-col items-center gap-1.5 rounded-[14px] cursor-pointer text-[10.5px] tracking-[0.5px] transition-all duration-250 ${
+                isActive
+                  ? 'text-white bg-gradient-to-b from-[rgba(111,216,255,0.14)] to-[rgba(111,216,255,0.02)] shadow-[0_0_0_1px_rgba(140,170,255,0.28),0_0_22px_rgba(111,216,255,0.15)]'
+                  : 'text-[#6c7599] hover:text-[#a9b3d6] hover:bg-white/03'
+              }`}
             >
-              <div className="w-4 h-4 rounded-full border-2 border-purple-300 flex items-center justify-center">
-                <div className="w-1.5 h-1.5 rounded-full bg-purple-300" />
-              </div>
+              <IconComponent className={`w-[20px] h-[20px] transition-all ${isActive ? 'opacity-100 drop-shadow-[0_0_6px_#6fd8ff]' : 'opacity-75'}`} />
+              <span>{item.name}</span>
             </button>
+          );
+        })}
+      </aside>
 
-            <div className="w-6 h-px bg-white/10" />
+      {/* ── LEFT STACK: GREETING & INSIGHT ── */}
+      <div className="absolute top-[104px] left-[118px] w-[262px] flex flex-col gap-4 z-20">
+        {/* User Greeting & Focus Goal Card */}
+        <div className="p-5 rounded-[18px] bg-[rgba(14,18,32,0.42)] border border-[rgba(255,255,255,0.09)] backdrop-blur-[18px] shadow-[0_8px_32px_rgba(0,0,0,0.35)] hover:border-[rgba(140,170,255,0.28)] transition-all">
+          <div className="text-[12px] text-[#6c7599] tracking-[1px] mb-0.5">Good Evening,</div>
+          <h2 className="text-[22px] font-semibold text-white mb-2.5">Vikas</h2>
+          <p className="text-[13.5px] leading-[1.55] text-[#a9b3d6]">
+            I am Shashwat.<br />How may I assist you today?
+          </p>
 
-            {/* Navigation Icons */}
-            <div className="flex flex-col gap-3">
-              {[
-                { id: 'home', icon: Home, label: 'Home' },
-                { id: 'memory', icon: Database, label: 'Memory' },
-                { id: 'learn', icon: GraduationCap, label: 'Learn' },
-                { id: 'system', icon: Activity, label: 'System' },
-                { id: 'settings', icon: Settings, label: 'Settings' },
-              ].map((item) => {
-                const Icon = item.icon;
-                const isSelected = activeTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      setActiveTab(item.id as any);
-                      if (item.id === 'memory') onOpenLeftDrawer();
-                      if (item.id === 'learn') onOpenSelfLearning();
-                      if (item.id === 'settings') onOpenSettings();
-                    }}
-                    className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${
-                      isSelected
-                        ? 'text-purple-300 bg-purple-500/15 border border-purple-500/30 shadow-[0_0_12px_rgba(168,85,247,0.2)]'
-                        : 'text-white/50 hover:text-white hover:bg-white/05'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span className="text-[9px] font-medium tracking-wider">{item.label}</span>
-                  </button>
-                );
-              })}
+          <div className="flex items-center gap-3 mt-4">
+            <div className="w-[38px] h-[38px] rounded-full flex-none bg-[conic-gradient(#6fd8ff_0turn,#6fd8ff_0.75turn,rgba(255,255,255,0.08)_0turn)] flex items-center justify-center relative">
+              <div className="w-[26px] h-[26px] rounded-full bg-[#070a16]" />
+            </div>
+            <div className="flex-1">
+              <div className="text-[11.5px] text-[#6c7599]">Current Focus</div>
+              <div className="text-[14px] text-white font-medium">Your Goals</div>
             </div>
           </div>
 
-          {/* Left Dashboard Glass Cards */}
-          <div className="w-72 flex flex-col gap-3">
-            {/* Greeting Box */}
-            <div className="p-4 rounded-3xl bg-[#0c0d16]/65 border border-white/10 backdrop-blur-2xl shadow-[0_20px_40px_rgba(0,0,0,0.5)]">
-              <div className="flex items-center gap-2 mb-1">
-                <h2 className="text-lg font-semibold text-white/90">Good Evening,</h2>
-                <div className="w-2 h-2 rounded-full bg-purple-400 animate-pulse shadow-[0_0_8px_#a855f7]" />
-              </div>
-              <h1 className="text-xl font-bold text-white mb-2">Vikas</h1>
-              <p className="text-xs text-white/60 leading-relaxed font-sans">
-                I am Shashwat. How may I assist you today?
-              </p>
+          <div className="flex items-center mt-2.5">
+            <div className="h-[4px] rounded-[3px] bg-white/08 flex-1 overflow-hidden">
+              <div className="h-full w-[75%] bg-gradient-to-r from-[#6fd8ff] to-[#b98bff] rounded-[3px]" />
             </div>
-
-            {/* Current Focus Widget */}
-            <div className="p-4 rounded-3xl bg-[#0c0d16]/65 border border-white/10 backdrop-blur-2xl shadow-[0_20px_40px_rgba(0,0,0,0.5)] flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
-                <Compass className="w-5 h-5 animate-spin-slow" />
-              </div>
-              <div className="flex-1">
-                <div className="text-[10px] uppercase font-mono tracking-wider text-white/40 mb-0.5">Current Focus</div>
-                <div className="text-xs font-medium text-white/90 mb-1.5">Your Goals</div>
-                <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
-                  <div className="h-full bg-gradient-to-r from-purple-500 to-indigo-400 rounded-full w-[75%]" />
-                </div>
-              </div>
-              <span className="text-xs font-mono font-semibold text-purple-300">75%</span>
-            </div>
-
-            {/* Today's Insight Box */}
-            <div className="p-4 rounded-3xl bg-[#0c0d16]/65 border border-white/10 backdrop-blur-2xl shadow-[0_20px_40px_rgba(0,0,0,0.5)]">
-              <div className="text-[10px] uppercase font-mono tracking-wider text-white/40 mb-2">Today's Insight</div>
-              <div
-                className="text-xs text-amber-200/90 leading-relaxed mb-2 font-medium"
-                style={{ fontFamily: '"Noto Serif Devanagari", serif' }}
-              >
-                उद्धरेदात्मनात्मानं नात्मानमवसादयेत् ।<br />
-                आत्मैव ह्यात्मनो बन्धुः
-              </div>
-              <p className="text-[11px] text-white/70 italic leading-snug mb-1">
-                Elevate yourself by yourself. You are your own best friend.
-              </p>
-              <div className="text-[10px] text-white/40 font-mono">— Bhagavad Gita</div>
-            </div>
+            <span className="text-[12px] text-[#a9b3d6] ml-2">75%</span>
           </div>
         </div>
 
-        {/* ── CENTER HERO: 3D LIVING PLASMA ORB & MAHESHWAR SUTRAS RING ── */}
-        <div className="flex-1 flex flex-col items-center justify-center relative min-h-[500px] w-full pointer-events-none">
-          <span className="absolute top-2 text-[11px] tracking-[0.3em] font-mono text-purple-300/60 uppercase z-20">
-            MAHESHWAR SUTRAS
-          </span>
-          <div className="w-[520px] h-[520px] flex items-center justify-center relative">
-            <OrbScene stateRef={stateRef} volumeRef={volumeRef} width={520} height={520} />
+        {/* Today's Bhagavad Gita Insight Card */}
+        <div className="p-5 rounded-[18px] bg-[rgba(14,18,32,0.42)] border border-[rgba(255,255,255,0.09)] backdrop-blur-[18px] shadow-[0_8px_32px_rgba(0,0,0,0.35)] hover:border-[rgba(140,170,255,0.28)] transition-all">
+          <div className="text-[12px] text-[#6c7599] tracking-[1px] mb-2">Today's Insight</div>
+          <div className="text-[15px] leading-[1.7] text-white mb-2.5 font-sans">
+            उद्धरेदात्मनात्मानं नात्मानमवसादयेत् ।<br />
+            आत्मैव ह्यात्मनो बन्धुरात्मैव रिपुरात्मनः ॥
           </div>
-
-          {/* Floating Apple Liquid Glass Awake Crystal Button (36px below orb) */}
-          <div className="pointer-events-auto mt-[-28px] z-30 flex items-center justify-center">
-            <AwakeCrystalButton state={state} onAwake={onAwake} />
+          <div className="text-[13px] text-[#a9b3d6] leading-[1.5]">
+            Elevate yourself by yourself.<br />You are your own best friend.
           </div>
-        </div>
-
-        {/* ── RIGHT DASHBOARD GLASS CARDS ── */}
-        <div className="w-72 flex flex-col gap-3 pointer-events-auto">
-          {/* Shashwat Status Card */}
-          <div className="p-4 rounded-3xl bg-[#0c0d16]/65 border border-white/10 backdrop-blur-2xl shadow-[0_20px_40px_rgba(0,0,0,0.5)] relative overflow-hidden">
-            <div className="text-[10px] uppercase font-mono tracking-wider text-white/40 mb-1">Shashwat Status</div>
-            <div className="text-xl font-bold text-white mb-1.5 flex items-center justify-between">
-              <span>{isListening ? 'Listening' : state === 'speaking' ? 'Speaking' : 'Idle'}</span>
-              <div className="w-8 h-8 rounded-full border border-purple-500/30 flex items-center justify-center text-purple-400">
-                <div className="w-2 h-2 rounded-full bg-purple-400 animate-ping" />
-              </div>
-            </div>
-            <p className="text-xs text-white/60 leading-relaxed">
-              I am fully present. Speak naturally.
-            </p>
-          </div>
-
-          {/* Active Modules Card */}
-          <div className="p-4 rounded-3xl bg-[#0c0d16]/65 border border-white/10 backdrop-blur-2xl shadow-[0_20px_40px_rgba(0,0,0,0.5)]">
-            <div className="text-[10px] uppercase font-mono tracking-wider text-white/40 mb-3">Active Modules</div>
-
-            <div className="flex flex-col gap-2.5">
-              {[
-                { name: 'Memory Recall', status: 'Active', statusColor: 'text-emerald-400', icon: Database },
-                { name: 'Knowledge Graph', status: 'Scanning', statusColor: 'text-sky-400', icon: Layers },
-                { name: 'Indian Knowledge System', status: 'Online', statusColor: 'text-purple-400', icon: Brain },
-                { name: 'Voice Intelligence', status: 'Listening', statusColor: 'text-amber-400', icon: Volume2 },
-              ].map((mod, idx) => {
-                const ModIcon = mod.icon;
-                return (
-                  <div key={idx} className="flex items-center justify-between p-2 rounded-2xl bg-white/03 border border-white/05 hover:bg-white/08 transition-colors">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-300">
-                        <ModIcon className="w-3.5 h-3.5" />
-                      </div>
-                      <span className="text-xs font-medium text-white/90">{mod.name}</span>
-                    </div>
-                    <span className={`text-[10px] font-mono font-medium ${mod.statusColor}`}>{mod.status}</span>
-                  </div>
-                );
-              })}
-            </div>
-
-            <button
-              onClick={onOpenLeftDrawer}
-              className="w-full mt-3 py-1.5 flex items-center justify-center gap-1 text-[11px] font-mono text-white/50 hover:text-purple-300 transition-colors"
-            >
-              <span>View All Modules</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
+          <div className="text-[11.5px] text-[#6c7599] mt-2.5 tracking-[0.5px]">
+            — Bhagavad Gita, 6.5
           </div>
         </div>
       </div>
 
-      {/* ── BOTTOM ROW: VITALITY WIDGET + FLOATING COMMAND DOCK + QUICK ACCESS WIDGET ── */}
-      <div className="w-full flex items-end justify-between pointer-events-auto z-30">
-        {/* Bottom Left: System Vitality Widget */}
-        {!vitalityClosed ? (
-          <div className="w-56 p-3.5 rounded-3xl bg-[#0c0d16]/70 border border-white/10 backdrop-blur-2xl shadow-[0_20px_40px_rgba(0,0,0,0.5)]">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] uppercase font-mono tracking-wider text-white/40">System Vitality</span>
-              <button onClick={() => setVitalityClosed(true)} className="text-white/40 hover:text-white text-xs">
-                <X className="w-3 h-3" />
-              </button>
+      {/* ── RIGHT STACK: SHASHWAT STATUS & ACTIVE MODULES ── */}
+      <div className="absolute top-[104px] right-[32px] w-[280px] flex flex-col gap-4 z-20">
+        {/* Status Card */}
+        <div className="p-5 rounded-[18px] bg-[rgba(14,18,32,0.42)] border border-[rgba(255,255,255,0.09)] backdrop-blur-[18px] shadow-[0_8px_32px_rgba(0,0,0,0.35)] hover:border-[rgba(140,170,255,0.28)] transition-all">
+          <div className="flex items-center justify-between mb-1.5">
+            <div>
+              <div className="text-[12px] text-[#6c7599] tracking-[1px]">Shashwat Status</div>
+              <div className="text-[20px] font-semibold text-[#6fd8ff] transition-colors duration-600">
+                {stateTheme.label}
+              </div>
             </div>
-            <div className="text-sm font-semibold text-emerald-400 mb-2">Optimal</div>
-
-            {/* Sparkline Graph */}
-            <div className="h-6 flex items-end gap-1 mb-2">
-              {[40, 65, 30, 80, 55, 90, 70, 45, 85, 60, 95, 75].map((val, idx) => (
-                <div
-                  key={idx}
-                  style={{ height: `${val}%` }}
-                  className="flex-1 rounded-t-sm bg-gradient-to-t from-emerald-600 to-cyan-400 opacity-80"
-                />
-              ))}
-            </div>
-
-            <div className="flex items-center justify-between text-xs pt-1 border-t border-white/08">
-              <span className="text-white/60 text-[11px]">Focus Mode</span>
-              <button
-                onClick={() => setFocusMode(!focusMode)}
-                className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
-                  focusMode ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40' : 'bg-white/10 text-white/50'
-                }`}
-              >
-                {focusMode ? 'On' : 'Off'}
-              </button>
-            </div>
+            <div
+              className="w-[44px] h-[44px] rounded-full flex-none shadow-[0_0_24px_#6fd8ff] relative"
+              style={{
+                background: `radial-gradient(circle at 35% 35%, #fff, ${stateTheme.coreColor} 45%, transparent 75%)`,
+              }}
+            />
           </div>
-        ) : (
-          <div className="w-56" />
-        )}
-
-        {/* Center: Floating Command Dock */}
-        <div className="flex flex-col items-center gap-2">
-          {/* Dock Bar */}
-          <div className="relative rounded-[32px] p-2.5 flex flex-col items-center bg-[#0c0d16]/75 border border-white/15 backdrop-blur-[40px] shadow-[0_30px_60px_rgba(0,0,0,0.7),0_0_35px_rgba(168,85,247,0.15)]">
-            {/* Top Prompt Hint */}
-            <span className="text-xs font-medium text-white/50 mb-2 font-sans">What shall we explore today?</span>
-
-            {/* Icon Actions */}
-            <div className="flex items-center gap-2">
-              {[
-                { label: 'Write', icon: PenTool, onClick: onToggleDocWorkspace },
-                { label: 'Read', icon: BookOpen, onClick: onToggleDocWorkspace },
-                { label: 'Code', icon: Code, onClick: onToggleSandbox },
-                { label: 'Research', icon: Search, onClick: onToggleSandbox },
-              ].map((item, idx) => {
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={idx}
-                    onClick={item.onClick}
-                    className="w-10 h-10 rounded-2xl flex flex-col items-center justify-center gap-0.5 text-white/70 hover:text-white hover:bg-white/10 transition-all border border-transparent hover:border-white/15"
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span className="text-[9px] font-medium">{item.label}</span>
-                  </button>
-                );
-              })}
-
-              {/* Central Glowing Voice Orb Button */}
-              <button
-                onClick={onToggleMic}
-                className="w-12 h-12 rounded-full flex items-center justify-center mx-1 relative bg-gradient-to-br from-purple-600 to-indigo-900 border border-purple-400/60 shadow-[0_0_25px_rgba(168,85,247,0.6)] hover:scale-105 transition-transform"
-                title={isListening ? "Mute Microphone" : "Unmute Microphone"}
-              >
-                <div className="w-7 h-7 rounded-full bg-purple-400/20 flex items-center justify-center">
-                  {isListening ? (
-                    <Mic className="w-4 h-4 text-white animate-pulse" />
-                  ) : (
-                    <MicOff className="w-4 h-4 text-white/80" />
-                  )}
-                </div>
-              </button>
-
-              {/* Dedicated Awake Button */}
-              <button
-                onClick={onAwake}
-                className={`w-10 h-10 rounded-2xl flex flex-col items-center justify-center gap-0.5 border transition-all cursor-pointer ${
-                  state === 'listening'
-                    ? 'bg-blue-600 border-blue-400 text-white shadow-[0_0_20px_rgba(59,130,246,0.8)] animate-pulse'
-                    : state === 'reasoning' || state === 'searching' || state === 'understanding'
-                    ? 'bg-purple-600 border-purple-400 text-white shadow-[0_0_20px_rgba(168,85,247,0.8)]'
-                    : state === 'speaking'
-                    ? 'bg-amber-600 border-amber-400 text-white shadow-[0_0_20px_rgba(245,158,11,0.8)] animate-pulse'
-                    : state === 'executing'
-                    ? 'bg-emerald-600 border-emerald-400 text-white shadow-[0_0_20px_rgba(16,185,129,0.8)]'
-                    : state === 'error'
-                    ? 'bg-rose-600 border-rose-400 text-white shadow-[0_0_20px_rgba(244,63,94,0.8)]'
-                    : 'bg-white/10 border-white/20 text-white/80 hover:bg-white/20'
-                }`}
-                title="Awake Session — Start Live Voice"
-              >
-                <Zap className="w-4 h-4 fill-current" />
-                <span className="text-[9px] font-bold uppercase">AWAKE</span>
-              </button>
-
-              {[
-                { label: 'Create', icon: Sparkles, onClick: onOpenSelfLearning },
-                { label: 'Analyze', icon: BarChart2, onClick: onToggleDocWorkspace },
-                { label: 'Calendar', icon: Calendar, onClick: onToggleSandbox },
-                { label: 'More', icon: MoreHorizontal, onClick: onOpenRightDrawer },
-              ].map((item, idx) => {
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={idx}
-                    onClick={item.onClick}
-                    className="w-10 h-10 rounded-2xl flex flex-col items-center justify-center gap-0.5 text-white/70 hover:text-white hover:bg-white/10 transition-all border border-transparent hover:border-white/15"
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span className="text-[9px] font-medium">{item.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Subtitle Caption Below Dock */}
-          <span className="text-[11px] font-mono text-purple-300/70 tracking-wider">
-            {state === 'reasoning' || state === 'understanding' || state === 'searching' ? 'Shashwat is thinking…' : 'Shashwat is listening…'}
-          </span>
+          <p className="text-[13.5px] leading-[1.55] text-[#a9b3d6] mt-2">
+            I am fully present.<br />Speak naturally.
+          </p>
         </div>
 
-        {/* Bottom Right: Quick Access Widget */}
-        <div className="w-56 p-3.5 rounded-3xl bg-[#0c0d16]/70 border border-white/10 backdrop-blur-2xl shadow-[0_20px_40px_rgba(0,0,0,0.5)] relative">
-          <div className="text-[10px] uppercase font-mono tracking-wider text-white/40 mb-2">Quick Access</div>
+        {/* Active Modules Stack */}
+        <div className="p-5 rounded-[18px] bg-[rgba(14,18,32,0.42)] border border-[rgba(255,255,255,0.09)] backdrop-blur-[18px] shadow-[0_8px_32px_rgba(0,0,0,0.35)] hover:border-[rgba(140,170,255,0.28)] transition-all">
+          <div className="text-[12px] text-[#6c7599] tracking-[1px] mb-3">Active Modules</div>
 
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col">
             {[
-              { name: 'Study Corner', onClick: onToggleDocWorkspace },
-              { name: 'Sanskrit Trainer', onClick: onOpenSanskritStudio },
-              { name: 'Screen Share', onClick: onToggleScreenShare },
-            ].map((item, idx) => (
-              <button
-                key={idx}
-                onClick={item.onClick}
-                className="flex items-center gap-2 text-xs text-white/80 hover:text-purple-300 transition-colors text-left"
-              >
-                <div className="w-1.5 h-1.5 rounded-full bg-purple-400" />
-                <span>{item.name}</span>
-              </button>
-            ))}
+              { name: 'Memory Recall', state: 'Active', icon: Database },
+              { name: 'Knowledge Graph', state: 'Scanning', icon: Layers },
+              { name: 'Indian Knowledge System', state: 'Online', icon: Brain },
+              { name: 'Voice Intelligence', state: 'Listening', icon: Volume2 },
+            ].map((mod, idx) => {
+              const ModIcon = mod.icon;
+              return (
+                <div key={idx} className="flex items-center gap-3 py-2.5 border-t border-white/05 first:border-t-0 first:pt-1">
+                  <div className="w-[34px] h-[34px] rounded-[10px] flex-none flex items-center justify-center bg-white/04 border border-[rgba(255,255,255,0.09)]">
+                    <ModIcon className="w-[16px] h-[16px] text-[#a9b3d6]" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-[13px] text-white font-medium">{mod.name}</div>
+                    <div className="text-[11px] text-[#6fd8ff]">{mod.state}</div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
-          {/* Glowing Lotus Flower Motif (Bottom Right) */}
-          <div className="absolute right-3 bottom-3 text-purple-400/40 pointer-events-none">
-            <span className="text-xl">🪷</span>
+          <div
+            onClick={onOpenRightDrawer}
+            className="flex items-center justify-between mt-3 text-[12.5px] text-[#a9b3d6] hover:text-white cursor-pointer transition-colors"
+          >
+            <span>View All Modules</span>
+            <span>›</span>
           </div>
+        </div>
+      </div>
+
+      {/* ── BOTTOM CORNER CARDS ── */}
+      {/* System Vitality */}
+      {showVitality && (
+        <div className="absolute bottom-[28px] left-[32px] w-[220px] p-4 rounded-[18px] bg-[rgba(14,18,32,0.42)] border border-[rgba(255,255,255,0.09)] backdrop-blur-[18px] shadow-[0_8px_32px_rgba(0,0,0,0.35)] z-20">
+          <div className="flex items-center justify-between text-[12.5px] text-[#6c7599]">
+            <span>System Vitality</span>
+            <span onClick={() => setShowVitality(false)} className="cursor-pointer hover:text-white">✕</span>
+          </div>
+          <div className="text-[14px] text-[#7be6b0] font-medium mt-0.5">Optimal</div>
+          <canvas ref={sparklineRef} width={200} height={40} className="w-full h-[34px] mt-2" />
+          <div className="flex items-center justify-between mt-2.5 text-[12.5px] text-[#a9b3d6]">
+            <span>Focus Mode<br /><span className="text-white">On</span></span>
+            <span className="w-2.5 h-2.5 rounded-full bg-[#6fd8ff] shadow-[0_0_8px_#6fd8ff]" />
+          </div>
+        </div>
+      )}
+
+      {/* Quick Access */}
+      <div className="absolute bottom-[28px] right-[32px] w-[220px] p-4 rounded-[18px] bg-[rgba(14,18,32,0.42)] border border-[rgba(255,255,255,0.09)] backdrop-blur-[18px] shadow-[0_8px_32px_rgba(0,0,0,0.35)] z-20">
+        <div className="flex items-center justify-between text-[12.5px] text-[#6c7599] mb-1">
+          <span>Quick Access</span>
+          <span className="text-[#e8b06a]">✦</span>
+        </div>
+        <div className="flex items-center gap-2.5 py-1.5 text-[13px] text-[#a9b3d6] hover:text-white cursor-pointer transition-colors">
+          <BookOpen className="w-[15px] h-[15px] opacity-70" />
+          <span>Study Corner</span>
+        </div>
+        <div className="flex items-center gap-2.5 py-1.5 text-[13px] text-[#a9b3d6] hover:text-white cursor-pointer transition-colors">
+          <Brain className="w-[15px] h-[15px] opacity-70" />
+          <span>Sanskrit Trainer</span>
+        </div>
+        <div className="flex items-center gap-2.5 py-1.5 text-[13px] text-[#a9b3d6] hover:text-white cursor-pointer transition-colors">
+          <Share2 className="w-[15px] h-[15px] opacity-70" />
+          <span>Screen Share</span>
+        </div>
+      </div>
+
+      {/* ── CENTER HERO DOCK WRAPPER ── */}
+      <div className="absolute left-1/2 bottom-[26px] -translate-x-1/2 flex flex-col items-center gap-2.5 z-30">
+        {/* Floating Prompt Line */}
+        <div className="text-[15px] text-[#a9b3d6] tracking-[0.2px]">
+          What shall we explore today?
+        </div>
+
+        {/* Floating Glass Dock */}
+        <div className="flex items-center gap-1.5 px-3.5 py-3 rounded-[26px] bg-[rgba(14,18,32,0.55)] border border-[rgba(255,255,255,0.09)] backdrop-blur-[24px] shadow-[0_8px_32px_rgba(0,0,0,0.35)]">
+          {[
+            { label: 'Write', icon: PenTool },
+            { label: 'Read', icon: BookOpen },
+            { label: 'Code', icon: Code },
+            { label: 'Research', icon: Search },
+          ].map((item) => {
+            const ItemIcon = item.icon;
+            return (
+              <button
+                key={item.label}
+                className="group relative flex flex-col items-center gap-1.5 px-4 py-2.5 rounded-[16px] text-[#a9b3d6] hover:text-white hover:bg-white/04 hover:-translate-y-1 transition-all duration-200 cursor-pointer"
+              >
+                <ItemIcon className="w-[19px] h-[19px]" />
+                <span className="text-[11px]">{item.label}</span>
+                <span className="absolute bottom-[calc(100%+10px)] left-1/2 -translate-x-1/2 translate-y-1 bg-[#0a0c16]/90 border border-[rgba(255,255,255,0.1)] px-2.5 py-1 rounded-[8px] text-[11px] text-white whitespace-nowrap opacity-0 group-hover:opacity-100 group-hover:translate-y-0 pointer-events-none transition-all">
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
+
+          {/* Central Apple Liquid Glass Awake Capsule Button */}
+          <div className="mx-1">
+            <AwakeCrystalButton state={state} onAwake={onAwake} />
+          </div>
+
+          {[
+            { label: 'Create', icon: PlusCircle },
+            { label: 'Analyze', icon: BarChart2 },
+            { label: 'Calendar', icon: Calendar },
+            { label: 'More', icon: MoreHorizontal },
+          ].map((item) => {
+            const ItemIcon = item.icon;
+            return (
+              <button
+                key={item.label}
+                className="group relative flex flex-col items-center gap-1.5 px-4 py-2.5 rounded-[16px] text-[#a9b3d6] hover:text-white hover:bg-white/04 hover:-translate-y-1 transition-all duration-200 cursor-pointer"
+              >
+                <ItemIcon className="w-[19px] h-[19px]" />
+                <span className="text-[11px]">{item.label}</span>
+                <span className="absolute bottom-[calc(100%+10px)] left-1/2 -translate-x-1/2 translate-y-1 bg-[#0a0c16]/90 border border-[rgba(255,255,255,0.1)] px-2.5 py-1 rounded-[8px] text-[11px] text-white whitespace-nowrap opacity-0 group-hover:opacity-100 group-hover:translate-y-0 pointer-events-none transition-all">
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Dynamic Thinking / Telemetry Line */}
+        <div className="text-[12.5px] text-[#6c7599] tracking-[0.5px] h-[16px]">
+          {stateTheme.description || 'Shashwat is listening…'}
         </div>
       </div>
     </div>
