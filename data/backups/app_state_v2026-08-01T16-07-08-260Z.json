@@ -2,8 +2,8 @@
   "isInitialized": true,
   "userProfile": {
     "name": "Vikas",
-    "createdAt": "2026-08-01T16:07:08.258Z",
-    "lastActiveAt": "2026-08-01T16:07:08.266Z"
+    "createdAt": "2026-08-01T15:52:35.621Z",
+    "lastActiveAt": "2026-08-01T15:52:35.626Z"
   },
   "activeProviderId": "gemini",
   "selectedModel": "gemini-3.1-flash-live-preview",
@@ -19,5 +19,5 @@
     "width": 1280,
     "height": 800
   },
-  "updatedAt": "2026-08-01T16:07:08.266Z"
+  "updatedAt": "2026-08-01T15:52:35.626Z"
 }

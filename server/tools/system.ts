@@ -94,11 +94,14 @@ export async function mediaControl(
   const c = String(command || "").toLowerCase().trim();
   switch (c) {
     case "play":
+    case "resume":
     case "pause": {
-      // VK_MEDIA_PLAY_PAUSE (0xB3) — toggles whichever app currently owns
-      // the OS media session (e.g. the YouTube tab that's playing).
-      await runNircmd(["sendkeypress", "0xB3"]);
-      return { executed: true, command: c, message: `${c === "play" ? "Play" : "Pause"} sent.` };
+      await runNircmd(["sendkeypress", "0xB3"]); // VK_MEDIA_PLAY_PAUSE
+      return { executed: true, command: c, message: `${c === "pause" ? "Paused" : "Playback resumed"}.` };
+    }
+    case "stop": {
+      await runNircmd(["sendkeypress", "0xB2"]); // VK_MEDIA_STOP
+      return { executed: true, command: c, message: "Playback stopped." };
     }
     case "next": {
       await runNircmd(["sendkeypress", "0xB0"]); // VK_MEDIA_NEXT_TRACK
@@ -108,21 +111,36 @@ export async function mediaControl(
       await runNircmd(["sendkeypress", "0xB1"]); // VK_MEDIA_PREV_TRACK
       return { executed: true, command: c, message: "Previous track." };
     }
-    case "mute": {
+    case "mute":
+    case "unmute": {
       await runNircmd(["sendkeypress", "0xAD"]); // VK_VOLUME_MUTE
-      return { executed: true, command: c, message: "Mute toggled." };
+      return { executed: true, command: c, message: `${c === "mute" ? "Muted" : "Unmuted"}.` };
     }
-    case "volume_up": {
+    case "volume_up":
+    case "increase_volume": {
       await runNircmd(["sendkeypress", "0xAF"]); // VK_VOLUME_UP
-      return { executed: true, command: c, message: "Volume up." };
+      return { executed: true, command: c, message: "Volume increased." };
     }
-    case "volume_down": {
+    case "volume_down":
+    case "decrease_volume": {
       await runNircmd(["sendkeypress", "0xAE"]); // VK_VOLUME_DOWN
-      return { executed: true, command: c, message: "Volume down." };
+      return { executed: true, command: c, message: "Volume decreased." };
+    }
+    case "seek_forward": {
+      await sendKeystroke("l"); // YouTube 10s forward or Right Arrow
+      return { executed: true, command: c, message: "Seeked forward 10 seconds." };
+    }
+    case "seek_backward": {
+      await sendKeystroke("j"); // YouTube 10s backward or Left Arrow
+      return { executed: true, command: c, message: "Seeked backward 10 seconds." };
+    }
+    case "restart": {
+      await sendKeystroke("0"); // YouTube restart video
+      return { executed: true, command: c, message: "Restarted current media." };
     }
     case "fullscreen": {
       await sendKeystroke("f");
-      return { executed: true, command: c, message: "Fullscreen toggled (sent 'f')." };
+      return { executed: true, command: c, message: "Fullscreen toggled." };
     }
     case "speed_up": {
       await sendKeystroke(">");
