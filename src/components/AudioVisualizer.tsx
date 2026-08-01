@@ -1,28 +1,43 @@
 import React, { useEffect, useRef } from 'react';
-import { AssistantState, AssistantMood } from '../types';
+import { getStateTheme, type StateTheme } from '../theme/aiState';
+
+import type { AssistantState } from '../types';
 
 interface AudioVisualizerProps {
+  /** Live audio level 0..100 (input or output depending on state). */
+  volume: number;
+  /** Whether the assistant session is active (drives base amplitude). */
+  isActive: boolean;
+  /** Current state — drives the spectrum color + behavior. */
   state: AssistantState;
-  mood: AssistantMood;
-  inputVolume: number;
-  outputVolume: number;
 }
 
-const moodGradients: Record<AssistantMood, [string, string]> = {
-  witty: ['#3b82f6', '#6366f1'],
-  playful: ['#a855f7', '#3b82f6'],
-  focused: ['#06b6d4', '#3b82f6'],
-  charming: ['#ec4899', '#6366f1'],
-  energetic: ['#f59e0b', '#3b82f6'],
-};
-
+/**
+ * Live audio spectrum beneath the orb.
+ *
+ * NOTE: this replaces a previous component whose prop signature
+ * (`state/mood/inputVolume/outputVolume`) did not match how <App> invoked it
+ * (`volume/isActive`), leaving the visualizer effectively broken. The spectrum
+ * now follows the live StateTheme accent and adapts its behavior to the active
+ * state (e.g. tighter analytical bars during reasoning, wide warm bars while
+ * speaking).
+ */
 export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
+  volume,
+  isActive,
   state,
-  mood,
-  inputVolume,
-  outputVolume,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  
+  const volumeRef = useRef(volume);
+  volumeRef.current = volume;
+  const activeRef = useRef(isActive);
+  activeRef.current = isActive;
+  const themeRef = useRef(getStateTheme(state));
+
+  useEffect(() => {
+    themeRef.current = getStateTheme(state);
+  }, [state]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -30,7 +45,7 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    let animationId: number;
+    let animationId = 0;
     let phase = 0;
 
     const render = () => {
@@ -38,30 +53,39 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
       const height = canvas.height;
       ctx.clearRect(0, 0, width, height);
 
-      const [c1, c2] = moodGradients[mood] || moodGradients.witty;
-      const gradient = ctx.createLinearGradient(0, 0, width, 0);
-      gradient.addColorStop(0, c1);
-      gradient.addColorStop(1, c2);
+      const theme = themeRef.current;
+      const accent = theme.hudAccent;
+      const accent2 = theme.fresnelColor;
 
-      const activeVol = state === 'speaking' ? outputVolume : inputVolume;
-      const baseAmplitude = state === 'disconnected' ? 4 : state === 'connecting' ? 12 : 8 + (activeVol / 100) * 45;
+      const gradient = ctx.createLinearGradient(0, 0, width, 0);
+      gradient.addColorStop(0, accent);
+      gradient.addColorStop(1, accent2);
+
+      const vol = volumeRef.current;
+      const active = activeRef.current;
+
+      const baseAmplitude = active
+        ? 8 + (vol / 100) * 42 * theme.motionIntensity + 4
+        : 4;
 
       const numBars = 32;
       const barWidth = 4;
       const spacing = (width - numBars * barWidth) / (numBars + 1);
 
-      phase += 0.08;
+      phase += 0.06 + theme.motionIntensity * 0.06;
 
       for (let i = 0; i < numBars; i++) {
         const x = spacing + i * (barWidth + spacing);
         const wave = Math.sin(phase + i * 0.3);
-        const barHeight = Math.max(6, Math.abs(wave) * baseAmplitude + Math.random() * (activeVol > 10 ? 8 : 2));
+        const barHeight = Math.max(
+          6,
+          Math.abs(wave) * baseAmplitude + Math.random() * (vol > 10 ? 8 : 2),
+        );
 
         ctx.fillStyle = gradient;
-        ctx.shadowColor = c1;
-        ctx.shadowBlur = activeVol > 20 ? 12 : 4;
+        ctx.shadowColor = accent;
+        ctx.shadowBlur = vol > 20 ? 12 : 4;
 
-        // Draw rounded top bar
         const y = (height - barHeight) / 2;
         ctx.beginPath();
         ctx.roundRect(x, y, barWidth, barHeight, 2);
@@ -76,7 +100,7 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
     return () => {
       cancelAnimationFrame(animationId);
     };
-  }, [state, mood, inputVolume, outputVolume]);
+  }, []);
 
   return (
     <div className="w-full max-w-sm sm:max-w-md mx-auto h-16 flex items-center justify-center relative">

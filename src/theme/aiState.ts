@@ -325,5 +325,6 @@ export function resolveThemeState(state: AssistantState): AssistantState {
 }
 
 export function getStateTheme(state: AssistantState): StateTheme {
-  return STATE_THEME[resolveThemeState(state)];
+  const resolved = resolveThemeState(state);
+  return STATE_THEME[resolved] || STATE_THEME['sleeping'];
 }

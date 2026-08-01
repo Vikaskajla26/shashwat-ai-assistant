@@ -14,3 +14,5 @@ bin/nircmd*.exe
 bin/*.zip
 bin/*.chm
 data/memory.json
+data/*.enc
+test_browser_render.js

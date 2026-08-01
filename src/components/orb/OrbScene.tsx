@@ -19,6 +19,7 @@ export interface OrbSceneProps {
   volumeRef: MutableRefObject<number>;
   width?: number;
   height?: number;
+  onError?: () => void;
 }
 
 /**
@@ -31,7 +32,7 @@ export interface OrbSceneProps {
  * per second during audio). Layers are modular and individually disposable, so
  * StrictMode double-mount in dev is leak-free (forceContextLoss on teardown).
  */
-export function OrbScene({ stateRef, volumeRef, width = 540, height = 540 }: OrbSceneProps) {
+export function OrbScene({ stateRef, volumeRef, width = 540, height = 540, onError }: OrbSceneProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -41,14 +42,22 @@ export function OrbScene({ stateRef, volumeRef, width = 540, height = 540 }: Orb
     const profile = qualityRef.current;
 
     // 1. Renderer
-    const renderer = new THREE.WebGLRenderer({
-      alpha: true,
-      antialias: profile.antialias,
-      powerPreference: 'high-performance',
-    });
-    renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, profile.pixelRatioCap));
-    container.appendChild(renderer.domElement);
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        alpha: true,
+        antialias: profile.antialias,
+        powerPreference: 'high-performance',
+      });
+      renderer.setClearColor(0x000000, 0);
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, profile.pixelRatioCap));
+      container.appendChild(renderer.domElement);
+    } catch (err) {
+      console.warn('WebGL setup failed in OrbScene:', err);
+      onError?.();
+      return;
+    }
 
     // 2. Scene + camera
     const scene = new THREE.Scene();
@@ -134,8 +143,12 @@ export function OrbScene({ stateRef, volumeRef, width = 540, height = 540 }: Orb
 
       // Drive bloom strength from the state theme (e.g. success flares).
       if (bloom.enabled) {
-        bloom.setBloom(theme.bloomStrength, 0.6, 0.2, new THREE.Color(theme.bloomColor));
-        bloom.render();
+        try {
+          bloom.setBloom(theme.bloomStrength, 0.6, 0.2, new THREE.Color(theme.bloomColor));
+          bloom.render();
+        } catch {
+          renderer.render(scene, camera);
+        }
       } else {
         renderer.render(scene, camera);
       }

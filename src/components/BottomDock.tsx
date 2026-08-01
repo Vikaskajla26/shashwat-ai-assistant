@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion } from 'motion/react';
 import {
   Power,
   Monitor,
@@ -12,7 +13,9 @@ import {
   Mic,
   Command,
 } from 'lucide-react';
-import { AssistantState } from '../types';
+import type { AssistantState } from '../types';
+import { getStateTheme, type StateTheme } from '../theme/aiState';
+import { DockButton } from './DockButton';
 
 interface BottomDockProps {
   state: AssistantState;
@@ -30,6 +33,13 @@ interface BottomDockProps {
   onSendTypedText?: (text: string) => void;
 }
 
+/**
+ * Floating glass command dock (Vision Pro / Nothing OS).
+ *
+ * Frosted glass with layered shadows, hover elevation per tile (via DockButton),
+ * an active-state glow bound to the live StateTheme accent, context-aware
+ * tooltips, and a pointer-originated ripple on the central power control.
+ */
 export const BottomDock: React.FC<BottomDockProps> = ({
   state,
   isScreenSharing,
@@ -46,6 +56,8 @@ export const BottomDock: React.FC<BottomDockProps> = ({
   onSendTypedText,
 }) => {
   const [typedText, setTypedText] = useState('');
+  const stateTheme = getStateTheme(state);
+  const accent = stateTheme.hudAccent;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,29 +67,21 @@ export const BottomDock: React.FC<BottomDockProps> = ({
     }
   };
 
-  const powerStateStyles =
-    state === 'disconnected'
-      ? 'border-white/15 text-zinc-400 bg-white/5 hover:border-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10'
-      : state === 'connecting'
-      ? 'border-amber-400/80 text-amber-300 bg-amber-500/15 shadow-[0_0_25px_rgba(245,158,11,0.5)] animate-pulse'
-      : state === 'listening'
-      ? 'border-rose-500/80 text-rose-300 bg-rose-500/20 shadow-[0_0_25px_rgba(244,63,94,0.6)] animate-pulse'
-      : state === 'speaking'
-      ? 'border-orange-500/80 text-orange-300 bg-orange-500/20 shadow-[0_0_25px_rgba(249,115,22,0.6)] animate-pulse'
-      : 'border-indigo-500/80 text-indigo-300 bg-indigo-500/20 shadow-[0_0_25px_rgba(99,102,241,0.5)]';
+  const isConnected = state !== 'disconnected';
+  const isSleeping = state === 'disconnected' || state === 'sleeping';
 
   return (
     <footer className="fixed bottom-8 left-1/2 -translate-x-1/2 z-30 pointer-events-auto w-full max-w-2xl px-4 select-none">
-      {/* Vision Pro & Nothing OS Floating Glass Dock */}
-      <div className="flex items-center gap-3 p-2.5 px-4 rounded-full bg-slate-950/70 border border-white/15 backdrop-blur-2xl shadow-[0_30px_90px_rgba(0,0,0,0.9)] ring-1 ring-white/10 hover:border-white/25 transition-all">
+      <motion.div
+        initial={{ y: 30, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ type: 'spring', stiffness: 200, damping: 26, delay: 0.3 }}
+        className="flex items-center gap-3 p-2.5 px-4 rounded-full bg-slate-950/60 border border-white/15 backdrop-blur-2xl shadow-[0_30px_90px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.12)] ring-1 ring-white/10 hover:border-white/25 transition-all"
+      >
         {/* Left Workspace Drawer Button */}
-        <button
-          onClick={onOpenLeftDrawer}
-          className="p-2.5 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer hover:scale-105 active:scale-95"
-          title="Memory & Knowledge Vault"
-        >
+        <DockButton onClick={onOpenLeftDrawer} title="Memory & Knowledge Vault">
           <Brain className="w-4 h-4 text-purple-400" />
-        </button>
+        </DockButton>
 
         {/* Command Input Field */}
         <form onSubmit={handleSubmit} className="flex-1 flex items-center gap-2">
@@ -87,101 +91,108 @@ export const BottomDock: React.FC<BottomDockProps> = ({
               type="text"
               value={typedText}
               onChange={(e) => setTypedText(e.target.value)}
-              placeholder="Ask शाश्वत or type command..."
-              className="w-full bg-slate-900/60 border border-white/10 rounded-full text-white placeholder-zinc-500 font-sans text-xs pl-8 pr-10 py-2 outline-none focus:border-indigo-500/50 transition-all"
+              placeholder={isSleeping ? 'Awaken शाश्वत to begin...' : 'Ask शाश्वत or type command...'}
+              className="w-full bg-slate-900/60 border border-white/10 rounded-full text-white placeholder-zinc-500 font-sans text-xs pl-8 pr-10 py-2 outline-none focus:border-white/30 transition-all"
+              style={isConnected ? { boxShadow: `inset 0 0 0 1px ${accent}22` } : undefined}
             />
             {typedText.trim() && (
-              <button
+              <motion.button
                 type="submit"
-                className="absolute right-1.5 p-1.5 rounded-full bg-indigo-600 text-white hover:bg-indigo-500 transition-all cursor-pointer shadow-[0_0_15px_rgba(99,102,241,0.5)]"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
                 title="Send Command"
+                className="absolute right-1.5 p-1.5 rounded-full text-white transition-colors cursor-pointer"
+                style={{ backgroundColor: accent, boxShadow: `0 0 15px ${accent}88` }}
               >
                 <Send className="w-3.5 h-3.5" />
-              </button>
+              </motion.button>
             )}
           </div>
         </form>
 
-        {/* Screen Share Action Button */}
-        <button
+        {/* Screen Share */}
+        <DockButton
           onClick={onToggleScreenShare}
-          className={`p-2.5 rounded-full transition-all cursor-pointer border hover:scale-105 active:scale-95 ${
-            isScreenSharing
-              ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300 shadow-[0_0_20px_rgba(52,211,153,0.4)]'
-              : 'bg-white/5 border-white/10 text-zinc-400 hover:text-white hover:bg-white/15'
-          }`}
           title={isScreenSharing ? 'Stop Screen Share' : 'Start Screen Share'}
+          active={isScreenSharing}
+          activeGlow="0 0 20px rgba(52,211,153,0.45)"
+          activeClassName="bg-emerald-500/20 border-emerald-400 text-emerald-300"
+          iconClassName={isScreenSharing ? 'text-emerald-300' : 'text-zinc-400'}
         >
-          {isScreenSharing ? <MonitorOff className="w-4 h-4 text-emerald-400" /> : <Monitor className="w-4 h-4" />}
-        </button>
+          {isScreenSharing ? <MonitorOff className="w-4 h-4" /> : <Monitor className="w-4 h-4" />}
+        </DockButton>
 
-        {/* AI Sandbox Browser Workspace Button */}
-        <button
+        {/* AI Sandbox Browser */}
+        <DockButton
           onClick={onToggleSandbox}
-          className={`p-2.5 rounded-full transition-all cursor-pointer border hover:scale-105 active:scale-95 ${
-            isSandboxOpen
-              ? 'bg-blue-600/30 border-blue-400 text-blue-200 shadow-[0_0_20px_rgba(59,130,246,0.5)]'
-              : 'bg-white/5 border-white/10 text-zinc-400 hover:text-blue-400 hover:bg-white/15'
-          }`}
           title="Autonomous AI Sandbox Browser"
+          active={isSandboxOpen}
+          activeGlow="0 0 20px rgba(59,130,246,0.5)"
+          activeClassName="bg-blue-600/30 border-blue-400 text-blue-200"
+          iconClassName={isSandboxOpen ? 'text-blue-200' : 'text-zinc-400'}
         >
           <Globe className="w-4 h-4" />
-        </button>
+        </DockButton>
 
-        {/* Document Intelligence Research Workspace Button */}
-        <button
+        {/* Document Intelligence Workspace */}
+        <DockButton
           onClick={onToggleDocWorkspace}
-          className={`p-2.5 rounded-full transition-all cursor-pointer border hover:scale-105 active:scale-95 ${
-            isDocWorkspaceOpen
-              ? 'bg-cyan-600/30 border-cyan-400 text-cyan-200 shadow-[0_0_20px_rgba(6,182,212,0.5)]'
-              : 'bg-white/5 border-white/10 text-zinc-400 hover:text-cyan-400 hover:bg-white/15'
-          }`}
           title="Study Studio"
+          active={isDocWorkspaceOpen}
+          activeGlow="0 0 20px rgba(6,182,212,0.5)"
+          activeClassName="bg-cyan-600/30 border-cyan-400 text-cyan-200"
+          iconClassName={isDocWorkspaceOpen ? 'text-cyan-200' : 'text-zinc-400'}
         >
           <FileSearch className="w-4 h-4" />
-        </button>
+        </DockButton>
 
-        {/* Sanskrit Chant Intelligence Studio Button */}
+        {/* Sanskrit Chant Intelligence Studio */}
         {onOpenSanskritStudio && (
-          <button
+          <DockButton
             onClick={onOpenSanskritStudio}
-            className="p-2.5 rounded-full transition-all cursor-pointer border bg-white/5 border-white/10 text-amber-400 hover:text-amber-300 hover:bg-amber-500/20 hover:border-amber-400/40 hover:scale-105 active:scale-95"
             title="Sanskrit Chant Intelligence Studio"
+            iconClassName="text-amber-400"
+            className="hover:bg-amber-500/20 hover:border-amber-400/40"
           >
             <Brain className="w-4 h-4" />
-          </button>
+          </DockButton>
         )}
 
-        {/* Self Learning Engine Button */}
+        {/* Self Learning Engine */}
         {onOpenSelfLearning && (
-          <button
+          <DockButton
             onClick={onOpenSelfLearning}
-            className="p-2.5 rounded-full transition-all cursor-pointer border bg-white/5 border-white/10 text-purple-400 hover:text-purple-300 hover:bg-purple-500/20 hover:border-purple-400/40 hover:scale-105 active:scale-95"
             title="Self Learning Engine"
+            iconClassName="text-purple-400"
+            className="hover:bg-purple-500/20 hover:border-purple-400/40"
           >
             <Sparkles className="w-4 h-4" />
-          </button>
+          </DockButton>
         )}
 
         {/* Power / Microphone Central Action Button */}
-        <button
+        <motion.button
           id="shashwat-power-control-button"
           onClick={onToggleMic}
-          className={`p-3 rounded-full border backdrop-blur-xl transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer ${powerStateStyles}`}
-          title={state === 'disconnected' ? 'Awaken शाश्वत' : 'Power Control'}
+          whileHover={{ scale: 1.12, y: -2 }}
+          whileTap={{ scale: 0.92 }}
+          title={isSleeping ? 'Awaken शाश्वत' : 'Power Control'}
+          className="p-3 rounded-full border backdrop-blur-xl transition-all duration-300 cursor-pointer"
+          style={{
+            color: accent,
+            backgroundColor: `${accent}1a`,
+            borderColor: `${accent}88`,
+            boxShadow: `0 0 25px ${accent}66`,
+          }}
         >
-          {state === 'disconnected' ? <Power className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-        </button>
+          {isSleeping ? <Power className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+        </motion.button>
 
         {/* Right Settings Drawer Button */}
-        <button
-          onClick={onOpenRightDrawer}
-          className="p-2.5 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer hover:scale-105 active:scale-95"
-          title="Settings & AI Providers"
-        >
-          <Sliders className="w-4 h-4" />
-        </button>
-      </div>
+        <DockButton onClick={onOpenRightDrawer} title="Settings & AI Providers">
+          <Sliders className="w-4 h-4 text-zinc-300" />
+        </DockButton>
+      </motion.div>
     </footer>
   );
 };

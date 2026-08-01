@@ -2,7 +2,7 @@ import { AudioStreamer } from './AudioStreamer';
 import { AudioPlayer } from './AudioPlayer';
 import { ToolManager } from './ToolManager';
 import { ScreenStreamer } from './ScreenStreamer';
-import { AssistantState, AssistantMood, VisualCardData, ToolExecutionEvent, TranscriptMessage } from '../types';
+import { AssistantState, AssistantMood, AssistantPhase, VisualCardData, ToolExecutionEvent, TranscriptMessage } from '../types';
 
 export interface LiveSessionOptions {
   onStateChange: (state: AssistantState) => void;
@@ -15,6 +15,10 @@ export interface LiveSessionOptions {
   onSpeakerVerification?: (res: { status: string; confidence: number; ownerName: string; message: string }) => void;
   onVoiceStatus?: (status: { enrolled: boolean; ownerName: string }) => void;
   onOpenDocWorkspace?: () => void;
+  /** Fired when the server pushes an AI phase (understanding/reasoning/executing/...). */
+  onPhase?: (phase: AssistantPhase) => void;
+  /** Fired on turn-complete so the UI can return to a ready state. */
+  onTurnComplete?: () => void;
   onError: (errorMsg: string) => void;
 }
 
@@ -110,7 +114,7 @@ export class LiveSession {
     try {
       // Build WebSocket URL relative to window.location
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/live`;
+      const wsUrl = `${protocol}//${window.location.host}/api/live`;
 
       this.ws = new WebSocket(wsUrl);
 
@@ -139,7 +143,13 @@ export class LiveSession {
             this.audioPlayer?.interrupt();
             this.setState('listening');
           } else if (msg.type === 'turnComplete') {
-            // End of current turn
+            // End of current turn — notify UI to return to a ready state.
+            this.options.onTurnComplete?.();
+          } else if (msg.type === 'phase') {
+            // Server-pushed AI phase (understanding/reasoning/executing/searching/learning).
+            if (msg.phase) {
+              this.options.onPhase?.(msg.phase as AssistantPhase);
+            }
           } else if (msg.type === 'toolCall') {
             // Server forwards UI-only tool calls (mood, card) for client execution
             const { id, name, args } = msg;
@@ -342,5 +352,13 @@ export class LiveSession {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify({ type: 'voice_get_status' }));
     }
+  }
+
+  /**
+   * Client-driven phase passthrough. UI surfaces (e.g. the Self-Learning
+   * dashboard) can push a phase into the atmosphere without a round-trip.
+   */
+  public emitLocalPhase(phase: AssistantPhase) {
+    this.options.onPhase?.(phase);
   }
 }

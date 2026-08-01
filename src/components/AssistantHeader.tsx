@@ -1,10 +1,12 @@
 import React from 'react';
-import { Settings, Brain, Sliders, ShieldCheck } from 'lucide-react';
-import { AssistantState, AssistantMood } from '../types';
+import { motion } from 'motion/react';
+import { Brain, Sliders, ShieldCheck } from 'lucide-react';
+import type { AssistantMood, AssistantState } from '../types';
+import { getStateTheme, type StateTheme } from '../theme/aiState';
 
 interface AssistantHeaderProps {
   state: AssistantState;
-  mood: AssistantMood;
+  mood?: AssistantMood;
   speakerStatus?: { status: string; confidence: number; ownerName: string };
   isScreenSharing?: boolean;
   onOpenLeftDrawer: () => void;
@@ -12,6 +14,11 @@ interface AssistantHeaderProps {
   onOpenSettings: () => void;
 }
 
+/**
+ * Minimal top bar. The center status pill is fully driven by the active
+ * StateTheme: its label, accent color and the breathing dot all reflect which
+ * of the 13 AI states is live, so the whole chrome transforms with the orb.
+ */
 export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
   state,
   speakerStatus,
@@ -19,25 +26,10 @@ export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
   onOpenRightDrawer,
   onOpenSettings,
 }) => {
-  const statusText =
-    state === 'disconnected'
-      ? 'STANDBY'
-      : state === 'connecting'
-      ? 'CONNECTING'
-      : state === 'listening'
-      ? 'LISTENING'
-      : state === 'speaking'
-      ? 'SPEAKING'
-      : 'ACTIVE';
-
-  const statusDotColor =
-    state === 'disconnected'
-      ? 'bg-zinc-600'
-      : state === 'listening'
-      ? 'bg-rose-500 shadow-[0_0_12px_#F43F5E] animate-pulse'
-      : state === 'speaking'
-      ? 'bg-orange-500 shadow-[0_0_12px_#F97316] animate-ping'
-      : 'bg-amber-400 shadow-[0_0_12px_#F59E0B] animate-pulse';
+  const stateTheme = getStateTheme(state);
+  const accent = stateTheme.hudAccent;
+  const label = stateTheme.hudLabel;
+  const motionIntensity = stateTheme.motionIntensity;
 
   const [healthScore, setHealthScore] = React.useState<number | null>(null);
 
@@ -56,16 +48,21 @@ export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
     <header className="w-full z-30 px-6 py-4 sm:px-10 flex items-center justify-between bg-slate-950/40 pointer-events-auto border-b border-white/10 backdrop-blur-xl">
       {/* Brand & Left Drawer Trigger */}
       <div className="flex items-center space-x-4">
-        <button
+        <motion.button
           onClick={onOpenLeftDrawer}
-          className="p-2 rounded-xl bg-white/5 border border-white/10 hover:border-amber-400/50 text-zinc-300 hover:text-amber-300 transition-all cursor-pointer hover:scale-105 active:scale-95"
+          whileHover={{ y: -2, scale: 1.06 }}
+          whileTap={{ scale: 0.94 }}
           title="Open Workspace Vault"
+          className="p-2 rounded-xl bg-white/5 border border-white/10 hover:border-white/30 text-zinc-300 hover:text-white transition-colors cursor-pointer"
         >
           <Brain className="w-4 h-4 text-purple-400" />
-        </button>
+        </motion.button>
 
         <div className="flex items-baseline gap-2">
-          <span className="font-serif text-2xl font-bold text-amber-400 tracking-wider text-shadow-[0_0_20px_rgba(245,158,11,0.6)]">
+          <span
+            className="font-serif text-2xl font-bold tracking-wider transition-colors duration-700"
+            style={{ color: accent, textShadow: `0 0 20px ${accent}99` }}
+          >
             शाश्वत
           </span>
           <span className="font-mono text-[10px] text-zinc-400 uppercase tracking-[0.25em] hidden sm:inline font-semibold">
@@ -76,9 +73,15 @@ export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
 
       {/* Center Status Dot & Live System Health Pill */}
       <div className="flex items-center space-x-3 sm:space-x-4 font-mono text-[11px] tracking-[0.2em] uppercase">
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/80 border border-white/10 shadow-inner">
-          <span className={`w-2 h-2 rounded-full ${statusDotColor}`} />
-          <span className="text-white font-bold">{statusText}</span>
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/80 border border-white/10 shadow-inner transition-colors duration-700"
+          style={{ borderColor: `${accent}55` }}>
+          <motion.span
+            className="w-2 h-2 rounded-full"
+            style={{ backgroundColor: accent, boxShadow: `0 0 12px ${accent}` }}
+            animate={motionIntensity > 0.4 ? { opacity: [1, 0.4, 1], scale: [1, 1.25, 1] } : { opacity: 1 }}
+            transition={motionIntensity > 0.4 ? { duration: 1.4, repeat: Infinity, ease: 'easeInOut' } : { duration: 0 }}
+          />
+          <span className="text-white font-bold">{label}</span>
         </div>
 
         {/* Live System Health Pill */}
@@ -101,13 +104,15 @@ export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
           3D SHADER ENGINE ACTIVE
         </div>
 
-        <button
+        <motion.button
           onClick={onOpenRightDrawer}
-          className="p-2 rounded-xl bg-white/5 border border-white/10 hover:border-indigo-400/50 text-zinc-300 hover:text-indigo-300 transition-all cursor-pointer hover:scale-105 active:scale-95"
+          whileHover={{ y: -2, scale: 1.06 }}
+          whileTap={{ scale: 0.94 }}
           title="Open Settings & AI Providers"
+          className="p-2 rounded-xl bg-white/5 border border-white/10 hover:border-white/30 text-zinc-300 hover:text-white transition-colors cursor-pointer"
         >
           <Sliders className="w-4 h-4" />
-        </button>
+        </motion.button>
       </div>
     </header>
   );
