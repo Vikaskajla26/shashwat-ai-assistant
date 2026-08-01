@@ -59,30 +59,55 @@ export function OrbScene({ stateRef, volumeRef, width = 540, height = 540, onErr
       return;
     }
 
-    // 2. Scene + camera
+    // 2. Scene + camera + layers
+    let plasma: ReturnType<typeof createPlasmaCore>;
+    let particles: ReturnType<typeof createEnergyParticles>;
+    let halo: ReturnType<typeof createHaloField>;
+    let sutras: ReturnType<typeof createSutraOrbiters>;
+    let bloom: BloomHandle;
+    let interaction: OrbInteraction;
+
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
     camera.position.z = 110;
 
-    // 3. Layers (modular). Subdivision + particle counts scale with quality.
-    const plasma = createPlasmaCore(profile.orbSubdivisions);
-    scene.add(plasma.group);
+    try {
+      // 3. Layers (modular). Subdivision + particle counts scale with quality.
+      plasma = createPlasmaCore(profile.orbSubdivisions);
+      scene.add(plasma.group);
 
-    const particles = createEnergyParticles(profile.orbParticleCount);
-    scene.add(particles.points);
+      particles = createEnergyParticles(profile.orbParticleCount);
+      scene.add(particles.points);
 
-    const halo = createHaloField();
-    scene.add(halo.group);
+      halo = createHaloField();
+      scene.add(halo.group);
 
-    const sutras = createSutraOrbiters();
-    scene.add(sutras.group);
+      sutras = createSutraOrbiters();
+      scene.add(sutras.group);
 
-    // 4. Postprocessing (bloom) — null at low quality.
-    const bloom: BloomHandle = createBloomPipeline(renderer, scene, camera, width, height, profile);
+      // 4. Postprocessing (bloom) — null at low quality / unsupported GPUs.
+      bloom = createBloomPipeline(renderer, scene, camera, width, height, profile);
 
-    // 5. Interaction controller
-    const interaction = new OrbInteraction();
-    interaction.attach();
+      // 5. Interaction controller
+      interaction = new OrbInteraction();
+      interaction.attach();
+    } catch (err) {
+      console.warn('Scene or layer construction failed in OrbScene:', err);
+      renderer.dispose();
+      if (container.contains(renderer.domElement)) {
+        container.removeChild(renderer.domElement);
+      }
+      onError?.();
+      return;
+    }
+
+    // Context loss handler (GPU driver crash, OS suspend, etc.)
+    const handleContextLost = (e: Event) => {
+      e.preventDefault();
+      console.warn('WebGL context lost in OrbScene, triggering safe 2D fallback.');
+      onError?.();
+    };
+    renderer.domElement.addEventListener('webglcontextlost', handleContextLost, false);
 
     // 6. Animation loop — reads refs, never rebuilds the scene.
     let animFrameId = 0;
@@ -169,6 +194,7 @@ export function OrbScene({ stateRef, volumeRef, width = 540, height = 540, onErr
     return () => {
       cancelAnimationFrame(animFrameId);
       window.removeEventListener('resize', handleResize);
+      renderer.domElement.removeEventListener('webglcontextlost', handleContextLost);
       interaction.detach();
       plasma.dispose();
       particles.dispose();
