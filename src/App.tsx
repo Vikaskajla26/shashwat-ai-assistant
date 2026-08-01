@@ -294,7 +294,7 @@ export default function App() {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justify: 'space-between',
+        justifyContent: 'space-between',
         position: 'relative',
         overflow: 'hidden',
         boxSizing: 'border-box'

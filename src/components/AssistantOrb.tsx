@@ -9,6 +9,8 @@ interface AssistantOrbProps {
   outputVolume?: number;
   volume?: number;
   isMuted?: boolean;
+  onToggleConnection?: () => void;
+  onToggleMute?: () => void;
 }
 
 const TAU = Math.PI * 2;
