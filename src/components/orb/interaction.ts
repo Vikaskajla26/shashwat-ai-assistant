@@ -12,6 +12,8 @@ import * as THREE from 'three';
 export interface InteractionState {
   x: number;
   y: number;
+  normX: number;
+  normY: number;
   /** Current ripple envelope, read by PlasmaCore. */
   ripple: {
     strength: number;
@@ -101,9 +103,14 @@ export class OrbInteraction {
       this.ripple.strength = 0;
     }
 
+    const w = typeof window !== 'undefined' ? window.innerWidth / 2 : 1;
+    const h = typeof window !== 'undefined' ? window.innerHeight / 2 : 1;
+
     return {
       x: this.spring.x,
       y: this.spring.y,
+      normX: Math.max(-1, Math.min(1, this.spring.x / w)),
+      normY: Math.max(-1, Math.min(1, this.spring.y / h)),
       ripple: this.ripple,
     };
   }
