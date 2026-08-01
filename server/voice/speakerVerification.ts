@@ -47,14 +47,19 @@ function ensureDataDir() {
   }
 }
 
-/**
- * Extract 32-dimensional spectral feature vector (MFCC approximation + Spectral Envelope + ZCR + Energy)
- * from 16kHz PCM Int16 audio buffer.
- */
-export function extractAudioFeatureVector(pcmBuffer: Buffer): number[] {
-  const samples = new Float32Array(pcmBuffer.length / 2);
+export function extractAudioFeatureVector(pcmBuffer: Buffer | string | Uint8Array | ArrayBuffer): number[] {
+  let buf: Buffer;
+  if (typeof pcmBuffer === 'string') {
+    buf = Buffer.from(pcmBuffer, 'base64');
+  } else if (Buffer.isBuffer(pcmBuffer)) {
+    buf = pcmBuffer;
+  } else {
+    buf = Buffer.from(pcmBuffer as any);
+  }
+
+  const samples = new Float32Array(Math.floor(buf.length / 2));
   for (let i = 0; i < samples.length; i++) {
-    samples[i] = pcmBuffer.readInt16LE(i * 2) / 32768.0;
+    samples[i] = buf.readInt16LE(i * 2) / 32768.0;
   }
 
   if (samples.length === 0) {
@@ -214,7 +219,7 @@ export function enrollVoiceprint(ownerName: string, pcmBuffers: Buffer[]): Voice
 }
 
 /** Verify if incoming live audio sample matches enrolled owner voiceprint */
-export function verifySpeaker(livePcmBuffer: Buffer): VerificationResult {
+export function verifySpeaker(livePcmBuffer: Buffer | string | Uint8Array | ArrayBuffer): VerificationResult {
   const voiceprint = getVoiceprint();
   const timestamp = new Date().toISOString();
 
