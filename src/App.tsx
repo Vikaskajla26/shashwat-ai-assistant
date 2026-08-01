@@ -28,6 +28,7 @@ import { AlertCircle } from 'lucide-react';
 
 import { PowerShutdownModal } from './components/PowerShutdownModal';
 import { AIProviderSetupWizard } from './components/AIProviderSetupWizard';
+import { getStateTheme } from './theme/aiState';
 
 export default function App() {
   const [state, setState] = useState<AssistantState>('disconnected');
@@ -347,7 +348,11 @@ export default function App() {
 
         {/* Live Audio Spectrum */}
         <div className="w-full max-w-sm mt-2">
-          <AudioVisualizer volume={activeAudioVolume} isActive={state !== 'disconnected'} />
+          <AudioVisualizer
+            volume={activeAudioVolume}
+            isActive={state !== 'disconnected'}
+            stateTheme={getStateTheme(state)}
+          />
         </div>
       </main>
 

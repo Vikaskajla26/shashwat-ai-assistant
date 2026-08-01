@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import type { StateTheme } from '../theme/aiState';
+import { getStateTheme, type StateTheme } from '../theme/aiState';
 
 interface AudioVisualizerProps {
   /** Live audio level 0..100 (input or output depending on state). */
@@ -7,18 +7,11 @@ interface AudioVisualizerProps {
   /** Whether the assistant session is active (drives base amplitude). */
   isActive: boolean;
   /** Current state theme — drives the spectrum color + behavior. */
-  stateTheme: StateTheme;
+  stateTheme?: StateTheme;
 }
 
 /**
  * Live audio spectrum beneath the orb.
- *
- * NOTE: this replaces a previous component whose prop signature
- * (`state/mood/inputVolume/outputVolume`) did not match how <App> invoked it
- * (`volume/isActive`), leaving the visualizer effectively broken. The spectrum
- * now follows the live StateTheme accent and adapts its behavior to the active
- * state (e.g. tighter analytical bars during reasoning, wide warm bars while
- * speaking).
  */
 export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
   volume,
@@ -26,9 +19,10 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
   stateTheme,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const activeTheme = stateTheme || getStateTheme('disconnected');
   // Keep the latest theme in a ref so the rAF loop reads it without restarting.
-  const themeRef = useRef(stateTheme);
-  themeRef.current = stateTheme;
+  const themeRef = useRef(activeTheme);
+  themeRef.current = activeTheme;
   const volumeRef = useRef(volume);
   volumeRef.current = volume;
   const activeRef = useRef(isActive);
