@@ -244,15 +244,26 @@ export class LiveSession {
               })
             );
           } else if (msg.type === 'toolEvent') {
+            const targetUrl = msg.card?.url || msg.url;
             const toolEvent: ToolExecutionEvent = {
               id: msg.id || Date.now().toString(),
               toolName: msg.toolName,
               status: msg.status || 'success',
               message: msg.message || '',
               timestamp: msg.timestamp || new Date().toLocaleTimeString(),
-              actionUrl: msg.card?.url,
+              actionUrl: targetUrl,
             };
             this.options.onToolEvent(toolEvent);
+
+            if (targetUrl && (msg.toolName === 'open_website' || msg.toolName === 'searchYouTube' || msg.toolName === 'playFirstVideo')) {
+              try {
+                if ((window as any).electronAPI?.openExternal) {
+                  (window as any).electronAPI.openExternal(targetUrl);
+                } else {
+                  window.open(targetUrl, '_blank', 'noopener,noreferrer');
+                }
+              } catch (_) {}
+            }
 
             if (msg.card) {
               this.options.onVisualCard({
