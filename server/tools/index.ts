@@ -7,6 +7,7 @@ import { fileOperation } from "./files";
 import { mouseInput, keyboardInput } from "./input";
 import { browserNavigate, sandboxExec } from "./browser";
 import { getSystemInfo } from "./systemInfo";
+import { executeBrowserAction } from "./browserController";
 import { getVoiceprint, deleteVoiceprint, enrollVoiceprint } from "../voice/speakerVerification";
 import { KnowledgeIndex } from "../docIntel/knowledgeIndex";
 import { StudyGenerator } from "../docIntel/studyGenerator";
@@ -274,87 +275,77 @@ export async function executeTool(
         );
       }
 
-      // ---------------- Browser / Web (System Default Browser) ----------------
+      // ---------------- Browser Controller Engine (Dedicated Execution Service) ----------------
       case "open_website":
       case "openWebsite": {
-        let url = argsSafe.url || "https://google.com";
-        if (!/^https?:\/\//i.test(url)) url = "https://" + url;
-        await openInDefaultBrowser(url);
-        const siteName = argsSafe.site_name || "website";
+        const rawTarget = argsSafe.url || argsSafe.site_name || "youtube.com";
+        const result = await executeBrowserAction("open_website", rawTarget);
         return ok(
           {
             opened: true,
-            site: siteName,
-            message: `Opened ${siteName} in your default browser.`,
-            instruction: `DO NOT output, format, or speak any URLs or HTTP links. Speak a ultra-concise confirmation like "Opening ${siteName}."`
+            target: rawTarget,
+            detectedBrowser: result.detectedBrowser,
+            url: result.targetUrl,
+            message: result.verificationMessage,
+            instruction: `DO NOT output, format, or speak any URLs or HTTP links. Speak a ultra-concise confirmation like "${result.voiceConfirmation}"`
           },
-          `Opened ${siteName} in default browser`,
-          { title: `Browser: ${siteName}`, content: `Opened ${siteName} in default browser`, category: "Browser" }
+          result.verificationMessage,
+          { title: `Browser: ${result.detectedBrowser}`, content: `Opened ${rawTarget} in ${result.detectedBrowser}`, category: "Browser Controller" }
         );
       }
       case "searchGoogle": {
         const queryStr = String(argsSafe.query || "").trim();
-        const url = `https://www.google.com/search?q=${encodeURIComponent(queryStr)}`;
-        const { directAnswer, summaryText, openedIn } = await liveGoogleSearch(queryStr, url);
-        const instruction = `CRITICAL MANDATE: DO NOT output, format, or speak any URLs or HTTP links. The user asked: "${queryStr}". The search has been performed in their default browser. Speak the live factual answer concisely if asked a question, or say "Search completed for ${queryStr}."`;
+        const result = await executeBrowserAction("search_google", queryStr);
+        const { directAnswer, summaryText } = await liveGoogleSearch(queryStr, result.targetUrl);
+        const instruction = `CRITICAL MANDATE: DO NOT output, format, or speak any URLs or HTTP links. The user asked: "${queryStr}". Speak the live factual answer concisely if asked a question, or say "${result.voiceConfirmation}"`;
 
         return ok(
           {
             searched: true,
             query: queryStr,
-            openedIn,
+            detectedBrowser: result.detectedBrowser,
             CURRENT_FACTUAL_ANSWER_TO_SPEAK: directAnswer || summaryText,
             liveTextSummary: summaryText,
             instruction,
           },
           `Google search: ${queryStr}`,
           {
-            title: "Google Search",
-            content: summaryText || `Searched "${queryStr}" in default browser`,
+            title: `Google Search (${result.detectedBrowser})`,
+            content: summaryText || `Searched "${queryStr}" in ${result.detectedBrowser}`,
             category: "Web Search",
           }
         );
       }
       case "searchYouTube": {
         const queryStr = argsSafe.query || "trending music";
-        const isMusic = queryStr.toLowerCase().includes("music") || queryStr.toLowerCase().includes("song");
-        const url = isMusic
-          ? `https://music.youtube.com/search?q=${encodeURIComponent(queryStr)}`
-          : `https://www.youtube.com/results?search_query=${encodeURIComponent(queryStr)}`;
-        await openInDefaultBrowser(url);
+        const result = await executeBrowserAction("search_youtube", queryStr);
         return ok(
           {
             searched: true,
             query: queryStr,
-            message: `YouTube search for ${queryStr} opened in default browser.`,
-            instruction: `DO NOT output, format, or speak any URLs or HTTP links. Speak a concise confirmation like "Searching ${queryStr} on YouTube."`
+            detectedBrowser: result.detectedBrowser,
+            message: result.verificationMessage,
+            instruction: `DO NOT output, format, or speak any URLs or HTTP links. Speak a concise confirmation like "${result.voiceConfirmation}"`
           },
           `YouTube search for ${queryStr}`,
-          { title: "YouTube Search", content: `▶️ Searching ${queryStr} on YouTube`, category: "Media Search" }
+          { title: "YouTube Search", content: `▶️ Searching ${queryStr} on YouTube (${result.detectedBrowser})`, category: "Media Search" }
         );
       }
       case "playFirstVideo": {
         const queryStr = argsSafe.query || "top songs";
-        const match = await resolveFirstYouTubeVideo(queryStr);
-        const url = match ? buildWatchUrl(match.videoId) : `https://www.youtube.com/results?search_query=${encodeURIComponent(queryStr)}`;
-        await openInDefaultBrowser(url);
-        const playing = Boolean(match);
-        const titleText = match?.title || queryStr;
+        const result = await executeBrowserAction("play_media", queryStr);
         return ok(
           {
             executed: true,
             query: queryStr,
-            matchedVideo: playing,
-            videoTitle: titleText,
-            message: playing
-              ? `Playing "${titleText}" on YouTube.`
-              : `Opened YouTube search results for "${queryStr}".`,
-            instruction: `DO NOT output, format, or speak any URLs or HTTP links. Say "Playing ${titleText} on YouTube."`
+            detectedBrowser: result.detectedBrowser,
+            message: result.verificationMessage,
+            instruction: `DO NOT output, format, or speak any URLs or HTTP links. Speak a ultra-concise confirmation like "${result.voiceConfirmation}"`
           },
           `YouTube: ${queryStr}`,
           {
             title: "YouTube Player",
-            content: playing ? `🎵 Playing ${titleText}` : `🔍 Search results for ${queryStr}`,
+            content: `🎵 ${result.voiceConfirmation} (${result.detectedBrowser})`,
             category: "Media",
           }
         );
