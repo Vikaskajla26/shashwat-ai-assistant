@@ -187,35 +187,13 @@ if ($hit) { $hit } else { '' }
   return out || null;
 }
 
+import { launchSystemDefaultBrowser } from "./browserRouter";
+
 /** Open a URL in the user's real default system browser safely and instantly. */
 export async function openInDefaultBrowser(url: string): Promise<void> {
   if (!url) return;
-  let targetUrl = url.trim();
-
-  // Add https:// if missing
-  if (!/^https?:\/\//i.test(targetUrl) && !targetUrl.startsWith('file://')) {
-    targetUrl = 'https://' + targetUrl;
+  const res = await launchSystemDefaultBrowser(url);
+  if (!res.success) {
+    console.warn("[openInDefaultBrowser] Launch result notice:", res.message);
   }
-
-  return new Promise((resolve) => {
-    // Primary fast launch: cmd.exe /c start "" "targetUrl" via execFile (prevents & shell splitting & child_process blocking)
-    execFile("cmd.exe", ["/c", "start", "", targetUrl], { windowsHide: true }, (err) => {
-      if (!err) {
-        resolve();
-        return;
-      }
-
-      console.warn('[openInDefaultBrowser] cmd start failed, trying PowerShell Start-Process fallback:', err);
-      // Fallback 1: PowerShell Start-Process
-      const safePw = targetUrl.replace(/'/g, "''");
-      execFile("powershell.exe", ["-NoProfile", "-Command", `Start-Process '${safePw}'`], { windowsHide: true }, (pwErr) => {
-        if (pwErr) {
-          console.warn('[openInDefaultBrowser] PowerShell fallback failed, trying explorer:', pwErr);
-          // Fallback 2: explorer.exe
-          execFile("explorer.exe", [targetUrl], { windowsHide: true }).unref();
-        }
-        resolve();
-      });
-    });
-  });
 }

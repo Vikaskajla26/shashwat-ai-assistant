@@ -306,6 +306,50 @@ function registerAllIPCHandlers() {
       return { success: false, message: err?.message || 'Reset error' };
     }
   });
+
+  // Browser Routing IPCs
+  ipcMain.handle('browser:get-default-browser', async () => {
+    try {
+      const { exec } = require('child_process');
+      const { promisify } = require('util');
+      const execAsync = promisify(exec);
+      const os = require('os');
+      if (os.platform() === 'win32') {
+        const { stdout } = await execAsync('reg query "HKCU\\Software\\Microsoft\\Windows\\Shell\\Associations\\UrlAssociations\\http\\UserChoice" /v ProgId');
+        const match = /ProgId\s+REG_SZ\s+(\S+)/i.exec(stdout);
+        if (match && match[1]) {
+          const progId = match[1].toLowerCase();
+          if (progId.includes('chrome')) return { name: 'Google Chrome', isDetected: true };
+          if (progId.includes('msedge') || progId.includes('edge')) return { name: 'Microsoft Edge', isDetected: true };
+          if (progId.includes('firefox')) return { name: 'Mozilla Firefox', isDetected: true };
+          if (progId.includes('brave')) return { name: 'Brave Browser', isDetected: true };
+          if (progId.includes('opera')) return { name: 'Opera Browser', isDetected: true };
+          if (progId.includes('arc')) return { name: 'Arc Browser', isDetected: true };
+          if (progId.includes('vivaldi')) return { name: 'Vivaldi Browser', isDetected: true };
+          return { name: `System Default (${match[1]})`, isDetected: true };
+        }
+      }
+      return { name: 'System Default Browser', isDetected: true };
+    } catch (_) {
+      return { name: 'System Default Browser', isDetected: false };
+    }
+  });
+
+  ipcMain.handle('browser:open-external', async (_event, url) => {
+    if (!url) return false;
+    try {
+      const { shell } = require('electron');
+      let targetUrl = url.trim();
+      if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://') && !targetUrl.startsWith('file://')) {
+        targetUrl = 'https://' + targetUrl;
+      }
+      await shell.openExternal(targetUrl);
+      return true;
+    } catch (err) {
+      console.warn('[ipcHandlers] shell.openExternal failed:', err);
+      return false;
+    }
+  });
 }
 
 module.exports = { registerAllIPCHandlers };

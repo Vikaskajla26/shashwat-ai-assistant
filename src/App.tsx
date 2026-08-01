@@ -436,6 +436,10 @@ export default function App() {
         onClose={() => setIsSettingsOpen(false)}
         onChangeMood={(newMood) => setMood(newMood)}
         onTriggerTestTool={handleTriggerTestTool}
+        onOpenSandbox={() => {
+          setIsSettingsOpen(false);
+          setIsSandboxOpen(true);
+        }}
       />
 
       {/* Autonomous AI Sandbox Workspace Browser */}

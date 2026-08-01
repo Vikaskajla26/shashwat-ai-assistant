@@ -122,3 +122,15 @@ export interface ClientProviderMeta {
   lastError?: string;
 }
 
+export type BrowserRoutingMode =
+  | 'system_default'
+  | 'always_ask'
+  | 'always_sandbox'
+  | 'always_default';
+
+export interface SystemBrowserInfo {
+  name: string;
+  executableName?: string;
+  isDetected: boolean;
+}
+

@@ -16,10 +16,16 @@ export function openExternalUrl(url: string, targetName = '_blank'): boolean {
   }
 
   // 1. Native Electron Shell Handler (for .exe Desktop App)
-  if (typeof window !== 'undefined' && window.electronAPI && typeof window.electronAPI.openExternal === 'function') {
+  if (typeof window !== 'undefined' && window.electronAPI) {
     try {
-      window.electronAPI.openExternal(formattedUrl);
-      return true;
+      if (typeof (window.electronAPI as any).browserOpenExternal === 'function') {
+        (window.electronAPI as any).browserOpenExternal(formattedUrl);
+        return true;
+      }
+      if (typeof window.electronAPI.openExternal === 'function') {
+        window.electronAPI.openExternal(formattedUrl);
+        return true;
+      }
     } catch (err) {
       console.warn('[openExternalUrl] Electron openExternal fallback:', err);
     }

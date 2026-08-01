@@ -67,4 +67,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   aiValidateProvider: (payload) => ipcRenderer.invoke('ai:validate-provider', payload),
   aiSaveProvider: (payload) => ipcRenderer.invoke('ai:save-provider', payload),
   aiResetProvider: (id) => ipcRenderer.invoke('ai:reset-provider', id),
+
+  // Browser Routing
+  browserGetDefaultBrowser: () => ipcRenderer.invoke('browser:get-default-browser'),
+  browserOpenExternal: (url) => ipcRenderer.invoke('browser:open-external', url),
 });
