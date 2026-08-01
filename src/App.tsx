@@ -349,6 +349,11 @@ export default function App() {
         onOpenRightDrawer={() => setIsRightDrawerOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onSendTypedText={handleSendMessage}
+        onAwake={async () => {
+          if (liveSessionRef.current) {
+            await liveSessionRef.current.triggerAwake();
+          }
+        }}
       />
 
       {/* Power Shutdown Confirmation Modal */}

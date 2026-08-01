@@ -30,6 +30,7 @@ import {
   Share2,
   X,
   Volume2,
+  Zap,
 } from 'lucide-react';
 import { AssistantState } from '../types';
 import { getStateTheme } from '../theme/aiState';
@@ -54,6 +55,7 @@ interface ShashwatDittoDashboardProps {
   onOpenRightDrawer: () => void;
   onOpenSettings: () => void;
   onSendTypedText: (text: string) => void;
+  onAwake?: () => void;
 }
 
 export const ShashwatDittoDashboard: React.FC<ShashwatDittoDashboardProps> = ({
@@ -75,6 +77,7 @@ export const ShashwatDittoDashboard: React.FC<ShashwatDittoDashboardProps> = ({
   onOpenRightDrawer,
   onOpenSettings,
   onSendTypedText,
+  onAwake,
 }) => {
   const [typedText, setTypedText] = useState('');
   const [activeTab, setActiveTab] = useState<'home' | 'memory' | 'learn' | 'system' | 'settings'>('home');
@@ -406,6 +409,7 @@ export const ShashwatDittoDashboard: React.FC<ShashwatDittoDashboardProps> = ({
               <button
                 onClick={onToggleMic}
                 className="w-12 h-12 rounded-full flex items-center justify-center mx-1 relative bg-gradient-to-br from-purple-600 to-indigo-900 border border-purple-400/60 shadow-[0_0_25px_rgba(168,85,247,0.6)] hover:scale-105 transition-transform"
+                title={isListening ? "Mute Microphone" : "Unmute Microphone"}
               >
                 <div className="w-7 h-7 rounded-full bg-purple-400/20 flex items-center justify-center">
                   {isListening ? (
@@ -414,6 +418,28 @@ export const ShashwatDittoDashboard: React.FC<ShashwatDittoDashboardProps> = ({
                     <MicOff className="w-4 h-4 text-white/80" />
                   )}
                 </div>
+              </button>
+
+              {/* Dedicated Awake Button */}
+              <button
+                onClick={onAwake}
+                className={`w-10 h-10 rounded-2xl flex flex-col items-center justify-center gap-0.5 border transition-all cursor-pointer ${
+                  state === 'listening'
+                    ? 'bg-blue-600 border-blue-400 text-white shadow-[0_0_20px_rgba(59,130,246,0.8)] animate-pulse'
+                    : state === 'reasoning' || state === 'searching' || state === 'understanding'
+                    ? 'bg-purple-600 border-purple-400 text-white shadow-[0_0_20px_rgba(168,85,247,0.8)]'
+                    : state === 'speaking'
+                    ? 'bg-amber-600 border-amber-400 text-white shadow-[0_0_20px_rgba(245,158,11,0.8)] animate-pulse'
+                    : state === 'executing'
+                    ? 'bg-emerald-600 border-emerald-400 text-white shadow-[0_0_20px_rgba(16,185,129,0.8)]'
+                    : state === 'error'
+                    ? 'bg-rose-600 border-rose-400 text-white shadow-[0_0_20px_rgba(244,63,94,0.8)]'
+                    : 'bg-white/10 border-white/20 text-white/80 hover:bg-white/20'
+                }`}
+                title="Awake Session — Start Live Voice"
+              >
+                <Zap className="w-4 h-4 fill-current" />
+                <span className="text-[9px] font-bold uppercase">AWAKE</span>
               </button>
 
               {[
