@@ -35,6 +35,7 @@ import {
 import { AssistantState } from '../types';
 import { getStateTheme } from '../theme/aiState';
 import { OrbScene } from './orb/OrbScene';
+import { AwakeCrystalButton } from './AwakeCrystalButton';
 
 interface ShashwatDittoDashboardProps {
   state: AssistantState;
@@ -275,12 +276,17 @@ export const ShashwatDittoDashboard: React.FC<ShashwatDittoDashboardProps> = ({
         </div>
 
         {/* ── CENTER HERO: 3D LIVING PLASMA ORB & MAHESHWAR SUTRAS RING ── */}
-        <div className="flex-1 flex flex-col items-center justify-center relative min-h-[460px] w-full pointer-events-none">
-          <span className="absolute top-4 text-[11px] tracking-[0.3em] font-mono text-purple-300/60 uppercase z-20">
+        <div className="flex-1 flex flex-col items-center justify-center relative min-h-[500px] w-full pointer-events-none">
+          <span className="absolute top-2 text-[11px] tracking-[0.3em] font-mono text-purple-300/60 uppercase z-20">
             MAHESHWAR SUTRAS
           </span>
-          <div className="w-[580px] h-[580px] flex items-center justify-center relative">
-            <OrbScene stateRef={stateRef} volumeRef={volumeRef} width={580} height={580} />
+          <div className="w-[520px] h-[520px] flex items-center justify-center relative">
+            <OrbScene stateRef={stateRef} volumeRef={volumeRef} width={520} height={520} />
+          </div>
+
+          {/* Floating Apple Liquid Glass Awake Crystal Button (36px below orb) */}
+          <div className="pointer-events-auto mt-[-28px] z-30 flex items-center justify-center">
+            <AwakeCrystalButton state={state} onAwake={onAwake} />
           </div>
         </div>
 
