@@ -10,6 +10,7 @@ import {
   Sparkles,
   HelpCircle,
   RefreshCw,
+  Power,
 } from 'lucide-react';
 import { BrowserRoutingMode, SystemBrowserInfo } from '../types';
 import { openExternalUrl } from '../utils/browser';
@@ -20,6 +21,7 @@ interface BrowserSettingsTabProps {
 
 export const BrowserSettingsTab: React.FC<BrowserSettingsTabProps> = ({ onOpenSandbox }) => {
   const [routingMode, setRoutingMode] = useState<BrowserRoutingMode>('system_default');
+  const [autoLaunch, setAutoLaunch] = useState<boolean>(false);
   const [browserInfo, setBrowserInfo] = useState<SystemBrowserInfo>({
     name: 'Detecting System Default Browser...',
     isDetected: false,
@@ -52,9 +54,33 @@ export const BrowserSettingsTab: React.FC<BrowserSettingsTabProps> = ({ onOpenSa
       } catch (_) {}
     };
 
+    // Check Auto-Launch Status
+    const checkAutoLaunch = async () => {
+      try {
+        if ((window as any).electronAPI?.appGetAutoLaunch) {
+          const res = await (window as any).electronAPI.appGetAutoLaunch();
+          setAutoLaunch(Boolean(res?.enabled));
+        }
+      } catch (_) {}
+    };
+
     detectBrowser();
     loadSettings();
+    checkAutoLaunch();
   }, []);
+
+  const handleToggleAutoLaunch = async () => {
+    const nextVal = !autoLaunch;
+    setAutoLaunch(nextVal);
+    try {
+      if ((window as any).electronAPI?.appSetAutoLaunch) {
+        await (window as any).electronAPI.appSetAutoLaunch(nextVal);
+        setFeedback(nextVal ? 'Launch on Windows startup enabled!' : 'Launch on Windows startup disabled.');
+      }
+    } catch (_) {
+      setFeedback('Failed to update startup settings.');
+    }
+  };
 
   const handleSaveMode = async (mode: BrowserRoutingMode) => {
     setRoutingMode(mode);
@@ -217,6 +243,35 @@ export const BrowserSettingsTab: React.FC<BrowserSettingsTabProps> = ({ onOpenSa
             <p className="text-xs text-slate-400 pl-6">
               Always use OS system default browser for everything, bypassing the sandbox.
             </p>
+          </button>
+        </div>
+      </div>
+
+      {/* Windows Startup Options Card */}
+      <div className="p-4 rounded-2xl bg-slate-900/60 border border-white/10 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-indigo-400">
+              <Power className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="font-semibold text-white text-sm">Launch on Windows Startup</h4>
+              <p className="text-[11px] text-slate-400">Automatically initialize Shashwat AI Assistant when your computer boots</p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleToggleAutoLaunch}
+            className={`w-12 h-6 rounded-full transition-colors relative flex items-center p-0.5 cursor-pointer ${
+              autoLaunch ? 'bg-indigo-600' : 'bg-slate-700'
+            }`}
+          >
+            <div
+              className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                autoLaunch ? 'translate-x-6' : 'translate-x-0'
+              }`}
+            />
           </button>
         </div>
       </div>

@@ -71,4 +71,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Browser Routing
   browserGetDefaultBrowser: () => ipcRenderer.invoke('browser:get-default-browser'),
   browserOpenExternal: (url) => ipcRenderer.invoke('browser:open-external', url),
+
+  // Windows Auto-Launch
+  appGetAutoLaunch: () => ipcRenderer.invoke('app:get-auto-launch'),
+  appSetAutoLaunch: (enabled) => ipcRenderer.invoke('app:set-auto-launch', enabled),
 });

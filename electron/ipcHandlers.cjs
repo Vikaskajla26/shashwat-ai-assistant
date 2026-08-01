@@ -350,6 +350,30 @@ function registerAllIPCHandlers() {
       return false;
     }
   });
+
+  // Windows Auto-Launch IPCs
+  ipcMain.handle('app:get-auto-launch', () => {
+    try {
+      const { app } = require('electron');
+      const settings = app.getLoginItemSettings();
+      return { enabled: settings.openAtLogin };
+    } catch (_) {
+      return { enabled: false };
+    }
+  });
+
+  ipcMain.handle('app:set-auto-launch', (_event, enabled) => {
+    try {
+      const { app } = require('electron');
+      app.setLoginItemSettings({
+        openAtLogin: Boolean(enabled),
+        path: process.execPath,
+      });
+      return { success: true, enabled: Boolean(enabled) };
+    } catch (err) {
+      return { success: false, message: err?.message || 'Failed to set auto-launch' };
+    }
+  });
 }
 
 module.exports = { registerAllIPCHandlers };
