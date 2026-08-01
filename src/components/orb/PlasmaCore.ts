@@ -55,16 +55,28 @@ export function createPlasmaCore(subdivisions: number): PlasmaCoreHandle {
   const membrane = new THREE.Mesh(membraneGeo, membraneMat);
   group.add(membrane);
 
-  // Inner plasma sphere — brighter, smaller, gives the orb a luminous core.
-  const innerGeo = new THREE.SphereGeometry(12, 32, 32);
-  const innerMat = new THREE.MeshBasicMaterial({
+  // 1. Inner Petal Core — 5-petal lotus flower energy core (Rose Pink / Magenta glow)
+  const petalCoreGeo = new THREE.DodecahedronGeometry(11, 2);
+  const petalCoreMat = new THREE.MeshBasicMaterial({
+    color: 0xf43f5e,
+    transparent: true,
+    opacity: 0.75,
+    blending: THREE.AdditiveBlending,
+    wireframe: false,
+  });
+  const petalCore = new THREE.Mesh(petalCoreGeo, petalCoreMat);
+  group.add(petalCore);
+
+  // 2. Central White Core Light Point
+  const centerLightGeo = new THREE.SphereGeometry(5.5, 24, 24);
+  const centerLightMat = new THREE.MeshBasicMaterial({
     color: 0xffffff,
     transparent: true,
-    opacity: 0.85,
+    opacity: 0.95,
     blending: THREE.AdditiveBlending,
   });
-  const inner = new THREE.Mesh(innerGeo, innerMat);
-  group.add(inner);
+  const centerLight = new THREE.Mesh(centerLightGeo, centerLightMat);
+  group.add(centerLight);
 
   // Cached target colors, smoothly lerped each frame for state transitions.
   const curBase = new THREE.Color('#F59E0B');
@@ -107,18 +119,25 @@ export function createPlasmaCore(subdivisions: number): PlasmaCoreHandle {
     membrane.rotation.y = t * theme.orbSpeed * speedMultiplier;
     membrane.rotation.x = Math.sin(t * theme.orbSpeed * 0.7) * 0.15;
 
-    // Inner core counter-rotates and pulses with FFT bass + volume
-    inner.rotation.y = -t * theme.orbSpeed * 0.6 * speedMultiplier;
-    const innerPulse = 1 + totalAudioBoost * 0.15 + Math.sin(t * theme.orbBreath * 1.6) * 0.02;
-    inner.scale.setScalar(innerPulse);
-    innerMat.opacity = 0.8 + vol * 0.18;
+    // Inner petal lotus core counter-rotates and breathes
+    petalCore.rotation.y = -t * theme.orbSpeed * 0.9 * speedMultiplier;
+    petalCore.rotation.z = Math.sin(t * 0.8) * 0.2;
+    const innerPulse = 1 + totalAudioBoost * 0.18 + Math.sin(t * theme.orbBreath * 1.6) * 0.03;
+    petalCore.scale.setScalar(innerPulse);
+    petalCoreMat.opacity = 0.75 + vol * 0.20;
+
+    // Center white light point pulses with RMS volume
+    centerLight.scale.setScalar(1 + totalAudioBoost * 0.25);
+    centerLightMat.opacity = 0.9 + vol * 0.1;
   };
 
   const dispose = () => {
     membraneGeo.dispose();
     membraneMat.dispose();
-    innerGeo.dispose();
-    innerMat.dispose();
+    petalCoreGeo.dispose();
+    petalCoreMat.dispose();
+    centerLightGeo.dispose();
+    centerLightMat.dispose();
   };
 
   return { group, update, dispose };

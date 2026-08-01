@@ -169,26 +169,48 @@ export class BackgroundEngine {
       ctx.fill();
     }
 
-    // 4. Floating Ambient Dust Motes (Near Depth Layer)
-    ctx.globalAlpha = 1.0;
-    for (const dust of this.dustMotes) {
-      dust.x += Math.sin(this.time * 0.2 + dust.twinklePhase) * 0.15;
-      dust.y -= 0.1 / dust.z; // Slow upward drift
+    // 5. Distant Mountain Silhouette Landscape (Reference Image matching)
+    ctx.fillStyle = '#02040a';
+    ctx.beginPath();
+    ctx.moveTo(0, this.height * 0.72);
+    ctx.bezierCurveTo(this.width * 0.2, this.height * 0.65, this.width * 0.4, this.height * 0.75, this.width * 0.6, this.height * 0.68);
+    ctx.bezierCurveTo(this.width * 0.8, this.height * 0.62, this.width * 0.9, this.height * 0.74, this.width, this.height * 0.70);
+    ctx.lineTo(this.width, this.height);
+    ctx.lineTo(0, this.height);
+    ctx.closePath();
+    ctx.fill();
 
-      if (dust.y < -10) dust.y = this.height + 10;
-      if (dust.x < -10) dust.x = this.width + 10;
-      if (dust.x > this.width + 10) dust.x = -10;
+    // 6. Starry Glassy Water Surface with Orb Light Ripples
+    const waterY = this.height * 0.74;
+    const waterGrad = ctx.createLinearGradient(0, waterY, 0, this.height);
+    waterGrad.addColorStop(0, 'rgba(8, 12, 30, 0.85)');
+    waterGrad.addColorStop(0.5, 'rgba(15, 10, 40, 0.95)');
+    waterGrad.addColorStop(1, 'rgba(3, 7, 18, 1.0)');
 
-      dust.twinklePhase += dust.twinkleSpeed;
-      const alpha = Math.sin(dust.twinklePhase) * 0.2 + dust.baseAlpha;
-      const px = dust.x - offsetX * (0.8 / dust.z);
-      const py = dust.y - offsetY * (0.8 / dust.z);
+    ctx.fillStyle = waterGrad;
+    ctx.fillRect(0, waterY, this.width, this.height - waterY);
 
-      ctx.fillStyle = hudAccentColor;
-      ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+    // Glowing Central Reflection Ripple on Water Surface
+    const rx = this.width / 2 + offsetX * 0.5;
+    const ry = waterY + 40;
+    const waterGlow = ctx.createRadialGradient(rx, ry, 0, rx, ry, 280);
+    waterGlow.addColorStop(0, 'rgba(168, 85, 247, 0.28)');
+    waterGlow.addColorStop(0.4, 'rgba(56, 189, 248, 0.15)');
+    waterGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+    ctx.fillStyle = waterGlow;
+    ctx.fillRect(0, waterY, this.width, this.height - waterY);
+
+    // Subtle Water Horizontal Anamorphic Reflection Lines
+    ctx.strokeStyle = 'rgba(192, 132, 252, 0.18)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 8; i++) {
+      const lineY = waterY + 15 + i * 14;
+      const rippleOffset = Math.sin(this.time * 1.5 + i * 0.8) * 20;
       ctx.beginPath();
-      ctx.arc(px, py, dust.size, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.moveTo(this.width / 2 - 180 + rippleOffset, lineY);
+      ctx.lineTo(this.width / 2 + 180 + rippleOffset, lineY);
+      ctx.stroke();
     }
 
     ctx.globalAlpha = 1.0;
