@@ -36,6 +36,8 @@ import { AssistantState } from '../types';
 import { getStateTheme, stateThemes } from '../theme/aiState';
 import { AwakeCrystalButton } from './AwakeCrystalButton';
 import { VoiceDiagnosticsPanel } from '../voice/VoiceDiagnosticsPanel';
+import { QuantumAICore } from './QuantumAICore';
+import { AudioWaveform } from './AudioWaveform';
 
 interface ShashwatDittoDashboardProps {
   state: AssistantState;
@@ -225,6 +227,12 @@ export const ShashwatDittoDashboard: React.FC<ShashwatDittoDashboardProps> = ({
 
       {/* 2D Starfield Canvas */}
       <canvas ref={starCanvasRef} className="absolute inset-0 pointer-events-none z-0" />
+
+      {/* ── HERO CENTER BIOLUMINESCENT QUANTUM AI CORE & WAVEFORM ── */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[52%] flex flex-col items-center justify-center gap-3 z-10 pointer-events-none">
+        <QuantumAICore state={state} volume={activeAudioVolume} width={380} height={380} />
+        <AudioWaveform state={state} volume={activeAudioVolume} />
+      </div>
 
       {/* ── MAHESHWAR SUTRAS SVG ROTATING RINGS ── */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10 opacity-30">

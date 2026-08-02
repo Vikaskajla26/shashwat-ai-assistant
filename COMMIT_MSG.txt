@@ -1,7 +1,5 @@
-feat(phase-2): implement Ultra Low Latency Voice Engine & VAD barge-in
+feat(ui): implement 2D Quantum AI Core, neon audio waveform, and glassmorphism UI redesign
 
-- Rebuilt AudioPlayer.ts: sub-second 24kHz PCM chunk playback with Web Audio API and instant stopAndClear() for barge-in interruptions.
-- Rebuilt AudioStreamer.ts: 16kHz 16-bit Int16 PCM mono audio capture with real-time RMS VAD energy calculation and adaptive noise floor.
-- Rebuilt VoicePipelineEngine.ts: sub-second latency tracking (EOS to first audio byte), barge-in interruption, persistent WebSocket streaming, and 6-second anti-freeze response watchdog.
-- Rebuilt WakeWordDetector.ts: fast <200ms recognition for Hindi ("शाश्वत") & English ("shashwat") with 30s offline cooldown.
-- Created Phase2VoiceSelfTest.ts verification suite ensuring 100% test pass score.
+- Created QuantumAICore.tsx: high-performance 2D Canvas bioluminescent AI core operating at 60 FPS with state-based fluid particle physics and audio reactivity.
+- Created AudioWaveform.tsx: 16-bar neon frequency audio spectrum visualizer.
+- Redesigned ShashwatDittoDashboard.tsx: integrated QuantumAICore and AudioWaveform into hero center, removed clutter, and refined glassmorphism card styling.
