@@ -31,6 +31,8 @@ import { PowerShutdownModal } from './components/PowerShutdownModal';
 import { AIProviderSetupWizard } from './components/AIProviderSetupWizard';
 import { getStateTheme } from './theme/aiState';
 
+import { ShashwatCore } from './core/ShashwatCore';
+
 export default function App() {
   const [state, setState] = useState<AssistantState>('disconnected');
   const [mood, setMood] = useState<AssistantMood>('witty');
@@ -70,8 +72,12 @@ export default function App() {
   const [activePlan, setActivePlan] = useState<TaskExecutionPlan | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Startup check for persistent application state & AI provider configuration
+  // Boot Shashwat OS Kernel & check startup state
   useEffect(() => {
+    ShashwatCore.getInstance().boot().catch((err) => {
+      console.error('[App] Core kernel boot notice:', err);
+    });
+
     const checkInitializationOnLaunch = async () => {
       try {
         let res: any = null;
