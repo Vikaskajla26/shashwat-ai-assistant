@@ -1,31 +1,27 @@
-import { float32ToInt16Base64, calculateVolume } from '../utils/pcm';
-
-export interface AudioStreamerOptions {
-  onAudioData: (base64Pcm: string) => void;
-  onVolumeChange?: (volume: number) => void;
-  onError?: (error: Error) => void;
-}
+/**
+ * AudioStreamer for Shashwat AI OS.
+ * Captures 16kHz 16-bit mono Int16 PCM audio from mic for persistent Gemini Live streaming.
+ * Includes real-time adaptive VAD (Voice Activity Detection) energy calculation.
+ */
 
 export class AudioStreamer {
-  private audioContext: AudioContext | null = null;
   private mediaStream: MediaStream | null = null;
-  private mediaStreamSource: MediaStreamAudioSourceNode | null = null;
-  private processorNode: ScriptProcessorNode | null = null;
-  private isRecording = false;
-  private isMuted = false;
+  private audioCtx: AudioContext | null = null;
+  private scriptProcessor: ScriptProcessorNode | null = null;
+  private onAudioChunk?: (base64Pcm: string) => void;
+  private onVadEnergy?: (energyNorm: number, isSpeech: boolean) => void;
+  private isStreaming = false;
 
-  private onAudioData: (base64Pcm: string) => void;
-  private onVolumeChange?: (volume: number) => void;
-  private onError?: (error: Error) => void;
+  private noiseFloor = 0.01;
+  private speechThreshold = 0.04;
 
-  constructor(options: AudioStreamerOptions) {
-    this.onAudioData = options.onAudioData;
-    this.onVolumeChange = options.onVolumeChange;
-    this.onError = options.onError;
-  }
-
-  public async start(): Promise<void> {
-    if (this.isRecording) return;
+  public async start(
+    onChunk: (base64Pcm: string) => void,
+    onVad?: (energyNorm: number, isSpeech: boolean) => void
+  ): Promise<void> {
+    if (this.isStreaming) return;
+    this.onAudioChunk = onChunk;
+    this.onVadEnergy = onVad;
 
     try {
       this.mediaStream = await navigator.mediaDevices.getUserMedia({
@@ -38,85 +34,85 @@ export class AudioStreamer {
         },
       });
 
-      // Target 16kHz sample rate for Gemini Live PCM input
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      this.audioContext = new AudioCtx({ sampleRate: 16000, latencyHint: 'interactive' });
+      this.audioCtx = new AudioCtx({ sampleRate: 16000 });
+      const source = this.audioCtx.createMediaStreamSource(this.mediaStream);
 
-      if (this.audioContext.state === 'suspended') {
-        await this.audioContext.resume();
-      }
+      // ScriptProcessorNode for 16kHz PCM chunk extraction (2048 buffer size = ~128ms chunks)
+      this.scriptProcessor = this.audioCtx.createScriptProcessor(2048, 1, 1);
 
-      this.mediaStreamSource = this.audioContext.createMediaStreamSource(this.mediaStream);
-      
-      // 256-sample buffer = 16ms chunks at 16kHz → ultra-low latency for Gemini Live
-      this.processorNode = this.audioContext.createScriptProcessor(256, 1, 1);
+      this.scriptProcessor.onaudioprocess = (e) => {
+        if (!this.isStreaming) return;
+        const inputData = e.inputBuffer.getChannelData(0);
 
-      this.processorNode.onaudioprocess = (e) => {
-        if (!this.isRecording || this.isMuted) return;
+        // 1. Calculate RMS VAD energy
+        let sum = 0;
+        for (let i = 0; i < inputData.length; i++) {
+          sum += inputData[i] * inputData[i];
+        }
+        const rms = Math.sqrt(sum / inputData.length);
 
-        const inputBuffer = e.inputBuffer.getChannelData(0);
-        const volume = calculateVolume(inputBuffer);
-        if (this.onVolumeChange) {
-          this.onVolumeChange(volume);
+        // Adaptive noise floor calculation
+        if (rms < this.noiseFloor) {
+          this.noiseFloor = this.noiseFloor * 0.95 + rms * 0.05;
         }
 
-        const base64 = float32ToInt16Base64(inputBuffer);
-        this.onAudioData(base64);
+        const isSpeech = rms > Math.max(this.speechThreshold, this.noiseFloor * 3.5);
+
+        if (this.onVadEnergy) {
+          this.onVadEnergy(Math.min(1.0, rms * 8.0), isSpeech);
+        }
+
+        // 2. Convert Float32 to Int16 PCM
+        const pcm16 = new Int16Array(inputData.length);
+        for (let i = 0; i < inputData.length; i++) {
+          const s = Math.max(-1, Math.min(1, inputData[i]));
+          pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+        }
+
+        // 3. Convert Int16 PCM bytes to Base64
+        const bytes = new Uint8Array(pcm16.buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.byteLength; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        const base64Pcm = btoa(binary);
+
+        if (this.onAudioChunk) {
+          this.onAudioChunk(base64Pcm);
+        }
       };
 
-      this.mediaStreamSource.connect(this.processorNode);
-      this.processorNode.connect(this.audioContext.destination);
-
-      this.isRecording = true;
-    } catch (err: any) {
-      this.stop();
-      if (this.onError) {
-        this.onError(new Error(err?.message || 'Failed to access microphone'));
-      }
+      source.connect(this.scriptProcessor);
+      this.scriptProcessor.connect(this.audioCtx.destination);
+      this.isStreaming = true;
+    } catch (err) {
+      console.error('[AudioStreamer] Failed to acquire microphone stream:', err);
       throw err;
     }
   }
 
   public stop(): void {
-    this.isRecording = false;
-
-    if (this.processorNode && this.mediaStreamSource) {
+    this.isStreaming = false;
+    if (this.scriptProcessor) {
       try {
-        this.processorNode.disconnect();
-        this.mediaStreamSource.disconnect();
+        this.scriptProcessor.disconnect();
       } catch (_) {}
+      this.scriptProcessor = null;
     }
-
+    if (this.audioCtx) {
+      try {
+        this.audioCtx.close();
+      } catch (_) {}
+      this.audioCtx = null;
+    }
     if (this.mediaStream) {
       this.mediaStream.getTracks().forEach((track) => track.stop());
       this.mediaStream = null;
     }
-
-    if (this.audioContext && this.audioContext.state !== 'closed') {
-      this.audioContext.close();
-      this.audioContext = null;
-    }
-
-    this.processorNode = null;
-    this.mediaStreamSource = null;
-
-    if (this.onVolumeChange) {
-      this.onVolumeChange(0);
-    }
   }
 
-  public setMuted(muted: boolean): void {
-    this.isMuted = muted;
-    if (muted && this.onVolumeChange) {
-      this.onVolumeChange(0);
-    }
-  }
-
-  public getMuted(): boolean {
-    return this.isMuted;
-  }
-
-  public getActive(): boolean {
-    return this.isRecording;
+  public getIsStreaming(): boolean {
+    return this.isStreaming;
   }
 }

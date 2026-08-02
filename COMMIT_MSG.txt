@@ -1,10 +1,7 @@
-feat(phase-1): implement Core AI Foundation & self-healing micro-kernel
+feat(phase-2): implement Ultra Low Latency Voice Engine & VAD barge-in
 
-- Created src/core/EventBus.ts: decoupled, type-safe asynchronous event bus with error-isolated listener execution.
-- Created src/core/CentralLogger.ts: structured logging (DEBUG, INFO, WARN, ERROR, FATAL) with automatic API key scrubbing.
-- Created src/core/BaseModule.ts & ModuleManager.ts: standardized IModule contract, dependency injection, and topological boot order.
-- Created src/core/Supervisor.ts: micro-kernel supervisor with periodic pings (5s) and independent module self-healing auto-recovery.
-- Created src/core/HealthMonitor.ts & GlobalStateManager.ts: real-time system diagnostics and atomic state management.
-- Implemented 7 independent modules in src/core/modules/: AIEngine, Voice, DesktopAutomation, BrowserAutomation, Memory, Settings, Media.
-- Updated VoiceDiagnosticsPanel HUD (Ctrl+Shift+D) to expose real-time module health telemetry and self-heal triggers.
-- Added Phase1SelfTest.ts verification suite ensuring 100% test pass score.
+- Rebuilt AudioPlayer.ts: sub-second 24kHz PCM chunk playback with Web Audio API and instant stopAndClear() for barge-in interruptions.
+- Rebuilt AudioStreamer.ts: 16kHz 16-bit Int16 PCM mono audio capture with real-time RMS VAD energy calculation and adaptive noise floor.
+- Rebuilt VoicePipelineEngine.ts: sub-second latency tracking (EOS to first audio byte), barge-in interruption, persistent WebSocket streaming, and 6-second anti-freeze response watchdog.
+- Rebuilt WakeWordDetector.ts: fast <200ms recognition for Hindi ("शाश्वत") & English ("shashwat") with 30s offline cooldown.
+- Created Phase2VoiceSelfTest.ts verification suite ensuring 100% test pass score.
