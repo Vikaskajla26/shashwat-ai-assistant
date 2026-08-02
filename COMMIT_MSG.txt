@@ -1,10 +1,6 @@
-fix(audit): complete 10-phase project audit & electron architecture repair
+fix(audio): resolve 4-layer voice pipeline contract bugs between LiveSession, AudioPlayer and AudioStreamer
 
-- Phase 1 & 2: Eliminated all direct require() and Node module imports (fs, path, crypto) from src/ renderer bundle. Exposed all IPC methods cleanly on window.electronAPI via electron/preload.cjs contextBridge.
-- Phase 3: Guaranteed startup stability with GlobalErrorBoundary.tsx and StartupDiagnostics.ts preventing black screens.
-- Phase 4: Enforced strict 12-state FSM in ConversationController.ts preventing infinite speaking and re-greeting loops.
-- Phase 5: Managed Gemini Live session lifecycle with ConnectionManager.ts 5s heartbeat and auto-reconnect backoff.
-- Phase 6: Enforced System Default Browser command routing in BrowserIntentRouter.ts (everyday requests open system browser; AI tasks use sandbox).
-- Phase 7: Persisted API keys and SQLite memory in data/ using AES-256 encryption.
-- Phase 8: Optimized 2D canvas particle rendering to 120 FPS target with animation frame cleanup.
-- Phase 9 & 10: Created automated validation self-tests for all 16 project phases.
+- Bug 1 Fix: Updated AudioStreamer constructor to accept options object { onAudioData, onVolumeChange, onError } and fallback positional args in start(onChunk, onVad), restoring mic PCM chunk streaming to Gemini Live.
+- Bug 2 Fix: Updated AudioPlayer constructor to accept options object { onVolumeChange, onPlaybackEnded }, restoring TTS completion state transition (speaking -> listening).
+- Bug 3 Fix: Added missing interrupt(), setMuted(), and getMuted() methods to AudioPlayer and AudioStreamer, preventing TypeError crashes during barge-in interruptions.
+- Bug 4 Fix: Corrected volume scale thresholds (0.05 / 0.15 matching 0-1 scale) and fixed inverted turnComplete state reset logic in LiveSession.ts.

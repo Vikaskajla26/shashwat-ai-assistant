@@ -61,7 +61,7 @@ export class LiveSession {
         this.outputVolume = vol;
         this.options.onVolumesChange(this.inputVolume, this.outputVolume);
 
-        if (vol > 5 && this.currentState !== 'speaking') {
+        if (vol > 0.05 && this.currentState !== 'speaking') {
           this.setState('speaking');
         }
       },
@@ -104,10 +104,10 @@ export class LiveSession {
         this.options.onVolumesChange(this.inputVolume, this.outputVolume);
 
         // VAD Speech Detection Trigger
-        if (vol > 15) {
+        if (vol > 0.15) {
           if (this.speechStartTime === 0) {
             this.speechStartTime = Date.now();
-            this.logTelemetry('Speech Detected', `Input level ${vol}%`);
+            this.logTelemetry('Speech Detected', `Input level ${(vol * 100).toFixed(0)}%`);
           }
 
           // Barge-in: Interrupt playback if user speaks while AI is speaking
@@ -226,9 +226,7 @@ export class LiveSession {
           } else if (msg.type === 'turnComplete') {
             this.clearWatchdog();
             this.options.onTurnComplete?.();
-            if (this.currentState !== 'speaking') {
-              this.setState('listening');
-            }
+            this.setState('listening');
           } else if (msg.type === 'phase') {
             if (msg.phase) {
               this.options.onPhase?.(msg.phase as AssistantPhase);

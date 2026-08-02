@@ -4,6 +4,11 @@
  * Supports instant barge-in playback clearing and volume spectrum analysis.
  */
 
+export interface AudioPlayerOptions {
+  onVolumeChange?: (vol: number) => void;
+  onPlaybackEnded?: () => void;
+}
+
 export class AudioPlayer {
   private audioCtx: AudioContext | null = null;
   private analyserNode: AnalyserNode | null = null;
@@ -14,7 +19,13 @@ export class AudioPlayer {
   private volumeCallback?: (vol: number) => void;
   private animFrame = 0;
 
-  constructor() {
+  constructor(options?: AudioPlayerOptions) {
+    if (options?.onPlaybackEnded) {
+      this.onEndedCallback = options.onPlaybackEnded;
+    }
+    if (options?.onVolumeChange) {
+      this.volumeCallback = options.onVolumeChange;
+    }
     this.initAudioContext();
   }
 
@@ -110,6 +121,10 @@ export class AudioPlayer {
       this.scheduledTime = this.audioCtx.currentTime;
     }
     this.stopVolumeMonitoring();
+  }
+
+  public interrupt(): void {
+    this.stopAndClear();
   }
 
   public stop(): void {

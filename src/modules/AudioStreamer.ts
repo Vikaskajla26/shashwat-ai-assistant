@@ -4,24 +4,45 @@
  * Includes real-time adaptive VAD (Voice Activity Detection) energy calculation.
  */
 
+export interface AudioStreamerOptions {
+  onAudioData?: (base64Pcm: string) => void;
+  onVolumeChange?: (energyNorm: number) => void;
+  onError?: (err: Error) => void;
+}
+
 export class AudioStreamer {
   private mediaStream: MediaStream | null = null;
   private audioCtx: AudioContext | null = null;
   private scriptProcessor: ScriptProcessorNode | null = null;
   private onAudioChunk?: (base64Pcm: string) => void;
   private onVadEnergy?: (energyNorm: number, isSpeech: boolean) => void;
+  private onErrorCallback?: (err: Error) => void;
   private isStreaming = false;
+  private isMutedState = false;
 
   private noiseFloor = 0.01;
   private speechThreshold = 0.04;
 
+  constructor(options?: AudioStreamerOptions) {
+    if (options?.onAudioData) {
+      this.onAudioChunk = options.onAudioData;
+    }
+    if (options?.onVolumeChange) {
+      this.onVadEnergy = (energy) => options.onVolumeChange!(energy);
+    }
+    if (options?.onError) {
+      this.onErrorCallback = options.onError;
+    }
+  }
+
   public async start(
-    onChunk: (base64Pcm: string) => void,
+    onChunk?: (base64Pcm: string) => void,
     onVad?: (energyNorm: number, isSpeech: boolean) => void
   ): Promise<void> {
+    if (onChunk) this.onAudioChunk = onChunk;
+    if (onVad) this.onVadEnergy = onVad;
+
     if (this.isStreaming) return;
-    this.onAudioChunk = onChunk;
-    this.onVadEnergy = onVad;
 
     try {
       this.mediaStream = await navigator.mediaDevices.getUserMedia({
@@ -58,10 +79,14 @@ export class AudioStreamer {
         }
 
         const isSpeech = rms > Math.max(this.speechThreshold, this.noiseFloor * 3.5);
+        const normEnergy = Math.min(1.0, rms * 8.0);
 
         if (this.onVadEnergy) {
-          this.onVadEnergy(Math.min(1.0, rms * 8.0), isSpeech);
+          this.onVadEnergy(normEnergy, isSpeech);
         }
+
+        // Mute Guard: If muted, do not send audio chunks to Gemini Live
+        if (this.isMutedState) return;
 
         // 2. Convert Float32 to Int16 PCM
         const pcm16 = new Int16Array(inputData.length);
@@ -86,10 +111,21 @@ export class AudioStreamer {
       source.connect(this.scriptProcessor);
       this.scriptProcessor.connect(this.audioCtx.destination);
       this.isStreaming = true;
-    } catch (err) {
+    } catch (err: any) {
       console.error('[AudioStreamer] Failed to acquire microphone stream:', err);
+      if (this.onErrorCallback) {
+        this.onErrorCallback(err);
+      }
       throw err;
     }
+  }
+
+  public setMuted(muted: boolean): void {
+    this.isMutedState = muted;
+  }
+
+  public getMuted(): boolean {
+    return this.isMutedState;
   }
 
   public stop(): void {
