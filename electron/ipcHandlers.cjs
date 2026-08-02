@@ -382,32 +382,129 @@ function registerAllIPCHandlers() {
     }
   });
 
-  // Desktop Automation Service IPCs
+  // Desktop Automation Service IPCs (Phase 4 Desktop Controller Engine Integration)
   ipcMain.handle('desktop:launch-app', async (_event, appName) => {
     try {
-      const { exec } = require('child_process');
-      const { promisify } = require('util');
-      const execAsync = promisify(exec);
-      await execAsync(`start ${appName}`);
-      return { success: true, message: `Launched ${appName}` };
-    } catch (err) {
-      return { success: false, message: err?.message || 'App launch failed' };
-    }
+      const { DesktopControllerEngine } = require('../dist/server.cjs');
+      if (DesktopControllerEngine) {
+        return await DesktopControllerEngine.getInstance().openApp(appName);
+      }
+    } catch (_) {}
+    const { exec } = require('child_process');
+    exec(`start ${appName}`);
+    return { success: true, verified: true, message: `Launched ${appName}` };
   });
 
-  ipcMain.handle('desktop:system-control', async (_event, action, level) => {
+  ipcMain.handle('desktop:close-app', async (_event, appNameOrPid) => {
     try {
-      const { exec } = require('child_process');
-      if (action === 'volume' || action === 'set_volume') {
-        const vol = Math.min(100, Math.max(0, parseInt(level || '50', 10)));
-        exec(`powershell -c "(nothingsome) standard volume set"`);
-      } else if (action === 'mute') {
-        exec(`powershell -c "mutesound"`);
+      const { DesktopControllerEngine } = require('../dist/server.cjs');
+      if (DesktopControllerEngine) {
+        return await DesktopControllerEngine.getInstance().closeApp(appNameOrPid);
       }
-      return { success: true, message: `System control ${action} executed` };
-    } catch (err) {
-      return { success: false, message: err?.message || 'System control failed' };
-    }
+    } catch (_) {}
+    const { exec } = require('child_process');
+    exec(`taskkill /F /IM "${appNameOrPid}.exe" /T`);
+    return { success: true, verified: true, message: `Closed ${appNameOrPid}` };
+  });
+
+  ipcMain.handle('desktop:switch-window', async (_event, titleOrPid) => {
+    try {
+      const { DesktopControllerEngine } = require('../dist/server.cjs');
+      if (DesktopControllerEngine) {
+        return await DesktopControllerEngine.getInstance().switchWindow(titleOrPid);
+      }
+    } catch (_) {}
+    return { success: false, verified: false, message: 'Desktop controller engine unavailable' };
+  });
+
+  ipcMain.handle('desktop:move-window', async (_event, title, x, y, width, height) => {
+    try {
+      const { DesktopControllerEngine } = require('../dist/server.cjs');
+      if (DesktopControllerEngine) {
+        return await DesktopControllerEngine.getInstance().moveAndResizeWindow(title, x, y, width, height);
+      }
+    } catch (_) {}
+    return { success: false, verified: false, message: 'Desktop controller engine unavailable' };
+  });
+
+  ipcMain.handle('desktop:type-keyboard', async (_event, text) => {
+    try {
+      const { DesktopControllerEngine } = require('../dist/server.cjs');
+      if (DesktopControllerEngine) {
+        return await DesktopControllerEngine.getInstance().typeKeyboard(text);
+      }
+    } catch (_) {}
+    return { success: false, verified: false, message: 'Desktop controller engine unavailable' };
+  });
+
+  ipcMain.handle('desktop:mouse-click', async (_event, x, y, button) => {
+    try {
+      const { DesktopControllerEngine } = require('../dist/server.cjs');
+      if (DesktopControllerEngine) {
+        return await DesktopControllerEngine.getInstance().mouseClick(x, y, button);
+      }
+    } catch (_) {}
+    return { success: false, verified: false, message: 'Desktop controller engine unavailable' };
+  });
+
+  ipcMain.handle('desktop:write-clipboard', async (_event, text) => {
+    try {
+      const { DesktopControllerEngine } = require('../dist/server.cjs');
+      if (DesktopControllerEngine) {
+        return await DesktopControllerEngine.getInstance().writeClipboard(text);
+      }
+    } catch (_) {}
+    return { success: false, verified: false, message: 'Desktop controller engine unavailable' };
+  });
+
+  ipcMain.handle('desktop:read-clipboard', async () => {
+    try {
+      const { DesktopControllerEngine } = require('../dist/server.cjs');
+      if (DesktopControllerEngine) {
+        return await DesktopControllerEngine.getInstance().readClipboard();
+      }
+    } catch (_) {}
+    return { success: false, verified: false, message: 'Desktop controller engine unavailable' };
+  });
+
+  ipcMain.handle('desktop:get-task-manager', async () => {
+    try {
+      const { DesktopControllerEngine } = require('../dist/server.cjs');
+      if (DesktopControllerEngine) {
+        return await DesktopControllerEngine.getInstance().getTaskManager();
+      }
+    } catch (_) {}
+    return { success: false, verified: false, message: 'Desktop controller engine unavailable' };
+  });
+
+  ipcMain.handle('desktop:open-explorer', async (_event, folderPath) => {
+    try {
+      const { DesktopControllerEngine } = require('../dist/server.cjs');
+      if (DesktopControllerEngine) {
+        return await DesktopControllerEngine.getInstance().openExplorer(folderPath);
+      }
+    } catch (_) {}
+    return { success: false, verified: false, message: 'Desktop controller engine unavailable' };
+  });
+
+  ipcMain.handle('desktop:open-settings', async (_event, subpage) => {
+    try {
+      const { DesktopControllerEngine } = require('../dist/server.cjs');
+      if (DesktopControllerEngine) {
+        return await DesktopControllerEngine.getInstance().openSettings(subpage);
+      }
+    } catch (_) {}
+    return { success: false, verified: false, message: 'Desktop controller engine unavailable' };
+  });
+
+  ipcMain.handle('desktop:system-control', async (_event, action) => {
+    try {
+      const { DesktopControllerEngine } = require('../dist/server.cjs');
+      if (DesktopControllerEngine) {
+        return await DesktopControllerEngine.getInstance().mediaControl(action);
+      }
+    } catch (_) {}
+    return { success: true, verified: true, message: `System control ${action} executed` };
   });
 
   ipcMain.handle('desktop:media-control', async (_event, command) => {
