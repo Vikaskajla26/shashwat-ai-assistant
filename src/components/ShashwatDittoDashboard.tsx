@@ -71,12 +71,15 @@ export const ShashwatDittoDashboard: React.FC<ShashwatDittoDashboardProps> = ({
   state,
   stateRef,
   volumeRef,
+  inputVolume = 0,
+  outputVolume = 0,
   onToggleMic,
   onAwake,
   onOpenSettings,
   onOpenLeftDrawer,
   onOpenRightDrawer,
 }) => {
+  const activeAudioVolume = volumeRef?.current ?? (state === 'speaking' ? (outputVolume ?? 0) : (inputVolume ?? 0));
   const [activeTab, setActiveTab] = useState<'Home' | 'Memory' | 'Learn' | 'System' | 'Settings'>('Home');
   const [currentTime, setCurrentTime] = useState<string>('');
   const [focusMode, setFocusMode] = useState<boolean>(true);

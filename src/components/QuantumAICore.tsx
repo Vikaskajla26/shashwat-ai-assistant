@@ -57,7 +57,8 @@ export function QuantumAICore({ state, volume, width = 360, height = 360 }: Quan
 
       const currentState = stateRef.current;
       const theme = getStateTheme(currentState);
-      const vol = volumeRef.current;
+      const rawVol = volumeRef.current;
+      const vol = typeof rawVol === 'number' && !isNaN(rawVol) ? Math.max(0, rawVol) : 0;
 
       // 1. Dynamic Outer Radial Glow
       const glowRadius = baseRadius * (1.2 + Math.sin(t * theme.orbBreath * 1.5) * 0.06 + vol * 0.25);

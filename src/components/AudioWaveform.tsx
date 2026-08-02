@@ -9,14 +9,15 @@ interface AudioWaveformProps {
 
 export function AudioWaveform({ state, volume }: AudioWaveformProps) {
   const theme = getStateTheme(state);
-  const isAudioActive = state === 'listening' || state === 'speaking' || volume > 0.05;
+  const safeVolume = typeof volume === 'number' && !isNaN(volume) ? Math.max(0, volume) : 0;
+  const isAudioActive = state === 'listening' || state === 'speaking' || safeVolume > 0.05;
 
   const barCount = 16;
   const bars = Array.from({ length: barCount }, (_, i) => {
     // Generate organic pseudo-frequency spectrum heights
     const centerFactor = 1 - Math.abs(i - barCount / 2) / (barCount / 2);
     const heightNorm = isAudioActive
-      ? Math.max(0.15, Math.min(1.0, (volume * 1.8 + Math.sin(i * 0.8 + Date.now() * 0.01) * 0.25) * centerFactor))
+      ? Math.max(0.15, Math.min(1.0, (safeVolume * 1.8 + Math.sin(i * 0.8 + Date.now() * 0.01) * 0.25) * centerFactor))
       : 0.1;
     return heightNorm;
   });
