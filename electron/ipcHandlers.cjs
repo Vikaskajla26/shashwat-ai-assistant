@@ -654,6 +654,17 @@ function registerAllIPCHandlers() {
     return false;
   });
 
+  // Production Auto-Updater IPC (Phase 16 Production Build)
+  ipcMain.handle('updater:check', async () => {
+    try {
+      const { AutoUpdaterEngine } = require('../dist/server.cjs');
+      if (AutoUpdaterEngine) {
+        return await AutoUpdaterEngine.getInstance().checkForUpdates();
+      }
+    } catch (_) {}
+    return { available: false, version: '1.0.0', releaseNotes: 'Latest build', downloadUrl: '' };
+  });
+
   // Desktop Automation Service IPCs (Phase 4 Desktop Controller Engine Integration)
   ipcMain.handle('desktop:launch-app', async (_event, appName) => {
     try {
