@@ -338,48 +338,93 @@ function registerAllIPCHandlers() {
     }
   });
 
-  // Browser Routing IPCs
+  // Browser Routing IPCs (Phase 5 Browser Controller Engine Integration)
   ipcMain.handle('browser:get-default-browser', async () => {
     try {
-      const { exec } = require('child_process');
-      const { promisify } = require('util');
-      const execAsync = promisify(exec);
-      const os = require('os');
-      if (os.platform() === 'win32') {
-        const { stdout } = await execAsync('reg query "HKCU\\Software\\Microsoft\\Windows\\Shell\\Associations\\UrlAssociations\\http\\UserChoice" /v ProgId');
-        const match = /ProgId\s+REG_SZ\s+(\S+)/i.exec(stdout);
-        if (match && match[1]) {
-          const progId = match[1].toLowerCase();
-          if (progId.includes('chrome')) return { name: 'Google Chrome', isDetected: true };
-          if (progId.includes('msedge') || progId.includes('edge')) return { name: 'Microsoft Edge', isDetected: true };
-          if (progId.includes('firefox')) return { name: 'Mozilla Firefox', isDetected: true };
-          if (progId.includes('brave')) return { name: 'Brave Browser', isDetected: true };
-          if (progId.includes('opera')) return { name: 'Opera Browser', isDetected: true };
-          if (progId.includes('arc')) return { name: 'Arc Browser', isDetected: true };
-          if (progId.includes('vivaldi')) return { name: 'Vivaldi Browser', isDetected: true };
-          return { name: `System Default (${match[1]})`, isDetected: true };
-        }
+      const { BrowserControllerEngine } = require('../dist/server.cjs');
+      if (BrowserControllerEngine) {
+        return BrowserControllerEngine.getInstance().detectDefaultBrowser();
       }
-      return { name: 'System Default Browser', isDetected: true };
-    } catch (_) {
-      return { name: 'System Default Browser', isDetected: false };
-    }
+    } catch (_) {}
+    return { name: 'System Default Browser', exeName: 'explorer.exe', isDetected: true };
   });
 
   ipcMain.handle('browser:open-external', async (_event, url) => {
+    try {
+      const { BrowserControllerEngine } = require('../dist/server.cjs');
+      if (BrowserControllerEngine) {
+        const res = await BrowserControllerEngine.getInstance().openWebsite(url);
+        return res.success;
+      }
+    } catch (_) {}
     if (!url) return false;
     try {
       const { shell } = require('electron');
-      let targetUrl = url.trim();
-      if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://') && !targetUrl.startsWith('file://')) {
-        targetUrl = 'https://' + targetUrl;
-      }
-      await shell.openExternal(targetUrl);
+      await shell.openExternal(url);
       return true;
-    } catch (err) {
-      console.warn('[ipcHandlers] shell.openExternal failed:', err);
+    } catch (_) {
       return false;
     }
+  });
+
+  ipcMain.handle('browser:search-google', async (_event, query) => {
+    try {
+      const { BrowserControllerEngine } = require('../dist/server.cjs');
+      if (BrowserControllerEngine) {
+        return await BrowserControllerEngine.getInstance().searchGoogle(query);
+      }
+    } catch (_) {}
+    return { success: false, verified: false, message: 'Browser engine unavailable' };
+  });
+
+  ipcMain.handle('browser:open-youtube', async (_event, query) => {
+    try {
+      const { BrowserControllerEngine } = require('../dist/server.cjs');
+      if (BrowserControllerEngine) {
+        return await BrowserControllerEngine.getInstance().openYouTube(query);
+      }
+    } catch (_) {}
+    return { success: false, verified: false, message: 'Browser engine unavailable' };
+  });
+
+  ipcMain.handle('browser:play-music', async (_event, songOrArtist) => {
+    try {
+      const { BrowserControllerEngine } = require('../dist/server.cjs');
+      if (BrowserControllerEngine) {
+        return await BrowserControllerEngine.getInstance().playMusic(songOrArtist);
+      }
+    } catch (_) {}
+    return { success: false, verified: false, message: 'Browser engine unavailable' };
+  });
+
+  ipcMain.handle('browser:search-pdf', async (_event, topic) => {
+    try {
+      const { BrowserControllerEngine } = require('../dist/server.cjs');
+      if (BrowserControllerEngine) {
+        return await BrowserControllerEngine.getInstance().searchPDF(topic);
+      }
+    } catch (_) {}
+    return { success: false, verified: false, message: 'Browser engine unavailable' };
+  });
+
+  ipcMain.handle('browser:login-page', async (_event, service) => {
+    try {
+      const { BrowserControllerEngine } = require('../dist/server.cjs');
+      if (BrowserControllerEngine) {
+        return await BrowserControllerEngine.getInstance().openLoginPage(service);
+      }
+    } catch (_) {}
+    return { success: false, verified: false, message: 'Browser engine unavailable' };
+  });
+
+  ipcMain.handle('browser:handle-tab', async (_event, action) => {
+    try {
+      const { BrowserControllerEngine } = require('../dist/server.cjs');
+      if (BrowserControllerEngine) {
+        return await BrowserControllerEngine.getInstance().handleTab(action);
+      }
+    } catch (_) {}
+    return { success: false, verified: false, message: 'Browser engine unavailable' };
   });
 
   // Desktop Automation Service IPCs (Phase 4 Desktop Controller Engine Integration)
