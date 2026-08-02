@@ -613,6 +613,47 @@ function registerAllIPCHandlers() {
     return false;
   });
 
+  // Offline AI & Self-Learning IPCs (Phases 14 & 15)
+  ipcMain.handle('offline:getStatus', async () => {
+    try {
+      const { OfflineManagerEngine } = require('../dist/server.cjs');
+      if (OfflineManagerEngine) {
+        return OfflineManagerEngine.getInstance().getOfflineStatus();
+      }
+    } catch (_) {}
+    return true;
+  });
+
+  ipcMain.handle('offline:getQueue', async () => {
+    try {
+      const { OfflineManagerEngine } = require('../dist/server.cjs');
+      if (OfflineManagerEngine) {
+        return OfflineManagerEngine.getInstance().getQueue();
+      }
+    } catch (_) {}
+    return [];
+  });
+
+  ipcMain.handle('learning:getIntel', async () => {
+    try {
+      const { OfflineManagerEngine } = require('../dist/server.cjs');
+      if (OfflineManagerEngine) {
+        return OfflineManagerEngine.getInstance().getVerifiedInsights();
+      }
+    } catch (_) {}
+    return [];
+  });
+
+  ipcMain.handle('learning:recordSolution', async (_event, pattern, solution, verified) => {
+    try {
+      const { OfflineManagerEngine } = require('../dist/server.cjs');
+      if (OfflineManagerEngine) {
+        return OfflineManagerEngine.getInstance().recordVerifiedSolution(pattern, solution, verified);
+      }
+    } catch (_) {}
+    return false;
+  });
+
   // Desktop Automation Service IPCs (Phase 4 Desktop Controller Engine Integration)
   ipcMain.handle('desktop:launch-app', async (_event, appName) => {
     try {

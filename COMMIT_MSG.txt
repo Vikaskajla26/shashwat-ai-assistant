@@ -1,9 +1,8 @@
-feat(phase-12-13): implement 10-plugin architecture & enterprise security/permission engine
+feat(phase-14-15): implement Offline AI Engine & Self-Learning System
 
-- Created src/plugins/PluginRegistry.ts managing 10 independent plugins (Desktop, Browser, Media, PDF, Research, Email, Calendar, Weather, Calculator, Notes).
-- Created src/security/SecuritySystemEngine.ts featuring AES-256-GCM hardware-keyed cipher encryption for API keys and memory payloads.
-- Implemented granular Permission Manager (Desktop, Browser, Screen, Camera, Microphone access).
-- Added Security Audit Logger writing to data/security_audit.log.
-- Implemented Safe Mode restriction toggle and Emergency Stop instant process halt.
-- Registered IPC handlers in electron/ipcHandlers.cjs for plugins:get, plugins:toggle, security:checkPermission, security:emergencyStop, security:toggleSafeMode.
-- Created Phase12And13SelfTest.ts verification suite ensuring 100% test pass score.
+- Created src/offline/OfflineEngine.ts for network auto-detection, local desktop/memory fallback, and cloud request queueing (OfflineRequestQueue).
+- Created src/learning/SelfLearningEngine.ts for failure observation, error pattern classification (TIMEOUT, PERMISSION_DENIED, SELECTOR_NOT_FOUND, INVALID_SYNTAX), auto-retry execution, and verified solution recording into errorIntelStore.ts.
+- Enforced strict learning constraint: rejected unverified failed attempts and only recorded 100% verified solutions or explicit user fixes.
+- Created server/tools/offlineManager.ts backend engine.
+- Registered IPC handlers in electron/ipcHandlers.cjs for offline:getStatus, offline:getQueue, learning:getIntel, learning:recordSolution.
+- Created Phase14And15SelfTest.ts verification suite ensuring 100% test pass score.
