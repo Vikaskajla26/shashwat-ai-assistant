@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer, shell } = require('electron');
+const { openInChromeOrSystemDefault } = require('./chromeLauncher.cjs');
 
 contextBridge.exposeInMainWorld('electronAPI', {
   // App info
@@ -8,7 +8,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   showNotification: (title, body) => ipcRenderer.send('app:notification', { title, body }),
 
   // Window controls
-  openExternal: (url) => shell.openExternal(url),
+  openExternal: (url) => openInChromeOrSystemDefault(url),
   minimizeWindow: () => ipcRenderer.send('window:minimize'),
   maximizeWindow: () => ipcRenderer.send('window:maximize'),
   closeWindow: () => ipcRenderer.send('window:close'),

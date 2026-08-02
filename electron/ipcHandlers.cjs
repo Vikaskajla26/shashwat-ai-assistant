@@ -359,8 +359,8 @@ function registerAllIPCHandlers() {
     } catch (_) {}
     if (!url) return false;
     try {
-      const { shell } = require('electron');
-      await shell.openExternal(url);
+      const { openInChromeOrSystemDefault } = require('./chromeLauncher.cjs');
+      openInChromeOrSystemDefault(url);
       return true;
     } catch (_) {
       return false;

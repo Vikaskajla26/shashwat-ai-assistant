@@ -173,8 +173,9 @@ function createMainWindow() {
     }
   });
 
+  const { openInChromeOrSystemDefault } = require('./chromeLauncher.cjs');
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+    openInChromeOrSystemDefault(url);
     return { action: 'deny' };
   });
 }

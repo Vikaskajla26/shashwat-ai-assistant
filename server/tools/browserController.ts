@@ -74,6 +74,22 @@ export class BrowserControllerEngine {
     return this.defaultBrowser;
   }
 
+  private getChromePath(): string | null {
+    const fs = require('fs');
+    const possiblePaths = [
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+      process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, 'Google', 'Chrome', 'Application', 'chrome.exe') : '',
+    ].filter(Boolean);
+
+    for (const p of possiblePaths) {
+      if (fs.existsSync(p)) {
+        return p;
+      }
+    }
+    return null;
+  }
+
   /* ------------------- 1. Open Website (Never Return Links) ------------------- */
 
   public async openWebsite(url: string): Promise<ActionResult> {
@@ -83,15 +99,25 @@ export class BrowserControllerEngine {
         target = 'https://' + target;
       }
 
-      const browser = this.detectDefaultBrowser();
-      spawn('cmd.exe', ['/c', 'start', '', target], { detached: true, stdio: 'ignore' }).unref();
+      const chromePath = this.getChromePath();
+      let usedBrowserName = 'Google Chrome';
+      let usedExeName = 'chrome.exe';
+
+      if (chromePath) {
+        spawn(chromePath, [target], { detached: true, stdio: 'ignore' }).unref();
+      } else {
+        const browser = this.detectDefaultBrowser();
+        usedBrowserName = browser.name;
+        usedExeName = browser.exeName;
+        spawn('cmd.exe', ['/c', 'start', '', target], { detached: true, stdio: 'ignore' }).unref();
+      }
 
       // EMPIRICAL VERIFICATION: Check browser process running
-      const verified = await this.verifyBrowserRunning(browser.exeName, 3000);
+      const verified = await this.verifyBrowserRunning(usedExeName, 3000);
       return {
         success: true,
         verified,
-        message: `Opened '${target}' directly in ${browser.name}.`,
+        message: `Opened '${target}' directly in ${usedBrowserName}.`,
       };
     } catch (err: any) {
       return { success: false, verified: false, message: `Failed to open website: ${err?.message || err}` };

@@ -1,6 +1,7 @@
-fix(audio): resolve 4-layer voice pipeline contract bugs between LiveSession, AudioPlayer and AudioStreamer
+feat(browser): launch Google Chrome directly for all website & search commands
 
-- Bug 1 Fix: Updated AudioStreamer constructor to accept options object { onAudioData, onVolumeChange, onError } and fallback positional args in start(onChunk, onVad), restoring mic PCM chunk streaming to Gemini Live.
-- Bug 2 Fix: Updated AudioPlayer constructor to accept options object { onVolumeChange, onPlaybackEnded }, restoring TTS completion state transition (speaking -> listening).
-- Bug 3 Fix: Added missing interrupt(), setMuted(), and getMuted() methods to AudioPlayer and AudioStreamer, preventing TypeError crashes during barge-in interruptions.
-- Bug 4 Fix: Corrected volume scale thresholds (0.05 / 0.15 matching 0-1 scale) and fixed inverted turnComplete state reset logic in LiveSession.ts.
+- Updated server/tools/browserController.ts (openWebsite) to scan standard Windows install locations (Program Files, Program Files x86, LocalAppData) for chrome.exe and spawn Chrome directly.
+- Created electron/chromeLauncher.cjs helper to locate and launch Chrome for desktop shell integration.
+- Wired chromeLauncher into electron/main.cjs setWindowOpenHandler for popup/target="_blank" link clicks.
+- Wired chromeLauncher into electron/preload.cjs openExternal and electron/ipcHandlers.cjs browser:open-external fallback.
+- Ensured voice confirmation messages announce Google Chrome directly.
