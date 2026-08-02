@@ -562,6 +562,57 @@ function registerAllIPCHandlers() {
     return null;
   });
 
+  // Plugin Architecture & Security Service IPCs (Phases 12 & 13)
+  ipcMain.handle('plugins:get', async () => {
+    try {
+      const { PluginManagerEngine } = require('../dist/server.cjs');
+      if (PluginManagerEngine) {
+        return PluginManagerEngine.getInstance().getPlugins();
+      }
+    } catch (_) {}
+    return [];
+  });
+
+  ipcMain.handle('plugins:toggle', async (_event, id, enabled) => {
+    try {
+      const { PluginManagerEngine } = require('../dist/server.cjs');
+      if (PluginManagerEngine) {
+        return PluginManagerEngine.getInstance().togglePlugin(id, enabled);
+      }
+    } catch (_) {}
+    return false;
+  });
+
+  ipcMain.handle('security:checkPermission', async (_event, permType) => {
+    try {
+      const { PluginManagerEngine } = require('../dist/server.cjs');
+      if (PluginManagerEngine) {
+        return PluginManagerEngine.getInstance().checkPermission(permType);
+      }
+    } catch (_) {}
+    return true;
+  });
+
+  ipcMain.handle('security:emergencyStop', async () => {
+    try {
+      const { PluginManagerEngine } = require('../dist/server.cjs');
+      if (PluginManagerEngine) {
+        return PluginManagerEngine.getInstance().triggerEmergencyStop();
+      }
+    } catch (_) {}
+    return true;
+  });
+
+  ipcMain.handle('security:toggleSafeMode', async (_event, active) => {
+    try {
+      const { PluginManagerEngine } = require('../dist/server.cjs');
+      if (PluginManagerEngine) {
+        return PluginManagerEngine.getInstance().toggleSafeMode(active);
+      }
+    } catch (_) {}
+    return false;
+  });
+
   // Desktop Automation Service IPCs (Phase 4 Desktop Controller Engine Integration)
   ipcMain.handle('desktop:launch-app', async (_event, appName) => {
     try {

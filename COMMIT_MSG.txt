@@ -1,7 +1,9 @@
-feat(phase-11): implement Apple Vision Pro & Nothing OS Premium UI aesthetic
+feat(phase-12-13): implement 10-plugin architecture & enterprise security/permission engine
 
-- Added Apple Vision Pro spatial glassmorphism (.vision-glass with 40px backdrop blur & specular top-edge lighting) and Nothing OS dot-matrix font badges in src/index.css.
-- Upgraded QuantumAICore.tsx 2D canvas to 120 FPS target rendering.
-- Added Maheshwar Sutras (माहेश्वर सूत्राणि) Sanskrit phonetic glyph ring orbiting around the core sphere.
-- Applied Vision Pro glassmorphism styling to BottomDock in ShashwatDittoDashboard.tsx.
-- Created Phase11UISelfTest.ts verification suite ensuring 100% test pass score.
+- Created src/plugins/PluginRegistry.ts managing 10 independent plugins (Desktop, Browser, Media, PDF, Research, Email, Calendar, Weather, Calculator, Notes).
+- Created src/security/SecuritySystemEngine.ts featuring AES-256-GCM hardware-keyed cipher encryption for API keys and memory payloads.
+- Implemented granular Permission Manager (Desktop, Browser, Screen, Camera, Microphone access).
+- Added Security Audit Logger writing to data/security_audit.log.
+- Implemented Safe Mode restriction toggle and Emergency Stop instant process halt.
+- Registered IPC handlers in electron/ipcHandlers.cjs for plugins:get, plugins:toggle, security:checkPermission, security:emergencyStop, security:toggleSafeMode.
+- Created Phase12And13SelfTest.ts verification suite ensuring 100% test pass score.
