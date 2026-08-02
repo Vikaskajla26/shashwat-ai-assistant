@@ -19,6 +19,7 @@ import { BrowserAutomationModule } from './modules/BrowserAutomationModule';
 import { MemoryModule } from './modules/MemoryModule';
 import { SettingsModule } from './modules/SettingsModule';
 import { MediaModule } from './modules/MediaModule';
+import { PlannerAgent } from '../agents/PlannerAgent';
 
 export class ShashwatCore {
   private static instance: ShashwatCore | null = null;
@@ -29,6 +30,7 @@ export class ShashwatCore {
   public readonly eventBus = EventBus.getInstance();
   public readonly stateManager = GlobalStateManager.getInstance();
   public readonly healthMonitor = HealthMonitor.getInstance();
+  public readonly planner = PlannerAgent.getInstance();
 
   private isBooted = false;
 

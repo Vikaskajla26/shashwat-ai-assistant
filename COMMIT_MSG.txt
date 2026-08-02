@@ -1,9 +1,8 @@
-feat(phase-6): implement Intelligent Sandbox Browser & strict intent routing
+feat(phase-7): implement 9-Agent Swarm system & Planner single-channel communication
 
-- Created server/tools/browserIntentRouter.ts enforcing strict routing isolation:
-  * Everyday user intent (YouTube, Google search, Music, Gmail, Facebook, Instagram) -> System Default Browser.
-  * AI Agent tasks (Research, Article Reading, Summarization, Form Filling, Comparison, Data Extraction) -> Intelligent Sandbox Browser.
-- Connected Playwright DOM scraping & autonomous step execution in server/tools/browser.ts.
-- Registered IPC handlers in electron/ipcHandlers.cjs for sandbox dispatch, research, and summarization.
-- Updated BrowserAutomationModule.ts exposing handleWebIntent routing pipeline.
-- Created Phase6SandboxSelfTest.ts verification suite ensuring 100% test pass score.
+- Created src/agents/ directory with 9 specialized agent definitions:
+  * PlannerAgent.ts: Central orchestrator, task DAG builder, and ONLY user-facing communication bridge.
+  * ExecutionVerifier.ts: Empirical verification agent auditing all subagent task outcomes.
+  * Subagents: VoiceSubAgent, BrowserSubAgent, DesktopSubAgent, ResearchSubAgent, MemorySubAgent, StudySubAgent, MediaSubAgent.
+- Integrated PlannerAgent into ShashwatCore.ts kernel boot lifecycle.
+- Created Phase7MultiAgentSelfTest.ts verification suite ensuring 100% test pass score.
