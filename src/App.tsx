@@ -27,6 +27,7 @@ import { AlertCircle } from 'lucide-react';
 
 import { PowerShutdownModal } from './components/PowerShutdownModal';
 import { AIProviderSetupWizard } from './components/AIProviderSetupWizard';
+import { AIWorkspaceModal } from './components/workspace/AIWorkspaceModal';
 import { GlobalErrorBoundary } from './components/GlobalErrorBoundary';
 import { ShashwatCore } from './core/ShashwatCore';
 
@@ -70,6 +71,7 @@ export default function App() {
   const [isSelfLearningOpen, setIsSelfLearningOpen] = useState<boolean>(false);
   const [isScreenSharing, setIsScreenSharing] = useState<boolean>(false);
   const [isSandboxOpen, setIsSandboxOpen] = useState<boolean>(false);
+  const [isAIWorkspaceOpen, setIsAIWorkspaceOpen] = useState<boolean>(false);
   const [isLeftDrawerOpen, setIsLeftDrawerOpen] = useState<boolean>(false);
   const [isRightDrawerOpen, setIsRightDrawerOpen] = useState<boolean>(false);
   const [isPowerModalOpen, setIsPowerModalOpen] = useState<boolean>(false);
@@ -479,6 +481,12 @@ export default function App() {
       {isSelfLearningOpen && (
         <SelfLearningDashboard onClose={() => setIsSelfLearningOpen(false)} />
       )}
+
+      {/* 📁 AI Workspace Hub Modal */}
+      <AIWorkspaceModal
+        isOpen={isAIWorkspaceOpen}
+        onClose={() => setIsAIWorkspaceOpen(false)}
+      />
 
       {/* AI Provider First-Run Setup Wizard */}
       <AIProviderSetupWizard

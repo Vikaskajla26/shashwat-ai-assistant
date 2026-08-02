@@ -510,6 +510,58 @@ function registerAllIPCHandlers() {
     return { command: commandStr, topicOrDocument: inputContent, outputType: 'markdown', content: `Executed command ${commandStr} for ${inputContent}`, message: 'Command executed.' };
   });
 
+  // AI Workspace Service IPCs (Phase 10 AI Workspace)
+  ipcMain.handle('workspace:get', async () => {
+    try {
+      const { AIWorkspaceEngine } = require('../dist/server.cjs');
+      if (AIWorkspaceEngine) {
+        return AIWorkspaceEngine.getInstance().getState();
+      }
+    } catch (_) {}
+    return null;
+  });
+
+  ipcMain.handle('workspace:saveTask', async (_event, title, category, priority) => {
+    try {
+      const { AIWorkspaceEngine } = require('../dist/server.cjs');
+      if (AIWorkspaceEngine) {
+        return AIWorkspaceEngine.getInstance().addTask(title, category, priority);
+      }
+    } catch (_) {}
+    return null;
+  });
+
+  ipcMain.handle('workspace:toggleTask', async (_event, taskId) => {
+    try {
+      const { AIWorkspaceEngine } = require('../dist/server.cjs');
+      if (AIWorkspaceEngine) {
+        return AIWorkspaceEngine.getInstance().toggleTask(taskId);
+      }
+    } catch (_) {}
+    return false;
+  });
+
+  ipcMain.handle('workspace:saveScratchpad', async (_event, text) => {
+    try {
+      const { AIWorkspaceEngine } = require('../dist/server.cjs');
+      if (AIWorkspaceEngine) {
+        AIWorkspaceEngine.getInstance().saveScratchpad(text);
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  });
+
+  ipcMain.handle('workspace:saveBookmark', async (_event, title, url, category) => {
+    try {
+      const { AIWorkspaceEngine } = require('../dist/server.cjs');
+      if (AIWorkspaceEngine) {
+        return AIWorkspaceEngine.getInstance().addBookmark(title, url, category);
+      }
+    } catch (_) {}
+    return null;
+  });
+
   // Desktop Automation Service IPCs (Phase 4 Desktop Controller Engine Integration)
   ipcMain.handle('desktop:launch-app', async (_event, appName) => {
     try {

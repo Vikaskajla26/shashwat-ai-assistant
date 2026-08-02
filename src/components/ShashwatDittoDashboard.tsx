@@ -55,6 +55,7 @@ interface ShashwatDittoDashboardProps {
   onToggleDocWorkspace?: () => void;
   onOpenSanskritStudio?: () => void;
   onOpenSelfLearning?: () => void;
+  onOpenAIWorkspace?: () => void;
   onOpenSettings: () => void;
   onOpenLeftDrawer?: () => void;
   onOpenRightDrawer?: () => void;
