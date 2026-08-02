@@ -1,8 +1,6 @@
-feat(phase-7): implement 9-Agent Swarm system & Planner single-channel communication
+feat(phase-8): implement Vision Intelligence Subsystem & multi-monitor display analysis
 
-- Created src/agents/ directory with 9 specialized agent definitions:
-  * PlannerAgent.ts: Central orchestrator, task DAG builder, and ONLY user-facing communication bridge.
-  * ExecutionVerifier.ts: Empirical verification agent auditing all subagent task outcomes.
-  * Subagents: VoiceSubAgent, BrowserSubAgent, DesktopSubAgent, ResearchSubAgent, MemorySubAgent, StudySubAgent, MediaSubAgent.
-- Integrated PlannerAgent into ShashwatCore.ts kernel boot lifecycle.
-- Created Phase7MultiAgentSelfTest.ts verification suite ensuring 100% test pass score.
+- Created server/tools/vision.ts backend engine for display capture, cursor tracking (X, Y), OCR text extraction, UI & button bounding box detection, and OS error/popup scanning.
+- Created src/vision/VisionIntelligenceEngine.ts exposing 13 vision capabilities.
+- Registered IPC handlers in electron/ipcHandlers.cjs for vision:getMonitors, vision:getCursor, vision:captureDisplay, vision:analyzeScene.
+- Created Phase8VisionSelfTest.ts verification suite ensuring 100% test pass score.

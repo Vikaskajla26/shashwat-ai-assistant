@@ -458,6 +458,47 @@ function registerAllIPCHandlers() {
     return { executed: false, message: 'Sandbox summarizer unavailable' };
   });
 
+  // Vision Intelligence IPCs (Phase 8 Vision System)
+  ipcMain.handle('vision:getMonitors', async () => {
+    try {
+      const { VisionToolsEngine } = require('../dist/server.cjs');
+      if (VisionToolsEngine) {
+        return VisionToolsEngine.getInstance().getMonitors();
+      }
+    } catch (_) {}
+    return [{ id: 0, name: 'Primary Display', bounds: { x: 0, y: 0, width: 1920, height: 1080 }, isPrimary: true }];
+  });
+
+  ipcMain.handle('vision:getCursor', async () => {
+    try {
+      const { VisionToolsEngine } = require('../dist/server.cjs');
+      if (VisionToolsEngine) {
+        return VisionToolsEngine.getInstance().getCursorPosition();
+      }
+    } catch (_) {}
+    return { x: 0, y: 0 };
+  });
+
+  ipcMain.handle('vision:captureDisplay', async (_event, displayIndex) => {
+    try {
+      const { VisionToolsEngine } = require('../dist/server.cjs');
+      if (VisionToolsEngine) {
+        return VisionToolsEngine.getInstance().captureDisplay(displayIndex);
+      }
+    } catch (_) {}
+    return { base64: '', path: '' };
+  });
+
+  ipcMain.handle('vision:analyzeScene', async (_event, displayIndex) => {
+    try {
+      const { VisionToolsEngine } = require('../dist/server.cjs');
+      if (VisionToolsEngine) {
+        return VisionToolsEngine.getInstance().analyzeScene(displayIndex);
+      }
+    } catch (_) {}
+    return { success: false, message: 'Vision engine unavailable' };
+  });
+
   // Desktop Automation Service IPCs (Phase 4 Desktop Controller Engine Integration)
   ipcMain.handle('desktop:launch-app', async (_event, appName) => {
     try {
