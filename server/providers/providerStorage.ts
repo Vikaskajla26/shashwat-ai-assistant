@@ -163,6 +163,10 @@ export function loadAllProviderConfigs(): Record<AIProviderId, AIProviderConfig>
 export function saveAllProviderConfigs(configs: Record<AIProviderId, AIProviderConfig>): boolean {
   try {
     const storagePath = getStoragePath();
+    const dir = path.dirname(storagePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
     const jsonStr = JSON.stringify(configs);
     const encryptedObj = encrypt(jsonStr);
     fs.writeFileSync(storagePath, JSON.stringify(encryptedObj, null, 2), 'utf8');

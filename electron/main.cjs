@@ -4,11 +4,16 @@ const { spawn } = require('child_process');
 
 const isDev = !app.isPackaged;
 
+// Required global state variables
+let mainWindow = null;
+let tray = null;
+let serverStarted = false;
 let autoUpdater = null;
+
 try {
   autoUpdater = require('electron-updater').autoUpdater;
 } catch (e) {
-  console.warn('[Electron Main] electron-updater notice:', e.message);
+  // electron-updater is optional — ignore if not installed
 }
 
 process.on('uncaughtException', (err) => {
@@ -118,15 +123,24 @@ function createMainWindow() {
   let retries = 0;
 
   const loadApp = () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
     mainWindow.loadURL(appUrl).catch((err) => {
       retries++;
       console.log(`[Electron Main] Backend connection pending (attempt ${retries})...`, err.message);
-      if (retries > 10) {
+      if (retries > 20) {
+        // After 10 seconds, fall back to loading local static build directly
         const localHtmlPath = path.join(app.getAppPath(), 'dist', 'index.html');
         const fs = require('fs');
         if (fs.existsSync(localHtmlPath)) {
           console.log('[Electron Main] Falling back to loading local static build:', localHtmlPath);
-          mainWindow.loadFile(localHtmlPath);
+          mainWindow.loadFile(localHtmlPath).catch((e) => {
+            console.error('[Electron Main] Even local file load failed:', e.message);
+          });
+          // Show the window anyway so user sees something
+          if (!mainWindow.isVisible()) {
+            mainWindow.show();
+            mainWindow.focus();
+          }
           return;
         }
       }
@@ -134,7 +148,9 @@ function createMainWindow() {
     });
   };
 
-  loadApp();
+  // Show window immediately with a loading screen while backend starts
+  mainWindow.loadURL('about:blank').catch(() => {});
+  setTimeout(loadApp, 300);
 
   mainWindow.webContents.once('dom-ready', () => {
     if (mainWindow && !mainWindow.isVisible()) {
@@ -241,10 +257,11 @@ function registerIPCHandlers() {
   ipcMain.on('window:close', () => mainWindow?.hide());
 }
 
+// Single instance: if another instance is running, focus it; otherwise proceed normally
 const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
-  console.log('[Electron Main] Another instance is already running. Focus existing instance and exit secondary.');
+  // Another instance is running — focus it and exit
   app.quit();
 } else {
   app.on('second-instance', () => {
@@ -255,14 +272,16 @@ if (!gotTheLock) {
     }
   });
 
-  app.on('ready', () => {
+  app.whenReady().then(() => {
     startBackendServer();
     createMainWindow();
     createSystemTray();
     registerIPCHandlers();
 
     if (!isDev && autoUpdater) {
-      autoUpdater.checkForUpdatesAndNotify().catch((e) => console.log('AutoUpdater notice:', e.message));
+      try {
+        autoUpdater.checkForUpdatesAndNotify().catch(() => {});
+      } catch (_) {}
     }
   });
 
@@ -277,7 +296,7 @@ if (!gotTheLock) {
   });
 
   app.on('activate', () => {
-    if (mainWindow === null) {
+    if (!mainWindow || mainWindow.isDestroyed()) {
       createMainWindow();
     } else {
       mainWindow.show();

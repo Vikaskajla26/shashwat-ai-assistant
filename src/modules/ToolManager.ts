@@ -26,17 +26,20 @@ export class ToolManager {
   private onVisualCard?: (card: VisualCardData) => void;
   private onToolEvent?: (event: ToolExecutionEvent) => void;
   private onOpenDocWorkspace?: () => void;
+  private onOpenEnrollment?: () => void;
 
   constructor(handlers: {
     onMoodChange?: (mood: AssistantMood) => void;
     onVisualCard?: (card: VisualCardData) => void;
     onToolEvent?: (event: ToolExecutionEvent) => void;
     onOpenDocWorkspace?: () => void;
+    onOpenEnrollment?: () => void;
   } = {}) {
     this.onMoodChange = handlers.onMoodChange;
     this.onVisualCard = handlers.onVisualCard;
     this.onToolEvent = handlers.onToolEvent;
     this.onOpenDocWorkspace = handlers.onOpenDocWorkspace;
+    this.onOpenEnrollment = handlers.onOpenEnrollment;
   }
 
   /**
@@ -113,6 +116,21 @@ export class ToolManager {
             toolName: name,
             status: 'success',
             message: 'Launched Document Intelligence Workspace',
+            timestamp,
+          });
+          break;
+        }
+
+        case 'enroll_voice_profile': {
+          if (this.onOpenEnrollment) {
+            this.onOpenEnrollment();
+          }
+          result = { enrollmentOpened: true, message: 'Voice identity enrollment modal launched' };
+          this.notifyEvent({
+            id: callId,
+            toolName: name,
+            status: 'success',
+            message: 'Opened Voice Identity Enrollment UI',
             timestamp,
           });
           break;

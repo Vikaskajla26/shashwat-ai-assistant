@@ -18,8 +18,8 @@ export interface EnergyParticlesHandle {
 }
 
 export function createEnergyParticles(requestedCount: number): EnergyParticlesHandle {
-  // Support 10,000+ GPU particles for ultra performance
-  const count = Math.max(10000, requestedCount);
+  // Support 600-1500 tiny floating particles
+  const count = Math.min(1500, Math.max(600, requestedCount || 1200));
   const geometry = new THREE.BufferGeometry();
   const seeds = new Float32Array(count);
   const radii = new Float32Array(count);

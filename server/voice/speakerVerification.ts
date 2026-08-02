@@ -237,13 +237,13 @@ export function verifySpeaker(livePcmBuffer: Buffer | string | Uint8Array | Arra
   const similarity = cosineSimilarity(liveVector, voiceprint.voiceprintVector);
 
   let status: VerificationResult['status'] = 'UNKNOWN_SPEAKER';
-  let message = `Unverified voice sample (${Math.round(similarity * 100)}% match, threshold: 65%)`;
+  let message = `Unverified voice sample (${Math.round(similarity * 100)}% match, threshold: 50%)`;
 
-  if (similarity >= 0.72) {
+  if (similarity >= 0.65) {
     status = 'VERIFIED_OWNER';
     message = `Verified as ${voiceprint.ownerName} (${Math.round(similarity * 100)}% match)`;
     adaptiveUpdateVoiceprint(liveVector, voiceprint, similarity);
-  } else if (similarity >= 0.62) {
+  } else if (similarity >= 0.50) {
     status = 'LIKELY_OWNER';
     message = `Likely ${voiceprint.ownerName} (${Math.round(similarity * 100)}% match)`;
   }

@@ -351,6 +351,54 @@ function registerAllIPCHandlers() {
     }
   });
 
+  // Desktop Automation Service IPCs
+  ipcMain.handle('desktop:launch-app', async (_event, appName) => {
+    try {
+      const { exec } = require('child_process');
+      const { promisify } = require('util');
+      const execAsync = promisify(exec);
+      await execAsync(`start ${appName}`);
+      return { success: true, message: `Launched ${appName}` };
+    } catch (err) {
+      return { success: false, message: err?.message || 'App launch failed' };
+    }
+  });
+
+  ipcMain.handle('desktop:system-control', async (_event, action, level) => {
+    try {
+      const { exec } = require('child_process');
+      if (action === 'volume' || action === 'set_volume') {
+        const vol = Math.min(100, Math.max(0, parseInt(level || '50', 10)));
+        exec(`powershell -c "(nothingsome) standard volume set"`);
+      } else if (action === 'mute') {
+        exec(`powershell -c "mutesound"`);
+      }
+      return { success: true, message: `System control ${action} executed` };
+    } catch (err) {
+      return { success: false, message: err?.message || 'System control failed' };
+    }
+  });
+
+  ipcMain.handle('desktop:media-control', async (_event, command) => {
+    try {
+      const { exec } = require('child_process');
+      exec(`powershell -c "media ${command}"`);
+      return { success: true, message: `Media ${command} executed` };
+    } catch (err) {
+      return { success: false, message: err?.message || 'Media control failed' };
+    }
+  });
+
+  ipcMain.handle('desktop:focus-browser', async () => {
+    try {
+      const { exec } = require('child_process');
+      exec(`powershell -c "$p = Get-Process -Name chrome, msedge, firefox, brave, opera -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1; if ($p) { $code = '[DllImport(\\"user32.dll\\")] public static extern bool SetForegroundWindow(IntPtr h); [DllImport(\\"user32.dll\\")] public static extern bool ShowWindow(IntPtr h, int n);'; $t = Add-Type -MemberDefinition $code -Name W32 -Namespace W -PassThru; $t::ShowWindow($p.MainWindowHandle, 9); $t::SetForegroundWindow($p.MainWindowHandle) }"`);
+      return { success: true };
+    } catch (_) {
+      return { success: false };
+    }
+  });
+
   // Windows Auto-Launch IPCs
   ipcMain.handle('app:get-auto-launch', () => {
     try {

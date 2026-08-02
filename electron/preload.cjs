@@ -72,6 +72,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   browserGetDefaultBrowser: () => ipcRenderer.invoke('browser:get-default-browser'),
   browserOpenExternal: (url) => ipcRenderer.invoke('browser:open-external', url),
 
+  // Desktop Automation & OS Control
+  desktopLaunchApp: (appName) => ipcRenderer.invoke('desktop:launch-app', appName),
+  desktopSystemControl: (action, level) => ipcRenderer.invoke('desktop:system-control', action, level),
+  desktopMediaControl: (command) => ipcRenderer.invoke('desktop:media-control', command),
+  desktopFocusBrowser: () => ipcRenderer.invoke('desktop:focus-browser'),
+
   // Windows Auto-Launch
   appGetAutoLaunch: () => ipcRenderer.invoke('app:get-auto-launch'),
   appSetAutoLaunch: (enabled) => ipcRenderer.invoke('app:set-auto-launch', enabled),

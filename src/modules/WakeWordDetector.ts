@@ -32,6 +32,7 @@ export class WakeWordDetector {
   private options: WakeWordDetectorOptions;
   private restartTimer: any = null;
   private audioCtx: AudioContext | null = null;
+  private _networkErrorCount = 0;
 
   constructor(options: WakeWordDetectorOptions) {
     this.options = options;
@@ -80,9 +81,20 @@ export class WakeWordDetector {
       };
 
       this.recognition.onerror = (event: any) => {
-        // Ignore aborted error when manually stopped
+        // Ignore aborted/no-speech errors when manually stopped
         if (event.error === 'aborted' || event.error === 'no-speech') return;
-        console.warn('[WakeWord Error]', event.error);
+        // Offline: 'network' error - slow down retries dramatically to avoid spam
+        if (event.error === 'network') {
+          this._networkErrorCount = (this._networkErrorCount || 0) + 1;
+          if (this._networkErrorCount > 3) {
+            // After 3 network failures, disable wake word until manually re-enabled
+            this.isEnabled = false;
+            console.warn('[WakeWord] Network unavailable - wake word detection paused. Will retry on next Awaken click.');
+            return;
+          }
+        } else {
+          this._networkErrorCount = 0;
+        }
         if (this.options.onError) {
           this.options.onError(event.error);
         }
@@ -94,9 +106,10 @@ export class WakeWordDetector {
           this.options.onListeningStateChange(false);
         }
 
-        // Auto-restart if enabled
+        // Auto-restart if enabled — use longer delay after network errors
         if (this.isEnabled) {
-          this.scheduleRestart(1000);
+          const delay = (this._networkErrorCount || 0) > 0 ? 30000 : 1000;
+          this.scheduleRestart(delay);
         }
       };
     } catch (err: any) {
@@ -155,6 +168,7 @@ export class WakeWordDetector {
 
   public start() {
     this.isEnabled = true;
+    this._networkErrorCount = 0; // Reset network error count on manual start
     if (this.recognition && !this.isListening) {
       try {
         this.recognition.start();

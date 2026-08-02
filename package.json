@@ -80,9 +80,11 @@
       "data/**/*"
     ],
     "win": {
+      "forceCodeSigning": false,
+      "signAndEditExecutable": false,
       "target": [
         {
-          "target": "nsis",
+          "target": "dir",
           "arch": [
             "x64"
           ]

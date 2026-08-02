@@ -282,15 +282,17 @@ export async function executeTool(
         const result = await executeBrowserAction("open_website", rawTarget);
         return ok(
           {
-            opened: true,
+            opened: result.success,   // real launch result — not hardcoded true
             target: rawTarget,
             detectedBrowser: result.detectedBrowser,
             url: result.targetUrl,
             message: result.verificationMessage,
-            instruction: `DO NOT output, format, or speak any URLs or HTTP links. Speak a ultra-concise confirmation like "${result.voiceConfirmation}"`
+            instruction: result.success
+              ? `DO NOT output, format, or speak any URLs or HTTP links. Speak a ultra-concise confirmation like "${result.voiceConfirmation}"`
+              : `The browser could not be opened. Tell the user honestly that opening ${rawTarget} failed and suggest they try manually.`
           },
           result.verificationMessage,
-          { title: `Browser: ${result.detectedBrowser}`, content: `Opened ${rawTarget} in ${result.detectedBrowser}`, category: "Browser Controller" }
+          undefined // No card with clickable links — direct browser execution only!
         );
       }
       case "searchGoogle": {
@@ -304,16 +306,13 @@ export async function executeTool(
             searched: true,
             query: queryStr,
             detectedBrowser: result.detectedBrowser,
+            url: result.targetUrl,
             CURRENT_FACTUAL_ANSWER_TO_SPEAK: directAnswer || summaryText,
             liveTextSummary: summaryText,
             instruction,
           },
           `Google search: ${queryStr}`,
-          {
-            title: `Google Search (${result.detectedBrowser})`,
-            content: summaryText || `Searched "${queryStr}" in ${result.detectedBrowser}`,
-            category: "Web Search",
-          }
+          undefined // No card with clickable links — direct browser execution only!
         );
       }
       case "searchYouTube": {
@@ -324,11 +323,12 @@ export async function executeTool(
             searched: true,
             query: queryStr,
             detectedBrowser: result.detectedBrowser,
+            url: result.targetUrl,
             message: result.verificationMessage,
             instruction: `DO NOT output, format, or speak any URLs or HTTP links. Speak a concise confirmation like "${result.voiceConfirmation}"`
           },
           `YouTube search for ${queryStr}`,
-          { title: "YouTube Search", content: `▶️ Searching ${queryStr} on YouTube (${result.detectedBrowser})`, category: "Media Search" }
+          undefined // No card with clickable links — direct browser execution only!
         );
       }
       case "playFirstVideo": {
@@ -339,15 +339,12 @@ export async function executeTool(
             executed: true,
             query: queryStr,
             detectedBrowser: result.detectedBrowser,
+            url: result.targetUrl,
             message: result.verificationMessage,
             instruction: `DO NOT output, format, or speak any URLs or HTTP links. Speak a ultra-concise confirmation like "${result.voiceConfirmation}"`
           },
           `YouTube: ${queryStr}`,
-          {
-            title: "YouTube Player",
-            content: `🎵 ${result.voiceConfirmation} (${result.detectedBrowser})`,
-            category: "Media",
-          }
+          undefined // No card with clickable links — direct browser execution only!
         );
       }
       case "search_web": {
@@ -384,6 +381,7 @@ export async function executeTool(
             query: queryStr,
             engine,
             openedIn,
+            url,
             CURRENT_FACTUAL_ANSWER_TO_SPEAK: directAnswer || summaryText,
             liveTextSummary: summaryText,
             instruction,
@@ -393,6 +391,7 @@ export async function executeTool(
             title: `${engine} Search`,
             content: summaryText || `Searching "${queryStr}" in default browser`,
             category: "Web Search",
+            url,   // ← triggers Electron shell.openExternal()
           }
         );
       }

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { LiveSession } from './modules/LiveSession';
 import { WakeWordDetector } from './modules/WakeWordDetector';
 import { AssistantHeader } from './components/AssistantHeader';
-import { AssistantOrb } from './components/AssistantOrb';
 import { AudioVisualizer } from './components/AudioVisualizer';
 import { VisualCardOverlay } from './components/VisualCardOverlay';
 import { ToolActionBanner } from './components/ToolActionBanner';
@@ -152,6 +151,9 @@ export default function App() {
       },
       onOpenDocWorkspace: () => {
         setIsDocWorkspaceOpen(true);
+      },
+      onOpenEnrollment: () => {
+        setIsEnrollmentOpen(true);
       },
       onError: (err) => {
         console.error('Session Error:', err);

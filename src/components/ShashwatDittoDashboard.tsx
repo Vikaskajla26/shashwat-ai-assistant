@@ -36,19 +36,28 @@ import { AssistantState } from '../types';
 import { getStateTheme } from '../theme/aiState';
 import { OrbScene } from './orb/OrbScene';
 import { AwakeCrystalButton } from './AwakeCrystalButton';
+import { VoiceDiagnosticsPanel } from '../voice/VoiceDiagnosticsPanel';
 
 interface ShashwatDittoDashboardProps {
   state: AssistantState;
   stateRef: React.MutableRefObject<AssistantState>;
   volumeRef: React.MutableRefObject<number>;
-  isListening: boolean;
-  transcript: string;
+  inputVolume?: number;
+  outputVolume?: number;
+  isScreenSharing?: boolean;
+  isSandboxOpen?: boolean;
+  isDocWorkspaceOpen?: boolean;
   onToggleMic: () => void;
   onAwake: () => void;
+  onToggleScreenShare?: () => void;
+  onToggleSandbox?: () => void;
+  onToggleDocWorkspace?: () => void;
+  onOpenSanskritStudio?: () => void;
+  onOpenSelfLearning?: () => void;
   onOpenSettings: () => void;
-  onOpenMemory: () => void;
   onOpenLeftDrawer?: () => void;
   onOpenRightDrawer?: () => void;
+  onSendTypedText?: (text: string) => void;
 }
 
 const MAHESHWAR_SUTRAS_TEXT = [
@@ -61,12 +70,9 @@ export const ShashwatDittoDashboard: React.FC<ShashwatDittoDashboardProps> = ({
   state,
   stateRef,
   volumeRef,
-  isListening,
-  transcript,
   onToggleMic,
   onAwake,
   onOpenSettings,
-  onOpenMemory,
   onOpenLeftDrawer,
   onOpenRightDrawer,
 }) => {
@@ -74,6 +80,19 @@ export const ShashwatDittoDashboard: React.FC<ShashwatDittoDashboardProps> = ({
   const [currentTime, setCurrentTime] = useState<string>('');
   const [focusMode, setFocusMode] = useState<boolean>(true);
   const [showVitality, setShowVitality] = useState<boolean>(true);
+  const [showDiagnostics, setShowDiagnostics] = useState<boolean>(false);
+
+  // Keyboard shortcut Ctrl+Shift+D for Voice Diagnostics Panel
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'd') {
+        e.preventDefault();
+        setShowDiagnostics((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Sparkline canvas ref
   const sparklineRef = useRef<HTMLCanvasElement | null>(null);
@@ -208,11 +227,12 @@ export const ShashwatDittoDashboard: React.FC<ShashwatDittoDashboardProps> = ({
       {/* 2D Starfield Canvas */}
       <canvas ref={starCanvasRef} className="absolute inset-0 pointer-events-none z-0" />
 
-      {/* Dynamic State Orb Ambient Glow */}
+      {/* Dynamic State Orb Ambient Glow — screen blend enhances orb, doesn't cover it */}
       <div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[60vw] max-w-[760px] max-h-[760px] pointer-events-none transition-all duration-1000 blur-[40px] opacity-25"
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[60vw] max-w-[760px] max-h-[760px] pointer-events-none transition-all duration-1000 blur-[40px] opacity-35"
         style={{
-          background: `radial-gradient(circle, ${stateTheme.coreColor} 0%, transparent 62%)`,
+          background: `radial-gradient(circle, ${stateTheme.hudAccent} 0%, transparent 62%)`,
+          mixBlendMode: 'screen',
         }}
       />
 
@@ -274,7 +294,7 @@ export const ShashwatDittoDashboard: React.FC<ShashwatDittoDashboardProps> = ({
         {/* Status Center */}
         <div className="flex flex-col items-center gap-2">
           <div className="text-[13px] text-[#a9b3d6] tracking-[1px]">
-            {stateTheme.label}…
+            {stateTheme.hudLabel}…
           </div>
 
           {/* Waveform Animation */}
@@ -303,7 +323,7 @@ export const ShashwatDittoDashboard: React.FC<ShashwatDittoDashboardProps> = ({
       <aside className="absolute top-[96px] left-[24px] bottom-[110px] w-[76px] flex flex-col items-center pt-2 gap-1.5 z-20">
         {[
           { name: 'Home', icon: Home },
-          { name: 'Memory', icon: Database, action: onOpenMemory },
+          { name: 'Memory', icon: Database, action: onOpenSettings },
           { name: 'Learn', icon: GraduationCap },
           { name: 'System', icon: Activity },
           { name: 'Settings', icon: Settings, action: onOpenSettings },
@@ -382,13 +402,13 @@ export const ShashwatDittoDashboard: React.FC<ShashwatDittoDashboardProps> = ({
             <div>
               <div className="text-[12px] text-[#6c7599] tracking-[1px]">Shashwat Status</div>
               <div className="text-[20px] font-semibold text-[#6fd8ff] transition-colors duration-600">
-                {stateTheme.label}
+                {stateTheme.hudLabel}
               </div>
             </div>
             <div
               className="w-[44px] h-[44px] rounded-full flex-none shadow-[0_0_24px_#6fd8ff] relative"
               style={{
-                background: `radial-gradient(circle at 35% 35%, #fff, ${stateTheme.coreColor} 45%, transparent 75%)`,
+                background: `radial-gradient(circle at 35% 35%, #fff, ${stateTheme.hudAccent} 45%, transparent 75%)`,
               }}
             />
           </div>
@@ -529,9 +549,14 @@ export const ShashwatDittoDashboard: React.FC<ShashwatDittoDashboardProps> = ({
 
         {/* Dynamic Thinking / Telemetry Line */}
         <div className="text-[12.5px] text-[#6c7599] tracking-[0.5px] h-[16px]">
-          {stateTheme.description || 'Shashwat is listening…'}
+          {`Shashwat is ${stateTheme.hudLabel.toLowerCase()}…`}
         </div>
       </div>
+
+      {/* Voice Diagnostics Real-time Panel (Ctrl+Shift+D) */}
+      {showDiagnostics && (
+        <VoiceDiagnosticsPanel onClose={() => setShowDiagnostics(false)} />
+      )}
     </div>
   );
 };

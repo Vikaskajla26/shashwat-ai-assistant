@@ -1,15 +1,8 @@
 import * as THREE from 'three';
-import { createPlasmaMaterial } from './shaders';
-import type { StateTheme } from '../../theme/aiState';
-
-/**
- * PlasmaCore — the deforming volumetric blob at the heart of the orb.
- *
- * Layered: an outer noise-deformed membrane (the upgraded shader with fBm +
- * ripple + energy circulation) wraps a brighter inner plasma sphere for true
- * volumetric depth. Breathing, voice reactivity and the click ripple are all
- * driven here.
- */
+import { createPlasmaMaterial } from '../components/orb/shaders';
+import type { StateTheme } from '../theme/aiState';
+import { createCoreLight, CoreLightHandle } from './CoreLight';
+import { LAYER_ORB_BLOOM } from '../renderer/Layers';
 
 export interface PlasmaCoreHandle {
   group: THREE.Group;
@@ -29,54 +22,39 @@ export interface PlasmaCoreHandle {
 export function createPlasmaCore(subdivisions: number): PlasmaCoreHandle {
   const group = new THREE.Group();
 
-  // Outer membrane — high-subdivision icosahedron driven by the plasma shader.
-  const membraneGeo = new THREE.IcosahedronGeometry(26, subdivisions);
-
+  // Outer membrane — high-resolution icosahedron driven by plasma shader (renderOrder = 3)
+  const detailLevel = Math.max(7, subdivisions);
+  const membraneGeo = new THREE.IcosahedronGeometry(30, detailLevel);
   const membraneMat = createPlasmaMaterial();
-
   const membrane = new THREE.Mesh(membraneGeo, membraneMat);
   membrane.renderOrder = 3;
   group.add(membrane);
 
-  // 1. Inner Petal Core — 5-petal lotus flower energy core (Rose Pink / Magenta glow)
-  const petalCoreGeo = new THREE.DodecahedronGeometry(11, 2);
-  const petalCoreMat = new THREE.MeshBasicMaterial({
-    color: 0xf43f5e,
-    transparent: true,
-    opacity: 0.75,
-    blending: THREE.AdditiveBlending,
-    wireframe: false,
-  });
-  const petalCore = new THREE.Mesh(petalCoreGeo, petalCoreMat);
-  petalCore.renderOrder = 4;
-  group.add(petalCore);
+  console.log('[PlasmaCore] Vertex count:', membraneGeo.attributes.position.count);
+  const initialBox = new THREE.Box3().setFromObject(group);
+  console.log('[PlasmaCore] Initial Min:', initialBox.min, 'Max:', initialBox.max, 'Size:', initialBox.getSize(new THREE.Vector3()));
 
-  // 2. Central White Core Light Point
-  const centerLightGeo = new THREE.SphereGeometry(5.5, 24, 24);
-  const centerLightMat = new THREE.MeshBasicMaterial({
-    color: 0xffffff,
-    transparent: true,
-    opacity: 0.95,
-    blending: THREE.AdditiveBlending,
-  });
-  const centerLight = new THREE.Mesh(centerLightGeo, centerLightMat);
-  centerLight.renderOrder = 5;
-  group.add(centerLight);
+  // Inner lotus core & central light point
+  const coreLight: CoreLightHandle = createCoreLight();
+  group.add(coreLight.petalCore);
+  group.add(coreLight.centerLight);
 
-  // Cached target colors, smoothly lerped each frame for state transitions.
+  // Enable Layer 1 on group
+  group.traverse((obj) => {
+    obj.layers.enable(LAYER_ORB_BLOOM);
+  });
+
   const curBase = new THREE.Color('#F59E0B');
   const curAccent = new THREE.Color('#F97316');
   const curFresnel = new THREE.Color('#FEF08A');
 
   const update: PlasmaCoreHandle['update'] = (t, _dt, audioBoost, theme, ripple, mousePos, physics, spectrum) => {
-    // Use FFT spectrum if available, otherwise fall back to audioBoost
     const bass = spectrum ? spectrum.bassNorm : audioBoost;
     const mid = spectrum ? spectrum.midNorm : audioBoost;
     const vol = spectrum ? spectrum.volumeNorm : audioBoost;
 
     const totalAudioBoost = Math.max(audioBoost, bass * 0.85);
 
-    // Only push uniforms when the material is the ShaderMaterial (safe after diagnostic swaps).
     if ((membraneMat as THREE.ShaderMaterial).uniforms) {
       const u = (membraneMat as THREE.ShaderMaterial).uniforms;
       u.uTime.value = t;
@@ -103,28 +81,24 @@ export function createPlasmaCore(subdivisions: number): PlasmaCoreHandle {
     }
 
     const speedMultiplier = 1.0 + mid * 0.8;
+
+    // Idle 4-second breathing scale cycle: 1.00 -> 1.04 -> 1.00 plus organic slow wobble
+    const breathCycle = Math.sin(t * (Math.PI * 2.0 / 4.0));
+    const idleScale = 1.00 + (breathCycle * 0.5 + 0.5) * 0.04;
+    const wobbleX = Math.sin(t * 0.8) * 0.015;
+    const wobbleY = Math.cos(t * 0.6) * 0.015;
+
+    membrane.scale.set(idleScale + wobbleX, idleScale + wobbleY, idleScale);
     membrane.rotation.y = t * theme.orbSpeed * speedMultiplier;
     membrane.rotation.x = Math.sin(t * theme.orbSpeed * 0.7) * 0.15;
 
-    // Inner petal lotus core counter-rotates and breathes
-    petalCore.rotation.y = -t * theme.orbSpeed * 0.9 * speedMultiplier;
-    petalCore.rotation.z = Math.sin(t * 0.8) * 0.2;
-    const innerPulse = 1 + totalAudioBoost * 0.18 + Math.sin(t * theme.orbBreath * 1.6) * 0.03;
-    petalCore.scale.setScalar(innerPulse);
-    petalCoreMat.opacity = 0.75 + vol * 0.20;
-
-    // Center white light point pulses with RMS volume
-    centerLight.scale.setScalar(1 + totalAudioBoost * 0.25);
-    centerLightMat.opacity = 0.9 + vol * 0.1;
+    coreLight.update(t, theme.orbSpeed, theme.orbBreath, totalAudioBoost, vol);
   };
 
   const dispose = () => {
     membraneGeo.dispose();
     membraneMat.dispose();
-    petalCoreGeo.dispose();
-    petalCoreMat.dispose();
-    centerLightGeo.dispose();
-    centerLightMat.dispose();
+    coreLight.dispose();
   };
 
   return { group, update, dispose };

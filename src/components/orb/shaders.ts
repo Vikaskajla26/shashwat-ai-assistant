@@ -1,7 +1,32 @@
-/**
- * Living Orb GPU Shader Engine — GLSL 3D Simplex, 4-Octave FBM, 3D Curl Noise,
- * Velocity Squash/Stretch, Micro-oscillations, Glass Subsurface Scattering, Optical Caustics, and Fresnel Rim Glow.
- */
+import * as THREE from 'three';
+
+export function createPlasmaUniforms() {
+  return {
+    uTime:             { value: 0 },
+    uAudioBoost:       { value: 0 },
+    uAmp:              { value: 0.55 },
+    uBreath:           { value: 1.0 },
+    uRippleStrength:   { value: 0 },
+    uRippleTime:       { value: 0 },
+    uRippleOrigin:     { value: new THREE.Vector3(0, 1, 0) },
+    uMousePos:         { value: new THREE.Vector2(0, 0) },
+    uVelocity:         { value: new THREE.Vector2(0, 0) },
+    uMicroOscillation: { value: 0 },
+    uBaseColor:        { value: new THREE.Color('#F59E0B') },
+    uAccentColor:      { value: new THREE.Color('#F97316') },
+    uFresnelColor:     { value: new THREE.Color('#FEF08A') },
+  };
+}
+
+export function createPlasmaMaterial(): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    vertexShader: PLASMA_VERTEX_SHADER,
+    fragmentShader: PLASMA_FRAGMENT_SHADER,
+    transparent: true,
+    side: THREE.FrontSide,
+    uniforms: createPlasmaUniforms(),
+  });
+}
 
 export const SIMPLEX_NOISE_GLSL = /* glsl */ `
 vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
@@ -52,12 +77,12 @@ float snoise(vec3 v) {
   return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
 }
 
-// Fractional Brownian Motion (4 octaves)
+// Fractional Brownian Motion (5 octaves)
 float fbm(vec3 p) {
   float v = 0.0;
   float a = 0.5;
   vec3 shift = vec3(100.0);
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < 5; i++) {
     v += a * snoise(p);
     p = p * 2.02 + shift;
     a *= 0.5;
@@ -172,6 +197,8 @@ varying vec2 vUv;
 varying float vDisplacement;
 varying float vEnergy;
 
+${SIMPLEX_NOISE_GLSL}
+
 // Optical Caustics pattern simulation
 float caustics(vec2 uv, float time) {
   vec2 p = mod(uv * 6.28318530718, 6.28318530718) - 250.0;
@@ -191,22 +218,35 @@ float caustics(vec2 uv, float time) {
 }
 
 void main() {
-  vec3 viewVector = normalize(cameraPosition - vPosition);
-  float fresnel = pow(1.0 - abs(dot(vNormal, viewVector)), 2.6);
+  // Use vNormal for view direction (works without cameraPosition uniform)
+  vec3 viewDir = normalize(-vNormal);
+  float nDotV = clamp(abs(dot(vNormal, viewDir)), 0.0, 1.0);
+  float fresnel = pow(1.0 - nDotV, 2.6);
 
-  // Convection Swirl inside the plasma core, accelerated by momentum
+  // Layer 3: Moving Volumetric Plasma Color Field (5-Octave FBM Motion)
+  float plasmaFlow = fbm(vPosition * 0.08 + vec3(uTime * 0.35, uTime * 0.2, -uTime * 0.15));
   float swirlSpeed = 0.9 + length(uVelocity) * 0.4;
   float swirl = sin(vEnergy * 4.0 + uTime * swirlSpeed) * 0.5 + 0.5;
-  vec3 baseCol = mix(uBaseColor, uAccentColor, clamp(vDisplacement * 0.06 + 0.5, 0.0, 1.0));
-  baseCol = mix(baseCol, uAccentColor, swirl * 0.3);
+
+  vec3 baseCol = mix(uBaseColor, uAccentColor, clamp(plasmaFlow * 0.8 + 0.2, 0.0, 1.0));
+  baseCol = mix(baseCol, uAccentColor, swirl * 0.35);
 
   // Subsurface Caustics Highlight
   float causticsPattern = caustics(vUv * 2.0, uTime * 0.4);
   baseCol += uFresnelColor * causticsPattern * 0.25;
 
-  // Fresnel Rim Light + Volumetric Bloom envelope
-  vec3 finalCol = mix(baseCol, uFresnelColor, fresnel * 0.88);
-  finalCol += uFresnelColor * uAudioBoost * fresnel * 0.5;
+  // Layer 7: Huge Fresnel Rim Envelope
+  float fresnel7 = pow(1.0 - nDotV, 5.0);
+  vec3 fresnelRim = fresnel7 * uFresnelColor * 3.2;
+
+  vec3 finalCol = baseCol + fresnelRim;
+  finalCol += uFresnelColor * uAudioBoost * fresnel7 * 0.4;
+
+  // Selective high-intensity bloom highlight
+  vec3 brightHighlight = max(finalCol - vec3(0.82), vec3(0.0));
+  finalCol += brightHighlight * 0.5;
+
+  finalCol = clamp(finalCol, 0.0, 1.0);
 
   float alpha = 0.88 + fresnel * 0.12 + uAudioBoost * 0.08;
   gl_FragColor = vec4(finalCol, clamp(alpha, 0.0, 1.0));
@@ -243,7 +283,7 @@ void main() {
   vec3 sphereDir = vec3(sin(phi) * cos(theta), sin(phi) * sin(theta), cos(phi));
   vec3 curl = curlNoise(sphereDir * 0.15 + vec3(uTime * 0.05));
 
-  // 4. Attraction & Repulsion Forces
+  // 4. Attraction & Repulsion Forces + Bass Reactivity
   float radialOffset = (aRadius + sin(uTime * 0.4 + aSeed * 12.0) * 4.0);
   radialOffset += (uRepulsion * 18.0 * life) - (uAttraction * 8.0 * (1.0 - life));
   radialOffset += uAudioBoost * 14.0 * life;
@@ -252,11 +292,11 @@ void main() {
 
   vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
 
-  // 5. Life-dependent Point Size Attenuation
+  // 5. Life-dependent Tiny Point Size Attenuation
   float fadeInOut = sin(life * 3.14159265);
-  float size = (2.4 + aSeed * 3.0) * (1.0 + uAudioBoost * 1.5) * uIntensity * fadeInOut;
+  float size = (1.2 + aSeed * 1.8) * (1.0 + uAudioBoost * 1.2) * uIntensity * fadeInOut;
 
-  gl_PointSize = size * (280.0 / -mvPosition.z);
+  gl_PointSize = size * (200.0 / -mvPosition.z);
   gl_Position = projectionMatrix * mvPosition;
 
   vAlpha = fadeInOut * uIntensity * (0.4 + 0.6 * sin(uTime * 2.0 + aSeed * 15.0));

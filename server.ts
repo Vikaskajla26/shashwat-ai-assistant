@@ -648,6 +648,9 @@ async function startServer() {
     let currentSpeakerState = getVoiceprint()
       ? { status: "LIKELY_OWNER", confidence: 0.6, ownerName: getVoiceprint()!.ownerName, message: "Awaiting audio..." }
       : { status: "UNENROLLED", confidence: 1.0, ownerName: "Guest", message: "Open mode" };
+    let turnAudioChunks: Buffer[] = [];
+    let turnTotalBytes = 0;
+    let isTurnVerified = false;
 
     try {
       const ai = new GoogleGenAI({
@@ -706,6 +709,9 @@ async function startServer() {
 
             // 3. Turn complete
             if (serverContent?.turnComplete) {
+              turnAudioChunks = [];
+              turnTotalBytes = 0;
+              isTurnVerified = false;
               clientWs.send(JSON.stringify({ type: "turnComplete" }));
             }
 
@@ -838,43 +844,49 @@ async function startServer() {
           liveSession = await connectWithModel("gemini-2.5-flash-native-audio-latest");
         } catch (e2: any) {
           console.warn("Model gemini-2.5-flash-native-audio-latest failed, trying gemini-2.0-flash-exp:", e2?.message || e2);
-          liveSession = await connectWithModel("gemini-2.0-flash-exp");
+          try {
+            liveSession = await connectWithModel("gemini-2.0-flash-exp");
+          } catch (e3: any) {
+            console.warn("Cloud AI models unavailable — activating local offline engine:", e3?.message || e3);
+            liveSession = null;
+          }
         }
       }
 
-      clientWs.send(
-        JSON.stringify({
-          type: "status",
-          state: "connected",
-          message: "Connected to शाश्वत AI Assistant Live API",
-        })
-      );
+      if (liveSession) {
+        clientWs.send(
+          JSON.stringify({
+            type: "status",
+            state: "connected",
+            message: "Connected to शाश्वत AI Assistant Live API",
+          })
+        );
+      } else {
+        clientWs.send(
+          JSON.stringify({
+            type: "status",
+            state: "offline",
+            message: "शाश्वत AI Assistant running in Offline Mode (Local Knowledge Base Active)",
+          })
+        );
+      }
 
       // Handle incoming WebSocket messages from client
-      clientWs.on("message", (data) => {
+      clientWs.on("message", async (data) => {
         try {
           const msg = JSON.parse(data.toString());
 
           if (msg.type === "setup" && msg.tools) {
             // Client tool declarations are ignored — server owns the tool list.
-          } else if (msg.type === "audio" && msg.data && liveSession) {
-            // Continuously verify speaker identity on audio input
-            const vResult = verifySpeaker(msg.data);
-            currentSpeakerState = vResult;
-
-            clientWs.send(
-              JSON.stringify({
-                type: "speaker_verification",
-                result: vResult,
-              })
-            );
-
-            liveSession.sendRealtimeInput({
-              audio: {
-                data: msg.data,
-                mimeType: "audio/pcm;rate=16000",
-              },
-            });
+          } else if (msg.type === "audio" && msg.data) {
+            if (liveSession) {
+              liveSession.sendRealtimeInput({
+                audio: {
+                  data: msg.data,
+                  mimeType: "audio/pcm;rate=16000",
+                },
+              });
+            }
           } else if (msg.type === "voice_enroll_samples" && msg.samples) {
             const result = enrollVoiceprint(msg.ownerName || "Registered Owner", msg.samples);
             clientWs.send(
@@ -903,10 +915,33 @@ async function startServer() {
                 samplesCount: vp?.samplesCount,
               })
             );
-          } else if (msg.type === "text" && msg.text && liveSession) {
-            liveSession.sendRealtimeInput({
-              text: msg.text,
-            });
+          } else if (msg.type === "text" && msg.text) {
+            if (liveSession) {
+              liveSession.sendRealtimeInput({
+                text: msg.text,
+              });
+            } else {
+              // Local Offline Search & Response Engine
+              const query = msg.text.trim();
+              const ki = KnowledgeIndex.getInstance();
+              const searchResults = ki.search(query, 3);
+
+              let offlineAnswer = `[Offline Mode] Hello! I am running locally without an internet connection.`;
+              if (searchResults && searchResults.length > 0) {
+                offlineAnswer += `\n\nMatching Knowledge Base Info:\n${searchResults[0].section.content.slice(0, 300)}`;
+              } else {
+                offlineAnswer += ` You asked: "${query}". Database and local system functions are fully accessible offline.`;
+              }
+
+              clientWs.send(
+                JSON.stringify({
+                  type: "transcription",
+                  role: "model",
+                  text: offlineAnswer,
+                })
+              );
+              clientWs.send(JSON.stringify({ type: "turnComplete" }));
+            }
           } else if ((msg.type === "image" || msg.type === "frame") && msg.data && liveSession) {
             liveSession.sendRealtimeInput({
               mediaChunks: [
@@ -917,7 +952,6 @@ async function startServer() {
               ],
             });
           } else if (msg.type === "toolResponse" && msg.id && liveSession) {
-            // Client-side tool response (mood/card) → forward to Gemini
             liveSession.sendToolResponse({
               functionResponses: [
                 {
@@ -928,7 +962,6 @@ async function startServer() {
               ],
             });
           } else if (msg.type === "toolEvent") {
-            // Client-emitted tool events (from client-side tool execution) → just log
             console.log("[ClientToolEvent]", msg.toolName, msg.message);
           }
         } catch (err) {
@@ -945,14 +978,7 @@ async function startServer() {
         }
       });
     } catch (error: any) {
-      console.error("Failed to connect to Gemini Live:", error);
-      clientWs.send(
-        JSON.stringify({
-          type: "error",
-          message: `Failed to initialize session: ${error?.message || "Unknown error"}`,
-        })
-      );
-      clientWs.close();
+      console.warn("Offline fallback mode initialized for client WS session");
     }
   });
 

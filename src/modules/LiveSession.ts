@@ -22,6 +22,7 @@ export interface LiveSessionOptions {
   onSpeakerVerification?: (res: { status: string; confidence: number; ownerName: string; message: string }) => void;
   onVoiceStatus?: (status: { enrolled: boolean; ownerName: string }) => void;
   onOpenDocWorkspace?: () => void;
+  onOpenEnrollment?: () => void;
   onPhase?: (phase: AssistantPhase) => void;
   onTurnComplete?: () => void;
   onTelemetry?: (log: TelemetryLog) => void;
@@ -73,10 +74,11 @@ export class LiveSession {
     });
 
     this.toolManager = new ToolManager({
-      onMoodChange: (mood) => this.options.onMoodChange(mood),
-      onVisualCard: (card) => this.options.onVisualCard(card),
-      onToolEvent: (event) => this.options.onToolEvent(event),
-      onOpenDocWorkspace: () => this.options.onOpenDocWorkspace?.(),
+      onMoodChange: options.onMoodChange,
+      onVisualCard: options.onVisualCard,
+      onToolEvent: options.onToolEvent,
+      onOpenDocWorkspace: options.onOpenDocWorkspace,
+      onOpenEnrollment: options.onOpenEnrollment,
     });
 
     this.screenStreamer = new ScreenStreamer({
