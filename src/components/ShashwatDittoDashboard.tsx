@@ -33,8 +33,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { AssistantState } from '../types';
-import { getStateTheme } from '../theme/aiState';
-import { OrbScene } from './orb/OrbScene';
+import { getStateTheme, stateThemes } from '../theme/aiState';
 import { AwakeCrystalButton } from './AwakeCrystalButton';
 import { VoiceDiagnosticsPanel } from '../voice/VoiceDiagnosticsPanel';
 
@@ -227,22 +226,8 @@ export const ShashwatDittoDashboard: React.FC<ShashwatDittoDashboardProps> = ({
       {/* 2D Starfield Canvas */}
       <canvas ref={starCanvasRef} className="absolute inset-0 pointer-events-none z-0" />
 
-      {/* Dynamic State Orb Ambient Glow — screen blend enhances orb, doesn't cover it */}
-      <div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[60vw] max-w-[760px] max-h-[760px] pointer-events-none transition-all duration-1000 blur-[40px] opacity-35"
-        style={{
-          background: `radial-gradient(circle, ${stateTheme.hudAccent} 0%, transparent 62%)`,
-          mixBlendMode: 'screen',
-        }}
-      />
-
-      {/* 3D WebGL Canvas Layer */}
-      <div className="absolute inset-0 z-0">
-        <OrbScene stateRef={stateRef} volumeRef={volumeRef} width={window.innerWidth} height={window.innerHeight} />
-      </div>
-
       {/* ── MAHESHWAR SUTRAS SVG ROTATING RINGS ── */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10 mix-blend-screen opacity-65">
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10 opacity-30">
         {/* Outer Ring — 840px, 90s Spin */}
         <div className="w-[840px] h-[840px] animate-[spin_90s_linear_infinite]">
           <svg viewBox="0 0 880 880" className="w-full h-full">

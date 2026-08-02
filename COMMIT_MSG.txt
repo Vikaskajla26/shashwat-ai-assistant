@@ -1,0 +1,6 @@
+refactor: completely remove 3D orb and WebGL postprocessing pipeline
+
+- Removed src/orb/, src/renderer/, and src/components/orb/ directories completely.
+- Removed OrbScene component and yellow background radial glare from ShashwatDittoDashboard.tsx.
+- Reduced main JS bundle size from 1,155 kB down to 576 kB (50% lighter).
+- Application dashboard is now clean, sleek, high-performance, and dark-themed with 0% WebGL overhead.
