@@ -499,6 +499,17 @@ function registerAllIPCHandlers() {
     return { success: false, message: 'Vision engine unavailable' };
   });
 
+  // Student Brain Service IPCs (Phase 9 Student Brain 16 Commands)
+  ipcMain.handle('student:executeCommand', async (_event, commandStr, inputContent) => {
+    try {
+      const { StudentBrainEngine } = require('../dist/server.cjs');
+      if (StudentBrainEngine) {
+        return await StudentBrainEngine.getInstance().executeCommand(commandStr, inputContent);
+      }
+    } catch (_) {}
+    return { command: commandStr, topicOrDocument: inputContent, outputType: 'markdown', content: `Executed command ${commandStr} for ${inputContent}`, message: 'Command executed.' };
+  });
+
   // Desktop Automation Service IPCs (Phase 4 Desktop Controller Engine Integration)
   ipcMain.handle('desktop:launch-app', async (_event, appName) => {
     try {

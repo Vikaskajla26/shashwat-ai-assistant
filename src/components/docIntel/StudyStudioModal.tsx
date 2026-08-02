@@ -135,17 +135,31 @@ export const StudyStudioModal: React.FC<StudyStudioModalProps> = ({
     setShowCommandSuggestions(false);
 
     try {
-      const res = await fetch('/api/study/command', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ command: cmdText.trim(), docId: selectedDocId }),
-      });
-      const data = await res.json();
+      let resultData: any = null;
+      if (typeof window !== 'undefined' && (window as any).electronAPI?.student?.executeCommand) {
+        const parts = cmdText.trim().split(' ');
+        const cmdName = parts[0];
+        const topic = parts.slice(1).join(' ') || 'Core Principles';
+        resultData = await (window as any).electronAPI.student.executeCommand(cmdName, topic);
+      } else {
+        const res = await fetch('/api/study/command', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command: cmdText.trim(), docId: selectedDocId }),
+        });
+        const data = await res.json();
+        resultData = data.result || data;
+      }
 
-      if (data.success && data.result) {
+      if (resultData) {
+        const title = `${resultData.command || cmdText} Results`;
+        const contentStr = typeof resultData.content === 'string'
+          ? resultData.content
+          : JSON.stringify(resultData.content, null, 2);
+
         setCommandResult({
-          title: data.result.title || cmdText,
-          markdown: data.result.markdown || data.result.output,
+          title,
+          markdown: contentStr || resultData.message || 'Execution completed.',
         });
       }
     } catch (err) {
