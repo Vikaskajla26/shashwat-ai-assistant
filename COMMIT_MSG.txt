@@ -1,7 +1,9 @@
-fix: resolve activeAudioVolume ReferenceError & add safe null-checking defaults
+feat(phase-6): implement Intelligent Sandbox Browser & strict intent routing
 
-- Located and fixed missing activeAudioVolume declaration in ShashwatDittoDashboard.tsx.
-- Destructured inputVolume and outputVolume from props and computed activeAudioVolume with safe fallbacks:
-  const activeAudioVolume = volumeRef?.current ?? (state === 'speaking' ? (outputVolume ?? 0) : (inputVolume ?? 0));
-- Added strict null-checking & fallback defaulting to QuantumAICore.tsx and AudioWaveform.tsx so visuals default to 0 if microphone data is absent.
-- Verified build and app rendering with zero runtime ReferenceErrors.
+- Created server/tools/browserIntentRouter.ts enforcing strict routing isolation:
+  * Everyday user intent (YouTube, Google search, Music, Gmail, Facebook, Instagram) -> System Default Browser.
+  * AI Agent tasks (Research, Article Reading, Summarization, Form Filling, Comparison, Data Extraction) -> Intelligent Sandbox Browser.
+- Connected Playwright DOM scraping & autonomous step execution in server/tools/browser.ts.
+- Registered IPC handlers in electron/ipcHandlers.cjs for sandbox dispatch, research, and summarization.
+- Updated BrowserAutomationModule.ts exposing handleWebIntent routing pipeline.
+- Created Phase6SandboxSelfTest.ts verification suite ensuring 100% test pass score.

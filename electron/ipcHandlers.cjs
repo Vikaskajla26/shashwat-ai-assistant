@@ -427,6 +427,37 @@ function registerAllIPCHandlers() {
     return { success: false, verified: false, message: 'Browser engine unavailable' };
   });
 
+  // Intelligent Sandbox Browser IPCs (Phase 6 AI Agent Tasks ONLY)
+  ipcMain.handle('sandbox:dispatch-intent', async (_event, promptOrUrl, payload) => {
+    try {
+      const { BrowserIntentRouter } = require('../dist/server.cjs');
+      if (BrowserIntentRouter) {
+        return await BrowserIntentRouter.getInstance().dispatchIntent(promptOrUrl, payload);
+      }
+    } catch (_) {}
+    return { executed: false, message: 'Sandbox intent router unavailable' };
+  });
+
+  ipcMain.handle('sandbox:research', async (_event, topic) => {
+    try {
+      const { sandboxExec } = require('../dist/server.cjs');
+      if (sandboxExec) {
+        return await sandboxExec({ query: topic, task_type: 'research' });
+      }
+    } catch (_) {}
+    return { executed: false, message: 'Sandbox research engine unavailable' };
+  });
+
+  ipcMain.handle('sandbox:summarize', async (_event, url) => {
+    try {
+      const { browserNavigate } = require('../dist/server.cjs');
+      if (browserNavigate) {
+        return await browserNavigate({ action: 'summarize_page', target: url });
+      }
+    } catch (_) {}
+    return { executed: false, message: 'Sandbox summarizer unavailable' };
+  });
+
   // Desktop Automation Service IPCs (Phase 4 Desktop Controller Engine Integration)
   ipcMain.handle('desktop:launch-app', async (_event, appName) => {
     try {

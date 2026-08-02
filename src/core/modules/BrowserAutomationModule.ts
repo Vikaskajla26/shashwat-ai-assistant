@@ -1,7 +1,8 @@
 /**
- * Browser Automation Subsystem Module for Shashwat AI OS (Phase 5 Browser Controller).
- * RULE #1: NEVER RETURN RAW LINKS TO THE USER. Always open/navigate in active or default browser window.
- * Supports: Chrome, Edge, Firefox, Brave, Opera, Arc.
+ * Browser Automation Subsystem Module for Shashwat AI OS (Phase 6 Intelligent Sandbox Browser).
+ * Enforces strict routing isolation:
+ * - Everyday User Intent (YouTube, Google search, Music, Gmail, Facebook, Instagram) -> System Default Browser.
+ * - AI Agent Tasks (Research, Article Reading, Summarization, Form Filling, Comparison, Data Extraction) -> Intelligent Sandbox Browser.
  */
 
 import { BaseModule } from '../BaseModule';
@@ -11,7 +12,7 @@ export class BrowserAutomationModule extends BaseModule {
   public readonly name = 'Browser Automation Subsystem';
 
   public async init(): Promise<void> {
-    this.logger.info(this.id, 'Initializing Browser Automation Subsystem...');
+    this.logger.info(this.id, 'Initializing Browser Automation Subsystem (System + AI Sandbox)...');
     this.status = 'UNINITIALIZED';
   }
 
@@ -28,7 +29,13 @@ export class BrowserAutomationModule extends BaseModule {
     this.status = 'UNINITIALIZED';
   }
 
-  /* ------------------- Browser Automation Capabilities ------------------- */
+  /* ------------------- Intent Routing & Dispatch ------------------- */
+
+  public async handleWebIntent(promptOrUrl: string, payload?: any): Promise<any> {
+    return await this.invokeBrowserIpc('sandbox:dispatch-intent', promptOrUrl, payload);
+  }
+
+  /* ------------------- System Browser Capabilities ------------------- */
 
   public async getDefaultBrowser(): Promise<any> {
     return await this.invokeBrowserIpc('browser:get-default-browser');
@@ -50,28 +57,14 @@ export class BrowserAutomationModule extends BaseModule {
     return await this.invokeBrowserIpc('browser:play-music', songOrArtist);
   }
 
-  public async searchPDF(topic: string): Promise<any> {
-    return await this.invokeBrowserIpc('browser:search-pdf', topic);
+  /* ------------------- AI Sandbox Browser Capabilities ------------------- */
+
+  public async sandboxResearch(topic: string): Promise<any> {
+    return await this.invokeBrowserIpc('sandbox:research', topic);
   }
 
-  public async openLoginPage(service: string): Promise<any> {
-    return await this.invokeBrowserIpc('browser:login-page', service);
-  }
-
-  public async handleTab(action: 'new' | 'close' | 'next' | 'prev'): Promise<any> {
-    return await this.invokeBrowserIpc('browser:handle-tab', action);
-  }
-
-  public async getHistory(): Promise<any> {
-    return await this.invokeBrowserIpc('browser:get-history');
-  }
-
-  public async getBookmarks(): Promise<any> {
-    return await this.invokeBrowserIpc('browser:get-bookmarks');
-  }
-
-  public async openDownloads(): Promise<any> {
-    return await this.invokeBrowserIpc('browser:open-downloads');
+  public async sandboxSummarize(url: string): Promise<any> {
+    return await this.invokeBrowserIpc('sandbox:summarize', url);
   }
 
   private async invokeBrowserIpc(channel: string, ...args: any[]): Promise<any> {
