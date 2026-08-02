@@ -494,8 +494,8 @@ export const ShashwatDittoDashboard: React.FC<ShashwatDittoDashboardProps> = ({
           What shall we explore today?
         </div>
 
-        {/* Floating Glass Dock */}
-        <div className="flex items-center gap-1.5 px-3.5 py-3 rounded-[26px] bg-[rgba(14,18,32,0.55)] border border-[rgba(255,255,255,0.09)] backdrop-blur-[24px] shadow-[0_8px_32px_rgba(0,0,0,0.35)]">
+        {/* Floating Glass Dock (Vision Pro Glass & Specular Edge) */}
+        <div className="flex items-center gap-1.5 px-3.5 py-3 rounded-[26px] vision-glass shadow-[0_12px_40px_rgba(0,0,0,0.5)]">
           {[
             { label: 'Write', icon: PenTool },
             { label: 'Read', icon: BookOpen },

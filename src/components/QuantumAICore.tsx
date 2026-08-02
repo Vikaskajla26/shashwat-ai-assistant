@@ -106,7 +106,35 @@ export function QuantumAICore({ state, volume, width = 360, height = 360 }: Quan
       ctx.closePath();
       ctx.fill();
 
-      // 3. Orbiting Energy Particles
+      // 3. Maheshwar Sutras (माहेश्वर सूत्राणि) Sacred Orbiting Glyph Ring
+      const sutraText = 'अइउण् ऋऌक् एओङ् ऐऔच् हयवरट् लण् ञमङणनम् झभञ् घढधष् जबगडदश् खफछठथचटत्व् कपय् शषसर् हल्';
+      const orbitRadius = currentRadius * 1.35 + vol * 20;
+      const sutraChars = sutraText.split('');
+      const angleStep = (Math.PI * 2) / sutraChars.length;
+
+      ctx.save();
+      ctx.font = '11px "Noto Serif Devanagari", serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      sutraChars.forEach((char, i) => {
+        const rotAngle = t * 0.15 + i * angleStep;
+        const sx = centerX + Math.cos(rotAngle) * orbitRadius;
+        const sy = centerY + Math.sin(rotAngle) * orbitRadius;
+
+        ctx.save();
+        ctx.translate(sx, sy);
+        ctx.rotate(rotAngle + Math.PI / 2);
+        ctx.fillStyle = theme.fresnelColor;
+        ctx.globalAlpha = 0.45 + Math.sin(t * 2 + i) * 0.25 + vol * 0.3;
+        ctx.shadowColor = theme.accentColor;
+        ctx.shadowBlur = 8;
+        ctx.fillText(char, 0, 0);
+        ctx.restore();
+      });
+      ctx.restore();
+
+      // 4. Orbiting Energy Particles
       particles.forEach((p) => {
         p.angle += p.speed * theme.orbSpeed * (1 + vol * 1.5);
         const r = currentRadius + p.radiusOffset + Math.sin(t * 2 + p.angle * 3) * 6;

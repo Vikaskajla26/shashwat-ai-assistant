@@ -12,24 +12,27 @@
   --bg-deep:       #050b14;
   --glass-white:   rgba(255, 255, 255, 0.06);
   --glass-border:  rgba(255, 255, 255, 0.10);
-  --glass-glow:    rgba(255, 255, 255, 0.03);
+  /* Vision Pro & Nothing OS Specular Tokens */
+  --vision-glass-bg: rgba(10, 14, 26, 0.65);
+  --vision-glass-border: rgba(255, 255, 255, 0.15);
+  --vision-specular-top: rgba(255, 255, 255, 0.35);
+  --nothing-dot-matrix: 'JetBrains Mono', 'Courier New', monospace;
+}
 
-  /* Accent tokens (match StateTheme) */
-  --accent-gold:   #F59E0B;
-  --accent-rose:   #F43F5E;
-  --accent-violet: #8B5CF6;
-  --accent-cyan:   #06B6D4;
-  --accent-emerald:#10B981;
+/* ─── Apple Vision Pro Spatial Glassmorphism ─── */
+.vision-glass {
+  background: var(--vision-glass-bg);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid var(--vision-glass-border);
+  border-top: 1px solid var(--vision-specular-top);
+  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
 
-  /* Typography */
-  --font-ui:   'Inter', 'SF Pro Display', system-ui, sans-serif;
-  --font-code: 'JetBrains Mono', monospace;
-  --font-deva: 'Noto Serif Devanagari', serif;
-
-  /* Motion easing */
-  --ease-spring:  cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  --ease-glass:   cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-reveal:  cubic-bezier(0.22, 1, 0.36, 1);
+.nothing-badge {
+  font-family: var(--nothing-dot-matrix);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
 }
 
 /* ─── Base Reset ─── */
