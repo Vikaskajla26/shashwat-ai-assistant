@@ -12,6 +12,8 @@ import { AudioPlayer } from '../modules/AudioPlayer';
 import { WakeWordDetector } from '../modules/WakeWordDetector';
 import { diagnostics } from './VoiceDiagnostics';
 
+import { ConversationController } from './ConversationController';
+
 export class VoicePipelineEngine {
   private streamer: AudioStreamer;
   private player: AudioPlayer;
@@ -31,6 +33,7 @@ export class VoicePipelineEngine {
       onWakeWord: (phrase) => {
         diagnostics.setWakeDetected(true);
         diagnostics.logTelemetry('WakeWord', `Detected: ${phrase}`);
+        ConversationController.getInstance().transitionTo('wakeWord', `Wake word: ${phrase}`);
       },
       onError: (err) => {
         diagnostics.setLastError(err);
@@ -45,6 +48,15 @@ export class VoicePipelineEngine {
       this.isAIResponding = false;
       this.clearResponseWatchdog();
       diagnostics.updatePlaybackStatus('idle');
+
+      // FSM Auto-Restart: SPEAKING -> WAITING -> LISTENING
+      const fsm = ConversationController.getInstance();
+      if (fsm.getCurrentState() === 'speaking') {
+        fsm.transitionTo('waiting', 'TTS Audio Playback Completed');
+        setTimeout(() => {
+          fsm.transitionTo('listening', 'Auto-reopen mic after audio completion');
+        }, 300);
+      }
     });
   }
 

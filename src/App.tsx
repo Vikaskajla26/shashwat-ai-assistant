@@ -48,6 +48,14 @@ export default function App() {
   }, [state]);
 
   useEffect(() => {
+    const { ConversationController } = require('./voice/ConversationController');
+    const unsubscribe = ConversationController.getInstance().subscribe((newState: AssistantState) => {
+      setState(newState);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
     volumeRef.current = activeAudioVolume;
   }, [activeAudioVolume]);
 

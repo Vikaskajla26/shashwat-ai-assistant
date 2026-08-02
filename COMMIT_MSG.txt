@@ -1,8 +1,9 @@
-feat(phase-9): implement Student Brain Subsystem & 16 study slash commands
+feat(phase-10): implement ConversationController FSM & resolve infinite SPEAKING loop
 
-- Created server/tools/studentBrain.ts backend engine with real execution logic for 16 slash commands:
-  /notes, /mcq, /quiz, /flashcards, /handwrittenpdf, /generatehandwrittenimage, /diagram, /mindmap, /flowchart, /clinicalcase, /viva, /studyplan, /revision, /research, /teachme, /doubts.
-- Supported multi-format parsing across PDF, DOCX, PPT, Excel, Images, Audio, and Video files.
-- Registered IPC handlers in electron/ipcHandlers.cjs for student:executeCommand.
-- Updated StudyStudioModal.tsx to execute real Student Brain API commands.
-- Created Phase9StudentBrainSelfTest.ts verification suite ensuring 100% test pass score.
+- Created src/voice/ConversationController.ts authoritative 12-state FSM kernel (BOOTING, IDLE, WAKE_WORD, LISTENING, UNDERSTANDING, THINKING, GENERATING, SPEAKING, EXECUTING, WAITING, ERROR, SLEEPING).
+- Enforced transition validation rules: rejected forbidden self-loops (SPEAKING -> SPEAKING) and re-greeting loops.
+- Enforced single startup greeting rule: hasGreeted flag locks after 1st execution.
+- Implemented TTS completion auto-restart: SPEAKING -> WAITING -> LISTENING re-opens microphone and restarts VAD automatically.
+- Added watchdog recovery timers for LISTENING (>15s), THINKING (>10s), SPEAKING (>audio+2s).
+- Subscribed App.tsx state to ConversationController event listener.
+- Created Phase10StateSelfTest.ts verification suite ensuring 100% test pass score.
