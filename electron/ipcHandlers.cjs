@@ -36,6 +36,7 @@ function setupTables() {
     db.run(`CREATE TABLE IF NOT EXISTS automation_history (id INTEGER PRIMARY KEY AUTOINCREMENT, action TEXT NOT NULL, target TEXT, parameters TEXT, executed_at DATETIME DEFAULT CURRENT_TIMESTAMP, success BOOLEAN DEFAULT 0)`);
     db.run(`CREATE TABLE IF NOT EXISTS logs (id INTEGER PRIMARY KEY AUTOINCREMENT, level TEXT NOT NULL, message TEXT NOT NULL, module TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)`);
     db.run(`CREATE TABLE IF NOT EXISTS learning_items (id INTEGER PRIMARY KEY AUTOINCREMENT, topic TEXT NOT NULL, question TEXT NOT NULL, answer TEXT NOT NULL, ease_factor REAL DEFAULT 2.5, interval INTEGER DEFAULT 1, repetitions INTEGER DEFAULT 0)`);
+    db.run(`CREATE TABLE IF NOT EXISTS app_resume_state (id INTEGER PRIMARY KEY AUTOINCREMENT, state_key TEXT UNIQUE NOT NULL, state_json TEXT NOT NULL, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
   });
 }
 
@@ -68,6 +69,36 @@ function registerAllIPCHandlers() {
     return new Promise((resolve) => {
       db.run('DELETE FROM memories WHERE key = ?', [key], function (err) {
         resolve(!err);
+      });
+    });
+  });
+
+  ipcMain.handle('db:export-memories', () => {
+    return new Promise((resolve) => {
+      db.all('SELECT key, value, updated_at FROM memories', [], (err, rows) => {
+        if (err) resolve([]);
+        else resolve(rows || []);
+      });
+    });
+  });
+
+  ipcMain.handle('db:save-resume-state', (_event, stateKey, stateJson) => {
+    return new Promise((resolve) => {
+      db.run(
+        'INSERT INTO app_resume_state (state_key, state_json) VALUES (?, ?) ON CONFLICT(state_key) DO UPDATE SET state_json=?, updated_at=CURRENT_TIMESTAMP',
+        [stateKey, stateJson, stateJson],
+        function (err) {
+          resolve(!err);
+        }
+      );
+    });
+  });
+
+  ipcMain.handle('db:get-resume-state', (_event, stateKey) => {
+    return new Promise((resolve) => {
+      db.get('SELECT state_json FROM app_resume_state WHERE state_key = ?', [stateKey], (err, row) => {
+        if (err || !row) resolve(null);
+        else resolve(row.state_json);
       });
     });
   });
