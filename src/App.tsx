@@ -27,8 +27,7 @@ import { AlertCircle } from 'lucide-react';
 
 import { PowerShutdownModal } from './components/PowerShutdownModal';
 import { AIProviderSetupWizard } from './components/AIProviderSetupWizard';
-import { getStateTheme } from './theme/aiState';
-
+import { GlobalErrorBoundary } from './components/GlobalErrorBoundary';
 import { ShashwatCore } from './core/ShashwatCore';
 
 export default function App() {
@@ -313,22 +312,23 @@ export default function App() {
   const latestEvent = toolEvents.length > 0 ? toolEvents[toolEvents.length - 1] : null;
 
   return (
-    <div
-      style={{
-        width: '100vw',
-        height: '100vh',
-        backgroundColor: '#03040a',
-        color: '#ffffff',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        position: 'relative',
-        overflow: 'hidden',
-        boxSizing: 'border-box'
-      }}
-      className="relative w-screen h-screen bg-[#03040a] text-white flex flex-col items-center justify-between overflow-hidden font-sans select-none"
-    >
+    <GlobalErrorBoundary moduleName="Shashwat OS Root">
+      <div
+        style={{
+          width: '100vw',
+          height: '100vh',
+          backgroundColor: '#03040a',
+          color: '#ffffff',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          position: 'relative',
+          overflow: 'hidden',
+          boxSizing: 'border-box'
+        }}
+        className="relative w-screen h-screen bg-[#03040a] text-white flex flex-col items-center justify-between overflow-hidden font-sans select-none"
+      >
 
       {/* Volumetric Atmospheric Space Halos */}
       <div className="ambient-halo-1" />
@@ -519,6 +519,7 @@ export default function App() {
         </div>
       )}
     </div>
+    </GlobalErrorBoundary>
   );
 }
 
