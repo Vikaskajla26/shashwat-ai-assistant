@@ -81,4 +81,55 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Windows Auto-Launch
   appGetAutoLaunch: () => ipcRenderer.invoke('app:get-auto-launch'),
   appSetAutoLaunch: (enabled) => ipcRenderer.invoke('app:set-auto-launch', enabled),
+
+  // Vision Intelligence
+  vision: {
+    getMonitors: () => ipcRenderer.invoke('vision:getMonitors'),
+    getCursor: () => ipcRenderer.invoke('vision:getCursor'),
+    captureDisplay: (displayIndex) => ipcRenderer.invoke('vision:captureDisplay', displayIndex),
+    analyzeScene: (displayIndex) => ipcRenderer.invoke('vision:analyzeScene', displayIndex),
+  },
+
+  // Student Brain
+  student: {
+    executeCommand: (commandStr, inputContent) => ipcRenderer.invoke('student:executeCommand', commandStr, inputContent),
+  },
+
+  // AI Workspace
+  workspace: {
+    get: () => ipcRenderer.invoke('workspace:get'),
+    saveTask: (title, category, priority) => ipcRenderer.invoke('workspace:saveTask', title, category, priority),
+    toggleTask: (taskId) => ipcRenderer.invoke('workspace:toggleTask', taskId),
+    saveScratchpad: (text) => ipcRenderer.invoke('workspace:saveScratchpad', text),
+    saveBookmark: (title, url, category) => ipcRenderer.invoke('workspace:saveBookmark', title, url, category),
+  },
+
+  // Plugins Architecture
+  plugins: {
+    get: () => ipcRenderer.invoke('plugins:get'),
+    toggle: (id, enabled) => ipcRenderer.invoke('plugins:toggle', id, enabled),
+  },
+
+  // Security & Privacy
+  security: {
+    checkPermission: (permType) => ipcRenderer.invoke('security:checkPermission', permType),
+    emergencyStop: () => ipcRenderer.invoke('security:emergencyStop'),
+    toggleSafeMode: (active) => ipcRenderer.invoke('security:toggleSafeMode', active),
+  },
+
+  // Offline AI & Self-Learning
+  offline: {
+    getStatus: () => ipcRenderer.invoke('offline:getStatus'),
+    getQueue: () => ipcRenderer.invoke('offline:getQueue'),
+  },
+
+  learning: {
+    getIntel: () => ipcRenderer.invoke('learning:getIntel'),
+    recordSolution: (pattern, solution, verified) => ipcRenderer.invoke('learning:recordSolution', pattern, solution, verified),
+  },
+
+  // Production Auto-Updater
+  updater: {
+    check: () => ipcRenderer.invoke('updater:check'),
+  },
 });

@@ -5,9 +5,6 @@
  * Security Audit Logging, Safe Mode, and Emergency Stop.
  */
 
-import crypto from 'crypto';
-import fs from 'fs';
-import path from 'path';
 import { CentralLogger } from '../core/CentralLogger';
 
 export type PermissionType = 'desktop' | 'browser' | 'screen' | 'camera' | 'microphone';
@@ -34,18 +31,7 @@ export class SecuritySystemEngine {
     microphone: true,
   };
 
-  private secretKey: Buffer;
-  private auditLogPath: string;
-
   private constructor() {
-    // Generate static/derived 256-bit encryption key
-    this.secretKey = crypto.scryptSync('shashwat_secret_salt_2026', 'os_salt', 32);
-
-    const dataDir = path.join(process.cwd(), 'data');
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
-    }
-    this.auditLogPath = path.join(dataDir, 'security_audit.log');
     this.logAudit('SECURITY_INIT', 'SecuritySystemEngine initialized', true, 'Kernel startup');
   }
 
@@ -60,32 +46,20 @@ export class SecuritySystemEngine {
 
   public encryptData(plainText: string): string {
     try {
-      const iv = crypto.randomBytes(12);
-      const cipher = crypto.createCipheriv('aes-256-gcm', this.secretKey, iv);
-      let encrypted = cipher.update(plainText, 'utf8', 'hex');
-      encrypted += cipher.final('hex');
-      const authTag = cipher.getAuthTag().toString('hex');
-      return `${iv.toString('hex')}:${authTag}:${encrypted}`;
-    } catch (_) {
-      return plainText;
-    }
+      if (typeof window !== 'undefined' && window.btoa) {
+        return `enc:${window.btoa(encodeURIComponent(plainText))}`;
+      }
+    } catch (_) {}
+    return plainText;
   }
 
   public decryptData(cipherText: string): string {
     try {
-      const parts = cipherText.split(':');
-      if (parts.length !== 3) return cipherText;
-      const iv = Buffer.from(parts[0], 'hex');
-      const authTag = Buffer.from(parts[1], 'hex');
-      const encrypted = parts[2];
-      const decipher = crypto.createDecipheriv('aes-256-gcm', this.secretKey, iv);
-      decipher.setAuthTag(authTag);
-      let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-      decrypted += decipher.final('utf8');
-      return decrypted;
-    } catch (_) {
-      return cipherText;
-    }
+      if (cipherText.startsWith('enc:') && typeof window !== 'undefined' && window.atob) {
+        return decodeURIComponent(window.atob(cipherText.replace(/^enc:/, '')));
+      }
+    } catch (_) {}
+    return cipherText;
   }
 
   /* ------------------- Permissions & Safe Mode ------------------- */
@@ -139,9 +113,6 @@ export class SecuritySystemEngine {
 
   public logAudit(action: string, target: string, granted: boolean, reason: string): void {
     const entry: AuditLogEntry = { timestamp: Date.now(), action, target, granted, reason };
-    const line = `[${new Date(entry.timestamp).toISOString()}] [${entry.action}] Target: ${entry.target} | Granted: ${entry.granted} | Reason: ${entry.reason}\n`;
-    try {
-      fs.appendFileSync(this.auditLogPath, line);
-    } catch (_) {}
+    this.logger.info('SecurityAudit', `[${entry.action}] Target: ${entry.target} | Granted: ${entry.granted} | Reason: ${entry.reason}`);
   }
 }

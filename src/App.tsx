@@ -28,6 +28,7 @@ import { AlertCircle } from 'lucide-react';
 import { PowerShutdownModal } from './components/PowerShutdownModal';
 import { AIProviderSetupWizard } from './components/AIProviderSetupWizard';
 import { AIWorkspaceModal } from './components/workspace/AIWorkspaceModal';
+import { ConversationController } from './voice/ConversationController';
 import { GlobalErrorBoundary } from './components/GlobalErrorBoundary';
 import { ShashwatCore } from './core/ShashwatCore';
 
@@ -48,7 +49,6 @@ export default function App() {
   }, [state]);
 
   useEffect(() => {
-    const { ConversationController } = require('./voice/ConversationController');
     const unsubscribe = ConversationController.getInstance().subscribe((newState: AssistantState) => {
       setState(newState);
     });
