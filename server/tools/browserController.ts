@@ -76,10 +76,43 @@ export class BrowserControllerEngine {
 
   private getChromePath(): string | null {
     const fs = require('fs');
+
+    // 1. Check Windows Registry App Paths
+    try {
+      if (os.platform() === 'win32') {
+        const regCmds = [
+          'reg query "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\chrome.exe" /ve',
+          'reg query "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\chrome.exe" /ve',
+        ];
+        for (const cmdStr of regCmds) {
+          try {
+            const stdout = execSync(cmdStr, { stdio: 'pipe' }).toString();
+            const match = /REG_SZ\s+(.+)$/im.exec(stdout);
+            if (match && match[1]) {
+              const regPath = match[1].trim().replace(/^"/, '').replace(/"$/, '');
+              if (fs.existsSync(regPath)) return regPath;
+            }
+          } catch (_) {}
+        }
+      }
+    } catch (_) {}
+
+    // 2. Check PATH environment variable via `where`
+    try {
+      if (os.platform() === 'win32') {
+        const stdout = execSync('where chrome.exe', { stdio: 'pipe' }).toString();
+        const firstPath = stdout.split(/\r?\n/)[0]?.trim();
+        if (firstPath && fs.existsSync(firstPath)) return firstPath;
+      }
+    } catch (_) {}
+
+    // 3. Standard hardcoded paths
     const possiblePaths = [
       'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
       'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
       process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, 'Google', 'Chrome', 'Application', 'chrome.exe') : '',
+      process.env.PROGRAMFILES ? path.join(process.env.PROGRAMFILES, 'Google', 'Chrome', 'Application', 'chrome.exe') : '',
+      process.env['PROGRAMFILES(X86)'] ? path.join(process.env['PROGRAMFILES(X86)'], 'Google', 'Chrome', 'Application', 'chrome.exe') : '',
     ].filter(Boolean);
 
     for (const p of possiblePaths) {
@@ -106,10 +139,15 @@ export class BrowserControllerEngine {
       if (chromePath) {
         spawn(chromePath, [target], { detached: true, stdio: 'ignore' }).unref();
       } else {
-        const browser = this.detectDefaultBrowser();
-        usedBrowserName = browser.name;
-        usedExeName = browser.exeName;
-        spawn('cmd.exe', ['/c', 'start', '', target], { detached: true, stdio: 'ignore' }).unref();
+        // Try spawning 'chrome' by name first via Windows cmd start
+        try {
+          execSync(`start chrome "${target}"`, { stdio: 'ignore' });
+        } catch (_) {
+          const browser = this.detectDefaultBrowser();
+          usedBrowserName = browser.name;
+          usedExeName = browser.exeName;
+          spawn('cmd.exe', ['/c', 'start', '', target], { detached: true, stdio: 'ignore' }).unref();
+        }
       }
 
       // EMPIRICAL VERIFICATION: Check browser process running

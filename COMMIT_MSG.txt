@@ -1,7 +1,6 @@
-feat(browser): launch Google Chrome directly for all website & search commands
+feat(browser): enhance Chrome path resolution via Windows Registry & PATH lookups
 
-- Updated server/tools/browserController.ts (openWebsite) to scan standard Windows install locations (Program Files, Program Files x86, LocalAppData) for chrome.exe and spawn Chrome directly.
-- Created electron/chromeLauncher.cjs helper to locate and launch Chrome for desktop shell integration.
-- Wired chromeLauncher into electron/main.cjs setWindowOpenHandler for popup/target="_blank" link clicks.
-- Wired chromeLauncher into electron/preload.cjs openExternal and electron/ipcHandlers.cjs browser:open-external fallback.
-- Ensured voice confirmation messages announce Google Chrome directly.
+- Enhanced getChromePath in server/tools/browserController.ts and electron/chromeLauncher.cjs.
+- Query Windows Registry HKLM and HKCU App Paths for chrome.exe.
+- Perform a where chrome.exe PATH environment variable check.
+- Added start chrome <url> fallback prior to system default browser fallback.
