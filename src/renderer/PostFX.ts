@@ -25,9 +25,13 @@ export const DualPassCompositeShader = {
       vec4 beauty = texture2D(tBeauty, vUv);
       vec4 bloom = texture2D(tBloom, vUv);
 
-      vec3 bloomRgb = clamp(bloom.rgb, 0.0, 1.0) * uBloomColor * uBloomIntensity;
+      // Use natural bloom color (or blend softly with state color)
+      vec3 bloomRgb = bloom.rgb * uBloomIntensity;
       vec3 finalColor = clamp(beauty.rgb + bloomRgb, 0.0, 1.0);
-      float finalAlpha = clamp(beauty.a + length(bloomRgb) * 0.4, 0.0, 1.0);
+
+      // Alpha equals beauty alpha plus natural bloom luminance falloff
+      float bloomLuma = max(bloomRgb.r, max(bloomRgb.g, bloomRgb.b));
+      float finalAlpha = clamp(beauty.a + bloomLuma * 0.85, 0.0, 1.0);
 
       gl_FragColor = vec4(finalColor, finalAlpha);
     }

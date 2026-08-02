@@ -131,6 +131,7 @@ uniform float uMicroOscillation;
 
 varying vec3 vNormal;
 varying vec3 vPosition;
+varying vec3 vViewPosition;
 varying vec2 vUv;
 varying float vDisplacement;
 varying float vEnergy;
@@ -179,7 +180,10 @@ void main() {
   vEnergy = noiseB + noiseA * 0.5 + length(uVelocity) * 0.2;
 
   vec3 newPos = position + normal * displacement;
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(newPos, 1.0);
+  vec4 mvPosition = modelViewMatrix * vec4(newPos, 1.0);
+  vViewPosition = mvPosition.xyz;
+
+  gl_Position = projectionMatrix * mvPosition;
 }
 `;
 
@@ -193,6 +197,7 @@ uniform vec2  uVelocity;
 
 varying vec3 vNormal;
 varying vec3 vPosition;
+varying vec3 vViewPosition;
 varying vec2 vUv;
 varying float vDisplacement;
 varying float vEnergy;
@@ -218,9 +223,9 @@ float caustics(vec2 uv, float time) {
 }
 
 void main() {
-  // Use vNormal for view direction (works without cameraPosition uniform)
-  vec3 viewDir = normalize(-vNormal);
-  float nDotV = clamp(abs(dot(vNormal, viewDir)), 0.0, 1.0);
+  // Correct view-space Fresnel direction pointing from surface to camera
+  vec3 viewDir = normalize(-vViewPosition);
+  float nDotV = clamp(dot(vNormal, viewDir), 0.0, 1.0);
   float fresnel = pow(1.0 - nDotV, 2.6);
 
   // Layer 3: Moving Volumetric Plasma Color Field (5-Octave FBM Motion)

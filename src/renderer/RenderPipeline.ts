@@ -65,7 +65,7 @@ export class RenderPipeline {
 
       // Pass 3: Final Composite to HTML Canvas
       this.postFX.material.uniforms.tBeauty.value = this.beautyTarget.texture;
-      this.postFX.material.uniforms.tBloom.value = this.bloomPipeline.bloomComposer.renderTarget2.texture;
+      this.postFX.material.uniforms.tBloom.value = this.bloomPipeline.bloomComposer.readBuffer.texture;
 
       renderer.setRenderTarget(null);
       renderer.clear(true, true, true);
