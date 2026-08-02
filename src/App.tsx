@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { LiveSession } from './modules/LiveSession';
 import { WakeWordDetector } from './modules/WakeWordDetector';
 import { AssistantHeader } from './components/AssistantHeader';
-import { AudioVisualizer } from './components/AudioVisualizer';
 import { VisualCardOverlay } from './components/VisualCardOverlay';
 import { ToolActionBanner } from './components/ToolActionBanner';
 import { TranscriptDrawer } from './components/TranscriptDrawer';
@@ -16,7 +15,6 @@ import { SelfLearningDashboard } from './components/SelfLearningDashboard';
 import { LeftDrawer, RightDrawer } from './components/CinematicPanels';
 import { BottomDock } from './components/BottomDock';
 import { ShashwatDittoDashboard } from './components/ShashwatDittoDashboard';
-import { CinematicLivingEnvironment } from './components/CinematicLivingEnvironment';
 import {
   AssistantState,
   AssistantMood,
@@ -311,7 +309,7 @@ export default function App() {
       style={{
         width: '100vw',
         height: '100vh',
-        backgroundColor: '#05070d',
+        backgroundColor: '#03040a',
         color: '#ffffff',
         display: 'flex',
         flexDirection: 'column',
@@ -321,10 +319,8 @@ export default function App() {
         overflow: 'hidden',
         boxSizing: 'border-box'
       }}
-      className="relative w-screen h-screen bg-[#05070d] text-white flex flex-col items-center justify-between overflow-hidden font-sans select-none"
+      className="relative w-screen h-screen bg-[#03040a] text-white flex flex-col items-center justify-between overflow-hidden font-sans select-none"
     >
-      {/* Cinematic Living Environment — state-reactive volumetric background */}
-      <CinematicLivingEnvironment state={state} />
 
       {/* Volumetric Atmospheric Space Halos */}
       <div className="ambient-halo-1" />

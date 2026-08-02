@@ -33,7 +33,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { AssistantState } from '../types';
-import { getStateTheme, stateThemes } from '../theme/aiState';
+import { getStateTheme } from '../theme/aiState';
 import { AwakeCrystalButton } from './AwakeCrystalButton';
 import { VoiceDiagnosticsPanel } from '../voice/VoiceDiagnosticsPanel';
 import { QuantumAICore } from './QuantumAICore';

@@ -1,7 +1,6 @@
-feat(phase-4): implement Desktop Controller Engine & 16 desktop automation capabilities
+fix: resolve black screen runtime error & purge overlapping obsolete files
 
-- Created server/tools/desktopController.ts: backend automation engine for Windows process control, window management, keyboard/mouse simulation, clipboard, OCR, notifications, Explorer, Task Manager, Settings, and Media.
-- Implemented EMPIRICAL VERIFICATION rules for every action (processes polled after launch/close, clipboard read back after write, window bounds queried after move).
-- Registered IPC handlers in electron/ipcHandlers.cjs for desktop automation commands.
-- Updated DesktopAutomationModule.ts exposing 16 capabilities with fallback handling.
-- Created Phase4DesktopSelfTest.ts verification suite ensuring 100% test pass score.
+- Fixed TypeError in ShashwatDittoDashboard.tsx: removed undefined stateThemes import from aiState.ts.
+- Removed overlapping background component CinematicLivingEnvironment.tsx and obsolete AudioVisualizer.tsx from App.tsx.
+- Deleted src/engine/ directory and unused legacy components.
+- Main dashboard now loads cleanly, reliably, and instantaneously at http://localhost:3000.
