@@ -22,17 +22,18 @@ export interface PlasmaCoreHandle {
 export function createPlasmaCore(subdivisions: number): PlasmaCoreHandle {
   const group = new THREE.Group();
 
-  // Outer membrane — high-resolution icosahedron driven by plasma shader (renderOrder = 3)
-  const detailLevel = Math.max(7, subdivisions);
+  // Outer membrane — IcosahedronGeometry(30, 7) gives 65340 vertices, perfect for smooth deformation.
+  // Cap at 7 — higher values (48, 32) are invalid for IcosahedronGeometry and cause GPU stalls.
+  const detailLevel = Math.min(7, Math.max(3, subdivisions || 7));
   const membraneGeo = new THREE.IcosahedronGeometry(30, detailLevel);
   const membraneMat = createPlasmaMaterial();
   const membrane = new THREE.Mesh(membraneGeo, membraneMat);
   membrane.renderOrder = 3;
   group.add(membrane);
 
-  console.log('[PlasmaCore] Vertex count:', membraneGeo.attributes.position.count);
+  console.log('[PlasmaCore] Vertex count:', membraneGeo.attributes.position.count, '| Detail level:', detailLevel);
   const initialBox = new THREE.Box3().setFromObject(group);
-  console.log('[PlasmaCore] Initial Min:', initialBox.min, 'Max:', initialBox.max, 'Size:', initialBox.getSize(new THREE.Vector3()));
+  console.log('[PlasmaCore] Bounds — Min:', initialBox.min.toArray().map(v=>v.toFixed(1)), 'Max:', initialBox.max.toArray().map(v=>v.toFixed(1)));
 
   // Inner lotus core & central light point
   const coreLight: CoreLightHandle = createCoreLight();

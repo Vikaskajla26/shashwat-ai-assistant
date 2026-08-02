@@ -40,7 +40,7 @@ export interface QualityProfile {
 export const QUALITY_PROFILES: Record<QualityTier, QualityProfile> = {
   high: {
     tier: 'high',
-    orbSubdivisions: 48,
+    orbSubdivisions: 7,   // IcosahedronGeometry(30, 7) = 65,340 vertices — smooth & GPU-safe
     orbParticleCount: 900,
     backgroundParticleCount: 1200,
     bloom: true,
@@ -51,7 +51,7 @@ export const QUALITY_PROFILES: Record<QualityTier, QualityProfile> = {
   },
   medium: {
     tier: 'medium',
-    orbSubdivisions: 32,
+    orbSubdivisions: 5,   // IcosahedronGeometry(30, 5) = 16,380 vertices
     orbParticleCount: 500,
     backgroundParticleCount: 700,
     bloom: true,
@@ -62,7 +62,7 @@ export const QUALITY_PROFILES: Record<QualityTier, QualityProfile> = {
   },
   low: {
     tier: 'low',
-    orbSubdivisions: 16,
+    orbSubdivisions: 3,   // IcosahedronGeometry(30, 3) = 1,280 vertices
     orbParticleCount: 220,
     backgroundParticleCount: 320,
     bloom: false,

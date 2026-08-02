@@ -8,19 +8,18 @@ export interface CoreLightHandle {
 }
 
 export function createCoreLight(): CoreLightHandle {
-  // 1. Inner Petal Core — Glass Physical Material (renderOrder = 4)
-  const petalCoreGeo = new THREE.DodecahedronGeometry(11, 2);
-  const petalCoreMat = new THREE.MeshPhysicalMaterial({
-    color: 0xf43f5e,
-    transmission: 1.0,
-    thickness: 3.0,
-    roughness: 0.0,
-    metalness: 0.0,
-    clearcoat: 1.0,
-    clearcoatRoughness: 0.0,
+  // 1. Inner Petal Core — soft additive glow sphere (renderOrder = 4)
+  // NOTE: MeshPhysicalMaterial with transmission:1 was removed because without an
+  // environment map it bleeds the background bloom color (orange) through the glass,
+  // making the entire orb appear as a solid orange circle.
+  const petalCoreGeo = new THREE.SphereGeometry(12, 32, 32);
+  const petalCoreMat = new THREE.MeshBasicMaterial({
+    color: new THREE.Color('#7C3AED'), // Deep violet inner glow
     transparent: true,
-    opacity: 0.9,
-    ior: 1.5,
+    opacity: 0.18,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    side: THREE.BackSide, // Render inside out for inner volume glow effect
   });
   const petalCore = new THREE.Mesh(petalCoreGeo, petalCoreMat);
   petalCore.renderOrder = 4;
@@ -30,8 +29,9 @@ export function createCoreLight(): CoreLightHandle {
   const centerLightMat = new THREE.MeshBasicMaterial({
     color: 0xffffff,
     transparent: true,
-    opacity: 0.95,
+    opacity: 0.55,
     blending: THREE.AdditiveBlending,
+    depthWrite: false,
   });
   const centerLight = new THREE.Mesh(centerLightGeo, centerLightMat);
   centerLight.renderOrder = 5;
@@ -40,12 +40,13 @@ export function createCoreLight(): CoreLightHandle {
     const speedMultiplier = 1.0 + vol * 0.8;
     petalCore.rotation.y = -t * speed * 0.9 * speedMultiplier;
     petalCore.rotation.z = Math.sin(t * 0.8) * 0.2;
-    const innerPulse = 1 + totalAudioBoost * 0.18 + Math.sin(t * breath * 1.6) * 0.03;
+    const innerPulse = 1 + totalAudioBoost * 0.12 + Math.sin(t * breath * 1.6) * 0.03;
     petalCore.scale.setScalar(innerPulse);
-    petalCoreMat.opacity = 0.75 + vol * 0.20;
+    // Keep inner glow subtle — max 0.22 opacity to prevent orange bleed
+    petalCoreMat.opacity = Math.min(0.22, 0.15 + vol * 0.07);
 
-    centerLight.scale.setScalar(1 + totalAudioBoost * 0.25);
-    centerLightMat.opacity = 0.9 + vol * 0.1;
+    centerLight.scale.setScalar(1 + totalAudioBoost * 0.20);
+    centerLightMat.opacity = Math.min(0.65, 0.5 + vol * 0.15);
   };
 
   const dispose = () => {
