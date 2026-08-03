@@ -290,9 +290,11 @@ function registerAllIPCHandlers() {
   });
 
   // AI Provider IPCs
+  const getServerUrl = () => `http://localhost:${global.SHASHWAT_SERVER_PORT || process.env.SHASHWAT_SERVER_PORT || 3000}`;
+
   ipcMain.handle('ai:get-providers', async () => {
     try {
-      const res = await fetch('http://localhost:3000/api/ai/providers').then((r) => r.json());
+      const res = await fetch(`${getServerUrl()}/api/ai/providers`).then((r) => r.json());
       return res;
     } catch (_) {
       return { success: false, providers: [] };
@@ -301,7 +303,7 @@ function registerAllIPCHandlers() {
 
   ipcMain.handle('ai:validate-provider', async (_event, payload) => {
     try {
-      const res = await fetch('http://localhost:3000/api/ai/providers/validate', {
+      const res = await fetch(`${getServerUrl()}/api/ai/providers/validate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -314,7 +316,7 @@ function registerAllIPCHandlers() {
 
   ipcMain.handle('ai:save-provider', async (_event, payload) => {
     try {
-      const res = await fetch('http://localhost:3000/api/ai/providers/save', {
+      const res = await fetch(`${getServerUrl()}/api/ai/providers/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -327,7 +329,7 @@ function registerAllIPCHandlers() {
 
   ipcMain.handle('ai:reset-provider', async (_event, id) => {
     try {
-      const res = await fetch('http://localhost:3000/api/ai/providers/reset', {
+      const res = await fetch(`${getServerUrl()}/api/ai/providers/reset`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),

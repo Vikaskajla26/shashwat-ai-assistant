@@ -125,29 +125,48 @@ export class BrowserControllerEngine {
 
   /* ------------------- 1. Open Website (Never Return Links) ------------------- */
 
-  public async openWebsite(url: string): Promise<ActionResult> {
+  public async openWebsite(url: string, preferredBrowser?: string): Promise<ActionResult> {
     try {
       let target = url.trim();
       if (!target.startsWith('http://') && !target.startsWith('https://') && !target.startsWith('file://')) {
         target = 'https://' + target;
       }
 
-      const chromePath = this.getChromePath();
-      let usedBrowserName = 'Google Chrome';
-      let usedExeName = 'chrome.exe';
+      const pref = (preferredBrowser || '').toLowerCase();
+      let usedBrowserName = '';
+      let usedExeName = '';
 
-      if (chromePath) {
-        spawn(chromePath, [target], { detached: true, stdio: 'ignore' }).unref();
-      } else {
-        // Try spawning 'chrome' by name first via Windows cmd start
-        try {
-          execSync(`start chrome "${target}"`, { stdio: 'ignore' });
-        } catch (_) {
-          const browser = this.detectDefaultBrowser();
-          usedBrowserName = browser.name;
-          usedExeName = browser.exeName;
-          spawn('cmd.exe', ['/c', 'start', '', target], { detached: true, stdio: 'ignore' }).unref();
+      if (pref.includes('chrome')) {
+        const chromePath = this.getChromePath();
+        usedBrowserName = 'Google Chrome';
+        usedExeName = 'chrome.exe';
+        if (chromePath) {
+          spawn(chromePath, [target], { detached: true, stdio: 'ignore' }).unref();
+        } else {
+          try {
+            execSync(`start chrome "${target}"`, { stdio: 'ignore' });
+          } catch (_) {
+            spawn('cmd.exe', ['/c', 'start', '', target], { detached: true, stdio: 'ignore' }).unref();
+          }
         }
+      } else if (pref.includes('edge')) {
+        usedBrowserName = 'Microsoft Edge';
+        usedExeName = 'msedge.exe';
+        spawn('cmd.exe', ['/c', 'start', 'msedge', target], { detached: true, stdio: 'ignore' }).unref();
+      } else if (pref.includes('firefox')) {
+        usedBrowserName = 'Mozilla Firefox';
+        usedExeName = 'firefox.exe';
+        spawn('cmd.exe', ['/c', 'start', 'firefox', target], { detached: true, stdio: 'ignore' }).unref();
+      } else if (pref.includes('brave')) {
+        usedBrowserName = 'Brave Browser';
+        usedExeName = 'brave.exe';
+        spawn('cmd.exe', ['/c', 'start', 'brave', target], { detached: true, stdio: 'ignore' }).unref();
+      } else {
+        // Default to System Default Browser
+        const defaultBrowser = this.detectDefaultBrowser();
+        usedBrowserName = defaultBrowser.name;
+        usedExeName = defaultBrowser.exeName;
+        spawn('cmd.exe', ['/c', 'start', '', target], { detached: true, stdio: 'ignore' }).unref();
       }
 
       // EMPIRICAL VERIFICATION: Check browser process running

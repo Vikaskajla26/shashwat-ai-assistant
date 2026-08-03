@@ -1,6 +1,7 @@
-feat(browser): enhance Chrome path resolution via Windows Registry & PATH lookups
+feat(production): complete Production Audit & Personality Refactor for Shashwat AI OS
 
-- Enhanced getChromePath in server/tools/browserController.ts and electron/chromeLauncher.cjs.
-- Query Windows Registry HKLM and HKCU App Paths for chrome.exe.
-- Perform a where chrome.exe PATH environment variable check.
-- Added start chrome <url> fallback prior to system default browser fallback.
+- Personality Directive: Configured systemInstruction.ts to ALWAYS address the user as 'Boss' ("Yes, Boss.", "Done, Boss.", "Opening YouTube, Boss."), and sparingly use "Jo hukum, Boss." or "Jo hukum, Boss. Executing now." for OS/system commands.
+- Browser Routing: Configured openWebsite in browserController.ts to default to OS System Default Browser unless a specific browser (e.g. Chrome) is explicitly named by the user.
+- API Key Persistence: Restored encrypted API key payload from data/ai_providers.enc, saving isInitialized=true so key setup is requested only ONCE.
+- IPC Port Resolution: Dynamic getServerUrl() helper in ipcHandlers.cjs to resolve global.SHASHWAT_SERVER_PORT.
+- Voice Identity & Auto-Recovery: Persistent biometrics storage and automatic reconnect backoff.
