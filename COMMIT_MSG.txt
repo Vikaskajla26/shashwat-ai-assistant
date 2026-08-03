@@ -1,10 +1,7 @@
-fix(persistence): unify data directory resolution to %APPDATA%/shashwat-ai-assistant/data
+feat(kernel): implement AIEngine singleton & critical stability patch for Shashwat AI OS
 
-- Replaced ad-hoc `path.join(process.cwd(), 'data')` computations with shared `getDataDir()` from server/utils/paths.ts in:
-  1. server/providers/providerStorage.ts (ai_providers.enc)
-  2. server/utils/persistenceManager.ts (app_state.json)
-  3. server/db/database.ts (shashwat.db SQLite database)
-  4. server/tools/memory.ts (memory.json)
-  5. server/tools/aiWorkspace.ts (ai_workspace_state.json)
-- Preserved server/tools/nircmd.ts BIN_DIR relative to install folder as intended.
-- Guarantees persistent storage across restarts, app updates, and production Electron process.chdir() execution.
+- Created src/core/AIEngine.ts central singleton managing Voice -> Intent Parser -> Task Router -> Gemini Live -> Executor -> Response.
+- Reinforced %APPDATA%/shashwat-ai-assistant/data unified storage path across all backend tools and databases.
+- Enforced 12-state FSM transitions without state freeze or deadlocks.
+- Configured prompt instructions to address user as 'Boss' and sparingly use 'Jo hukum, Boss.' for OS operations.
+- Packaged standalone Windows desktop executable with zero errors.
