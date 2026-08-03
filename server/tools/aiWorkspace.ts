@@ -7,6 +7,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import { getDataDir } from '../utils/paths';
 
 export interface WorkspaceTask {
   id: string;
@@ -28,15 +29,14 @@ export interface BookmarkItem {
 export interface KnowledgeGraphNode {
   id: string;
   label: string;
-  category: 'topic' | 'memory' | 'file' | 'project';
+  type: 'concept' | 'file' | 'project' | 'person';
   connections: string[];
 }
 
 export interface AIWorkspaceState {
-  pinnedFiles: Array<{ id: string; name: string; path: string; type: string }>;
-  recentFiles: Array<{ id: string; name: string; path: string; accessedAt: number }>;
-  projects: Array<{ id: string; name: string; description: string; taskCount: number }>;
-  chatHistory: Array<{ id: string; prompt: string; response: string; timestamp: number }>;
+  pinnedFiles: string[];
+  recentFiles: string[];
+  projects: Array<{ id: string; name: string; description: string; path: string }>;
   bookmarks: BookmarkItem[];
   scratchpad: string;
   clipboardHistory: string[];
@@ -51,10 +51,7 @@ export class AIWorkspaceEngine {
   private state: AIWorkspaceState;
 
   private constructor() {
-    const dataDir = path.join(process.cwd(), 'data');
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
-    }
+    const dataDir = getDataDir();
     this.stateFilePath = path.join(dataDir, 'ai_workspace_state.json');
     this.state = this.loadState();
   }

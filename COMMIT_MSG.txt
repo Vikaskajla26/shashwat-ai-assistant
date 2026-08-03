@@ -1,7 +1,10 @@
-feat(production): complete Production Audit & Personality Refactor for Shashwat AI OS
+fix(persistence): unify data directory resolution to %APPDATA%/shashwat-ai-assistant/data
 
-- Personality Directive: Configured systemInstruction.ts to ALWAYS address the user as 'Boss' ("Yes, Boss.", "Done, Boss.", "Opening YouTube, Boss."), and sparingly use "Jo hukum, Boss." or "Jo hukum, Boss. Executing now." for OS/system commands.
-- Browser Routing: Configured openWebsite in browserController.ts to default to OS System Default Browser unless a specific browser (e.g. Chrome) is explicitly named by the user.
-- API Key Persistence: Restored encrypted API key payload from data/ai_providers.enc, saving isInitialized=true so key setup is requested only ONCE.
-- IPC Port Resolution: Dynamic getServerUrl() helper in ipcHandlers.cjs to resolve global.SHASHWAT_SERVER_PORT.
-- Voice Identity & Auto-Recovery: Persistent biometrics storage and automatic reconnect backoff.
+- Replaced ad-hoc `path.join(process.cwd(), 'data')` computations with shared `getDataDir()` from server/utils/paths.ts in:
+  1. server/providers/providerStorage.ts (ai_providers.enc)
+  2. server/utils/persistenceManager.ts (app_state.json)
+  3. server/db/database.ts (shashwat.db SQLite database)
+  4. server/tools/memory.ts (memory.json)
+  5. server/tools/aiWorkspace.ts (ai_workspace_state.json)
+- Preserved server/tools/nircmd.ts BIN_DIR relative to install folder as intended.
+- Guarantees persistent storage across restarts, app updates, and production Electron process.chdir() execution.

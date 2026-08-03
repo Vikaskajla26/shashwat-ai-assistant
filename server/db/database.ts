@@ -1,7 +1,9 @@
 import sqlite3 from 'sqlite3';
 import path from 'path';
 import fs from 'fs';
-const DB_DIR = path.join(process.cwd(), 'data');
+import { getDataDir } from '../utils/paths';
+
+const DB_DIR = getDataDir();
 const DB_PATH = path.join(DB_DIR, 'shashwat.db');
 
 export class AsyncDatabase {

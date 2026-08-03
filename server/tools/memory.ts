@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { getDataDir } from "../utils/paths";
 
 export type MemoryCategory =
   | "identity"
@@ -31,7 +32,7 @@ export interface MemoryFact {
   updatedAt: string;
 }
 
-const DATA_DIR = path.join(process.cwd(), "data");
+const DATA_DIR = getDataDir();
 const MEMORY_FILE = path.join(DATA_DIR, "memory.json");
 
 const DEFAULT_MEMORIES: MemoryFact[] = [

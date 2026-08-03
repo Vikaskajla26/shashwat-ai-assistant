@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { getDataDir } from '../utils/paths';
 
 export type AIProviderId = 'gemini' | 'openai' | 'anthropic' | 'groq' | 'openrouter' | 'local';
 
@@ -84,10 +85,7 @@ function getDerivedKey(): Buffer {
 }
 
 function getStoragePath(): string {
-  const dataDir = path.join(process.cwd(), 'data');
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-  }
+  const dataDir = getDataDir();
   return path.join(dataDir, 'ai_providers.enc');
 }
 

@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { getDB, closeDB } from '../db/database';
+import { getDataDir } from './paths';
 
 export interface UserProfile {
   name: string;
@@ -24,7 +25,7 @@ export interface AppStateData {
   updatedAt: string;
 }
 
-const DATA_DIR = path.join(process.cwd(), 'data');
+const DATA_DIR = getDataDir();
 const BACKUP_DIR = path.join(DATA_DIR, 'backups');
 const APP_STATE_FILE = path.join(DATA_DIR, 'app_state.json');
 
