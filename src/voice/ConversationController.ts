@@ -50,18 +50,18 @@ export class ConversationController {
 
   // Valid FSM Transition Map
   private readonly validTransitions: Record<FSMState, FSMState[]> = {
-    booting: ['idle', 'error'],
-    idle: ['wakeWord', 'listening', 'thinking', 'sleeping', 'booting'],
-    wakeWord: ['listening', 'idle', 'error'],
-    listening: ['understanding', 'waiting', 'idle', 'error'],
-    understanding: ['thinking', 'generating', 'waiting', 'error'],
-    thinking: ['generating', 'speaking', 'executing', 'waiting', 'error'],
-    generating: ['speaking', 'waiting', 'error'],
-    speaking: ['waiting', 'idle', 'error'],
-    executing: ['waiting', 'idle', 'error'],
+    booting: ['idle', 'wakeWord', 'listening', 'error'],
+    idle: ['wakeWord', 'listening', 'understanding', 'thinking', 'executing', 'speaking', 'sleeping', 'booting'],
+    wakeWord: ['listening', 'understanding', 'thinking', 'idle', 'error'],
+    listening: ['understanding', 'thinking', 'executing', 'speaking', 'waiting', 'idle', 'error'],
+    understanding: ['thinking', 'generating', 'executing', 'speaking', 'waiting', 'idle', 'error'],
+    thinking: ['generating', 'speaking', 'executing', 'waiting', 'idle', 'error'],
+    generating: ['speaking', 'executing', 'waiting', 'idle', 'error'],
+    speaking: ['listening', 'waiting', 'idle', 'error'],
+    executing: ['speaking', 'waiting', 'idle', 'error'],
     waiting: ['listening', 'idle', 'error'],
-    error: ['idle', 'booting'],
-    sleeping: ['idle', 'wakeWord'],
+    error: ['idle', 'booting', 'listening'],
+    sleeping: ['idle', 'wakeWord', 'listening'],
   };
 
   private constructor() {

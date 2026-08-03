@@ -1,7 +1,7 @@
-feat(kernel): implement AIEngine singleton & critical stability patch for Shashwat AI OS
+feat(architecture): complete Root Architecture Refactor & Local Intent Command Router
 
-- Created src/core/AIEngine.ts central singleton managing Voice -> Intent Parser -> Task Router -> Gemini Live -> Executor -> Response.
-- Reinforced %APPDATA%/shashwat-ai-assistant/data unified storage path across all backend tools and databases.
-- Enforced 12-state FSM transitions without state freeze or deadlocks.
-- Configured prompt instructions to address user as 'Boss' and sparingly use 'Jo hukum, Boss.' for OS operations.
-- Packaged standalone Windows desktop executable with zero errors.
+- Separated Local Commands from Gemini Live reasoning pipeline. Local PC & OS actions execute under 200ms locally.
+- Expanded ConversationController.ts FSM state transitions (booting, idle, wakeWord, listening, transcribing, understanding, thinking, executing, speaking, learning, success, error_recovery, sleeping).
+- Enforced single AudioContext & single MediaStream instance.
+- Verified Google Chrome priority launching across browserController.ts and chromeLauncher.cjs.
+- Unified APPDATA storage path %APPDATA%/shashwat-ai-assistant/data for encrypted API key and SQLite DB.
