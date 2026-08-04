@@ -1,12 +1,10 @@
-feat(ui): implement modular Orb Visual State System under src/ui/orb/
+feat(python): implement LiveKit Voice Agent & FastMCP SSE Server architecture
 
-- Created src/ui/orb/ module architecture:
-  - Orb.tsx: Primary React component connecting assistantState, liveAudioLevel, wakeDetected, thinking, speaking.
-  - OrbController.ts: Canvas ref bridge to render loop.
-  - OrbScene.ts: 120 FPS scene orchestrator.
-  - OrbShaders.ts: Radial glow, morphing core plasma, and fresnel rim envelope shaders.
-  - OrbParticles.ts: Bioluminescent orbiting particles & golden neural sparks for learning state.
-  - OrbStates.ts: 9 visual state mappings (Idle -> Blue breathing, Wake -> Ripple pulse, Listening -> Audio-reactive expansion, Thinking -> Internal plasma circulation, Searching -> Orbiting particles, Executing -> Fast energy flow, Speaking -> Voice-driven deformation, Learning -> Golden neural pulses, Sleep -> Slow breathing).
-  - OrbAudio.ts: Audio-reactive level smoothing & RMS normalization.
-  - MaheshwarRing.ts: Sacred Devanagari Maheshwar Sutras orbit ring.
-- Refactored QuantumAICore.tsx to wrap Orb seamlessly for 100% backward compatibility.
+- Architecture pipeline:
+  Microphone ──► STT (Sarvam Saaras v3) ──► LLM (Gemini 2.5 Flash) ◄──► FastMCP Server (SSE :8000) ──► TTS (OpenAI nova) ──► Speaker / LiveKit room.
+- Project structure:
+  - server.py: FastMCP SSE Server entrypoint (`uv run shashwat`).
+  - agent_shashwat.py: LiveKit Voice Agent entrypoint (`uv run shashwat_voice`).
+  - pyproject.toml: Package metadata & entrypoint scripts.
+  - .env.example: Environment API key configuration.
+  - shashwat/: Config, web tools (search_web, fetch_url, get_world_news, open_world_monitor), system tools (get_current_time, get_system_info), utility tools (format_json, word_count), prompts, and resources.
