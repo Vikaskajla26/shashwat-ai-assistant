@@ -74,6 +74,34 @@ function startBackendServer() {
   }
 }
 
+
+
+function waitForServerReady(port, callback) {
+  const http = require('http');
+  let attempts = 0;
+  const maxAttempts = 40;
+
+  const check = () => {
+    attempts++;
+    const currentPort = global.SHASHWAT_SERVER_PORT || process.env.SHASHWAT_SERVER_PORT || port;
+    const req = http.get(`http://127.0.0.1:${currentPort}/api/health`, (res) => {
+      if (res.statusCode === 200) {
+        console.log(`[Electron Main] Backend server is HEALTHY & READY on port ${currentPort}`);
+        callback(currentPort);
+      } else {
+        if (attempts < maxAttempts) setTimeout(check, 300);
+        else callback(currentPort);
+      }
+    });
+    req.on('error', () => {
+      if (attempts < maxAttempts) setTimeout(check, 300);
+      else callback(currentPort);
+    });
+    req.end();
+  };
+  check();
+}
+
 function createMainWindow() {
   const iconPath = isDev
     ? path.join(process.cwd(), 'assets', 'icon.png')
@@ -118,39 +146,30 @@ function createMainWindow() {
     });
   }
 
-  const activePort = global.SHASHWAT_SERVER_PORT || process.env.SHASHWAT_SERVER_PORT || PORT;
-  const appUrl = `http://localhost:${activePort}`;
-  let retries = 0;
-
-  const loadApp = () => {
-    if (!mainWindow || mainWindow.isDestroyed()) return;
-    mainWindow.loadURL(appUrl).catch((err) => {
-      retries++;
-      console.log(`[Electron Main] Backend connection pending (attempt ${retries})...`, err.message);
-      if (retries > 20) {
-        // After 10 seconds, fall back to loading local static build directly
-        const localHtmlPath = path.join(app.getAppPath(), 'dist', 'index.html');
-        const fs = require('fs');
-        if (fs.existsSync(localHtmlPath)) {
-          console.log('[Electron Main] Falling back to loading local static build:', localHtmlPath);
-          mainWindow.loadFile(localHtmlPath).catch((e) => {
-            console.error('[Electron Main] Even local file load failed:', e.message);
-          });
-          // Show the window anyway so user sees something
-          if (!mainWindow.isVisible()) {
-            mainWindow.show();
-            mainWindow.focus();
-          }
-          return;
-        }
-      }
-      setTimeout(loadApp, 500);
-    });
-  };
-
-  // Show window immediately with a loading screen while backend starts
+  // Show window with black background while loading
   mainWindow.loadURL('about:blank').catch(() => {});
-  setTimeout(loadApp, 300);
+
+  waitForServerReady(PORT, (readyPort) => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    const appUrl = `http://localhost:${readyPort}`;
+    console.log(`[Electron Main] Loading Shashwat AI OS UI from: ${appUrl}`);
+
+    mainWindow.loadURL(appUrl).then(() => {
+      if (mainWindow && !mainWindow.isVisible()) {
+        mainWindow.show();
+        mainWindow.focus();
+      }
+    }).catch((err) => {
+      console.error('[Electron Main] Primary loadURL failed, retrying...', err.message);
+      setTimeout(() => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.loadURL(appUrl).catch((e) => console.error('[Electron Main] Second loadURL attempt notice:', e.message));
+          mainWindow.show();
+          mainWindow.focus();
+        }
+      }, 1000);
+    });
+  });
 
   mainWindow.webContents.once('dom-ready', () => {
     if (mainWindow && !mainWindow.isVisible()) {

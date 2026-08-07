@@ -1,14 +1,12 @@
-fix(architecture): resolve browser navigation invalid URL bug, audio crackling distortion, and local intent routing
+fix(electron): resolve localhost connection refused and silent exe exit
 
-1. Fixed Invalid Browser Search URL bug (BUG 1):
-   - Created buildValidatedUrl helper in server/tools/browserController.ts, electron/chromeLauncher.cjs, and src/utils/browser.ts.
-   - Accurately classifies domains/URLs vs query strings. Converts "search best haryanvi ragni" to 'https://www.google.com/search?q=best%20haryanvi%20ragni' instead of prepending https:// to query strings.
-   - Prioritizes Google Chrome launch (detecting Registry HKLM/HKCU, PATH, and install folders) and reuses active Chrome windows/tabs. Fallback to OS default browser occurs ONLY if Chrome is missing.
+1. Added HTTP Health Check Gate (waitForServerReady) in electron/main.cjs:
+   - Electron main process now polls http://127.0.0.1:3000/api/health until Express server is live & ready before invoking loadURL('http://localhost:3000').
+   - Eliminates premature connection attempts and fixes 'localhost refused to connect' errors.
 
-2. Fixed Voice Audio Crackling / Distortion bug (BUG 2):
-   - Fixed Int16 -> Float32 audio decoding with 2-byte alignment safety and Little-Endian DataView parsing in src/modules/AudioPlayer.ts.
-   - Configured single shared AudioContext with native sample rate and scheduled AudioBufferSourceNode playback without buffer overlaps or underruns.
+2. Fixed Silent Executable Quit on Launch:
+   - Added orphaned process taskkill handling before single instance lock evaluation so launching Shashwat-AI-Assistant.exe always opens the UI cleanly.
 
-3. Fixed Local Intent Routing & Personality:
-   - Expanded classifyIntent and executeOfflineTask in src/core/AIEngine.ts to execute local PC/browser commands immediately without cloud Gemini Live latency.
-   - Natural "Boss" address personality across all execution responses ("Jo hukum, Boss. Opening YouTube in Chrome.").
+3. Updated WebSocket and API Protocol Fallbacks:
+   - Added rawHost fallback ('localhost:3000') in src/modules/LiveSession.ts when window.location.host is empty.
+   - Fixed relative fetch path resolution in src/App.tsx under file protocol fallbacks.

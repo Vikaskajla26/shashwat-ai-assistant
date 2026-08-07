@@ -189,7 +189,8 @@ export class LiveSession {
 
     try {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/live`;
+      const rawHost = window.location.host && window.location.host.trim().length > 0 ? window.location.host : 'localhost:3000';
+      const wsUrl = `${protocol}//${rawHost}/live`;
 
       this.ws = new WebSocket(wsUrl);
 

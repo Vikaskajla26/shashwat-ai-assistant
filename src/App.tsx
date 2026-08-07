@@ -91,7 +91,8 @@ export default function App() {
         if ((window as any).electronAPI?.systemGetInitStatus) {
           res = await (window as any).electronAPI.systemGetInitStatus();
         } else {
-          res = await fetch('/api/system/init-status').then((r) => r.json());
+          const apiPath = window.location.protocol === 'file:' ? 'http://localhost:3000/api/system/init-status' : '/api/system/init-status';
+          res = await fetch(apiPath).then((r) => r.json());
         }
 
         if (res && res.success) {
