@@ -17,7 +17,7 @@ export interface OrbProps {
   height?: number;
 }
 
-export const Orb: React.FC<OrbProps> = ({
+export const Orb: React.FC<OrbProps> = React.memo(({
   state = 'idle',
   audioLevel = 0,
   wakeDetected = false,
@@ -76,12 +76,18 @@ export const Orb: React.FC<OrbProps> = ({
   }, [width, height]);
 
   return (
-    <div className="relative flex items-center justify-center pointer-events-none select-none">
+    <div className="relative flex items-center justify-center pointer-events-none select-none will-change-transform transform-gpu">
       <canvas
         ref={canvasRef}
-        style={{ width: `${width}px`, height: `${height}px` }}
+        style={{
+          width: `${width}px`,
+          height: `${height}px`,
+          willChange: 'transform, opacity',
+          transform: 'translateZ(0)',
+        }}
         className="drop-shadow-[0_0_35px_rgba(124,58,237,0.35)] transition-all duration-700"
       />
     </div>
   );
-};
+});
+

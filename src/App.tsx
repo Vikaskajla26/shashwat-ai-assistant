@@ -124,8 +124,12 @@ export default function App() {
         setState(newState);
       },
       onVolumesChange: (inVol, outVol) => {
-        setInputVolume(inVol);
-        setOutputVolume(outVol);
+        const now = Date.now();
+        if (now - (window as any)._lastVolUpdate > 90) {
+          (window as any)._lastVolUpdate = now;
+          setInputVolume(inVol);
+          setOutputVolume(outVol);
+        }
       },
       onMoodChange: (newMood) => {
         setMood(newMood);

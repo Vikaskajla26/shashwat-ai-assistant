@@ -1,4 +1,5 @@
-fix(wakeword): expand wake word pattern matching and add substring fallback check
+perf(ui): optimize rendering to 120 FPS and clean up unused scratch files
 
-- Added Devanagari variations ('हे शाश्वत', 'हे शासवत', 'हाय शाश्वत', 'हेलो शाश्वत', 'सुनो शाश्वत', 'नमस्ते शाश्वत') and English/Hinglish variations ('hey shashwat', 'hi shashwat', 'hello shashwat', 'ok shashwat', 'hey shaswat', 'hey saswat') to WAKE_PATTERNS in src/modules/WakeWordDetector.ts.
-- Added a fallback substring matching pass so any spoken input containing 'shashwat', 'shaswat', 'shashvat', 'saswat', 'शाश्वत', or 'शश्वत' triggers wake activation reliably.
+- Throttled audio volume updates in App.tsx to eliminate 60 FPS React component re-render thrashing.
+- Wrapped Orb in React.memo and added GPU hardware acceleration hints (will-change: transform, transform: translateZ(0)) to Orb.tsx canvas.
+- Deleted unused test script test_browser_render.js.
