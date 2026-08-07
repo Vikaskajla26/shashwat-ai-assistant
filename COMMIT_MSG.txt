@@ -1,5 +1,14 @@
-perf(ui): optimize rendering to 120 FPS and clean up unused scratch files
+fix(architecture): resolve browser navigation invalid URL bug, audio crackling distortion, and local intent routing
 
-- Throttled audio volume updates in App.tsx to eliminate 60 FPS React component re-render thrashing.
-- Wrapped Orb in React.memo and added GPU hardware acceleration hints (will-change: transform, transform: translateZ(0)) to Orb.tsx canvas.
-- Deleted unused test script test_browser_render.js.
+1. Fixed Invalid Browser Search URL bug (BUG 1):
+   - Created buildValidatedUrl helper in server/tools/browserController.ts, electron/chromeLauncher.cjs, and src/utils/browser.ts.
+   - Accurately classifies domains/URLs vs query strings. Converts "search best haryanvi ragni" to 'https://www.google.com/search?q=best%20haryanvi%20ragni' instead of prepending https:// to query strings.
+   - Prioritizes Google Chrome launch (detecting Registry HKLM/HKCU, PATH, and install folders) and reuses active Chrome windows/tabs. Fallback to OS default browser occurs ONLY if Chrome is missing.
+
+2. Fixed Voice Audio Crackling / Distortion bug (BUG 2):
+   - Fixed Int16 -> Float32 audio decoding with 2-byte alignment safety and Little-Endian DataView parsing in src/modules/AudioPlayer.ts.
+   - Configured single shared AudioContext with native sample rate and scheduled AudioBufferSourceNode playback without buffer overlaps or underruns.
+
+3. Fixed Local Intent Routing & Personality:
+   - Expanded classifyIntent and executeOfflineTask in src/core/AIEngine.ts to execute local PC/browser commands immediately without cloud Gemini Live latency.
+   - Natural "Boss" address personality across all execution responses ("Jo hukum, Boss. Opening YouTube in Chrome.").

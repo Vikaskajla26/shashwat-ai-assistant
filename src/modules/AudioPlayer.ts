@@ -33,7 +33,8 @@ export class AudioPlayer {
     try {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       if (AudioCtx) {
-        this.audioCtx = new AudioCtx({ sampleRate: 24000 });
+        // Use native hardware sample rate to avoid driver resampling distortion
+        this.audioCtx = new AudioCtx();
         this.analyserNode = this.audioCtx.createAnalyser();
         this.analyserNode.fftSize = 64;
         this.analyserNode.smoothingTimeConstant = 0.8;
@@ -57,17 +58,28 @@ export class AudioPlayer {
     try {
       const binaryStr = atob(base64Pcm);
       const len = binaryStr.length;
-      const bytes = new Uint8Array(len);
-      for (let i = 0; i < len; i++) {
-        bytes[i] = binaryStr.charCodeAt(i);
+      if (len < 2) return;
+
+      // Ensure 2-byte alignment for Int16 samples
+      const evenLen = len - (len % 2);
+      const arrayBuffer = new ArrayBuffer(evenLen);
+      const dataView = new DataView(arrayBuffer);
+
+      for (let i = 0; i < evenLen; i += 2) {
+        const byte1 = binaryStr.charCodeAt(i);
+        const byte2 = binaryStr.charCodeAt(i + 1);
+        const int16Val = (byte2 << 8) | byte1;
+        const signedVal = int16Val >= 0x8000 ? int16Val - 0x10000 : int16Val;
+        dataView.setInt16(i, signedVal, true); // Little-endian Int16
       }
 
-      const pcm16 = new Int16Array(bytes.buffer);
+      const pcm16 = new Int16Array(arrayBuffer);
       const float32 = new Float32Array(pcm16.length);
       for (let i = 0; i < pcm16.length; i++) {
         float32[i] = pcm16[i] / 32768.0;
       }
 
+      // Create Web Audio Buffer with original PCM sample rate (e.g. 24kHz)
       const buffer = this.audioCtx.createBuffer(1, float32.length, sampleRate);
       buffer.getChannelData(0).set(float32);
 
@@ -80,9 +92,10 @@ export class AudioPlayer {
         source.connect(this.audioCtx.destination);
       }
 
+      // Precise Sequential Audio Buffer Scheduling
       const now = this.audioCtx.currentTime;
       if (this.scheduledTime < now) {
-        this.scheduledTime = now;
+        this.scheduledTime = now + 0.005; // 5ms buffer offset
       }
 
       source.start(this.scheduledTime);

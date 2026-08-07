@@ -38,8 +38,12 @@ export class BrowserIntentRouter {
     // 1. Everyday User Intent Keywords -> ALWAYS System Default Browser
     const systemBrowserKeywords = [
       'youtube',
-      'search google',
-      'google search',
+      'search',
+      'browse',
+      'google',
+      'look up',
+      'find',
+      'open',
       'play music',
       'play song',
       'spotify',
@@ -62,7 +66,7 @@ export class BrowserIntentRouter {
           reason: `Everyday user intent matching keyword '${kw}' must use System Default Browser.`,
           action: text.includes('youtube')
             ? 'openYouTube'
-            : text.includes('google')
+            : text.includes('google') || text.includes('search') || text.includes('browse') || text.includes('look up')
             ? 'searchGoogle'
             : text.includes('music') || text.includes('song')
             ? 'playMusic'

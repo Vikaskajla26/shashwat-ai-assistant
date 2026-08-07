@@ -56,11 +56,18 @@ function getChromeExecutablePath() {
   return null;
 }
 
-function openInChromeOrSystemDefault(url) {
-  let target = (url || '').trim();
-  if (!target.startsWith('http://') && !target.startsWith('https://') && !target.startsWith('file://')) {
-    target = 'https://' + target;
-  }
+function buildValidatedUrl(input) {
+  let target = (input || '').trim();
+  if (!target) return 'https://www.google.com';
+  if (/^(https?|file):\/\//i.test(target)) return target;
+  const isDomain = /^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(\/.*)?$/i.test(target) && !target.includes(' ');
+  const isLocalhost = /^localhost(:\d+)?(\/.*)?$/i.test(target);
+  if (isDomain || isLocalhost) return 'https://' + target;
+  return `https://www.google.com/search?q=${encodeURIComponent(target)}`;
+}
+
+function openInChromeOrSystemDefault(urlOrQuery) {
+  const target = buildValidatedUrl(urlOrQuery);
 
   const chromePath = getChromeExecutablePath();
   if (chromePath) {

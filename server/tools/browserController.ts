@@ -23,6 +23,28 @@ export interface ActionResult {
   data?: any;
 }
 
+export function buildValidatedUrl(input: string): { type: 'URL' | 'SEARCH'; url: string } {
+  let target = (input || '').trim();
+  if (!target) return { type: 'SEARCH', url: 'https://www.google.com' };
+
+  // 1. Direct Protocol URLs
+  if (/^(https?|file):\/\//i.test(target)) {
+    return { type: 'URL', url: target };
+  }
+
+  // 2. Check domain pattern (e.g. google.com, youtube.com, github.com, localhost)
+  const isDomain = /^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(\/.*)?$/i.test(target) && !target.includes(' ');
+  const isLocalhost = /^localhost(:\d+)?(\/.*)?$/i.test(target);
+
+  if (isDomain || isLocalhost) {
+    return { type: 'URL', url: 'https://' + target };
+  }
+
+  // 3. Otherwise, treat as search query!
+  const encodedQuery = encodeURIComponent(target);
+  return { type: 'SEARCH', url: `https://www.google.com/search?q=${encodedQuery}` };
+}
+
 export class BrowserControllerEngine {
   private static instance: BrowserControllerEngine | null = null;
   private defaultBrowser: BrowserInfo | null = null;
@@ -74,7 +96,7 @@ export class BrowserControllerEngine {
     return this.defaultBrowser;
   }
 
-  private getChromePath(): string | null {
+  public getChromePath(): string | null {
     const fs = require('fs');
 
     // 1. Check Windows Registry App Paths
@@ -123,76 +145,61 @@ export class BrowserControllerEngine {
     return null;
   }
 
-  /* ------------------- 1. Open Website (Never Return Links) ------------------- */
+  /* ------------------- 1. Open Website / Executed Action ------------------- */
 
-  public async openWebsite(url: string, preferredBrowser?: string): Promise<ActionResult> {
+  public async openWebsite(urlOrQuery: string, preferredBrowser?: string): Promise<ActionResult> {
     try {
-      let target = url.trim();
-      if (!target.startsWith('http://') && !target.startsWith('https://') && !target.startsWith('file://')) {
-        target = 'https://' + target;
-      }
+      const validated = buildValidatedUrl(urlOrQuery);
+      const target = validated.url;
 
-      const pref = (preferredBrowser || '').toLowerCase();
-      let usedBrowserName = '';
-      let usedExeName = '';
+      const chromePath = this.getChromePath();
+      let usedBrowserName = 'System Default Browser';
+      let usedExeName = 'explorer.exe';
 
-      if (pref.includes('chrome')) {
-        const chromePath = this.getChromePath();
+      if (chromePath) {
+        // ALWAYS PRIORITIZE GOOGLE CHROME OVER EDGE
         usedBrowserName = 'Google Chrome';
         usedExeName = 'chrome.exe';
-        if (chromePath) {
-          spawn(chromePath, [target], { detached: true, stdio: 'ignore' }).unref();
-        } else {
-          try {
-            execSync(`start chrome "${target}"`, { stdio: 'ignore' });
-          } catch (_) {
-            spawn('cmd.exe', ['/c', 'start', '', target], { detached: true, stdio: 'ignore' }).unref();
-          }
-        }
-      } else if (pref.includes('edge')) {
-        usedBrowserName = 'Microsoft Edge';
-        usedExeName = 'msedge.exe';
-        spawn('cmd.exe', ['/c', 'start', 'msedge', target], { detached: true, stdio: 'ignore' }).unref();
-      } else if (pref.includes('firefox')) {
-        usedBrowserName = 'Mozilla Firefox';
-        usedExeName = 'firefox.exe';
-        spawn('cmd.exe', ['/c', 'start', 'firefox', target], { detached: true, stdio: 'ignore' }).unref();
-      } else if (pref.includes('brave')) {
-        usedBrowserName = 'Brave Browser';
-        usedExeName = 'brave.exe';
-        spawn('cmd.exe', ['/c', 'start', 'brave', target], { detached: true, stdio: 'ignore' }).unref();
+        spawn(chromePath, [target], { detached: true, stdio: 'ignore' }).unref();
       } else {
-        // Default to System Default Browser
-        const defaultBrowser = this.detectDefaultBrowser();
-        usedBrowserName = defaultBrowser.name;
-        usedExeName = defaultBrowser.exeName;
-        spawn('cmd.exe', ['/c', 'start', '', target], { detached: true, stdio: 'ignore' }).unref();
+        // Try direct 'start chrome' as fallback
+        try {
+          execSync(`start chrome "${target}"`, { stdio: 'ignore' });
+          usedBrowserName = 'Google Chrome';
+          usedExeName = 'chrome.exe';
+        } catch (_) {
+          const defaultBrowser = this.detectDefaultBrowser();
+          usedBrowserName = defaultBrowser.name;
+          usedExeName = defaultBrowser.exeName;
+          spawn('cmd.exe', ['/c', 'start', '', target], { detached: true, stdio: 'ignore' }).unref();
+        }
       }
 
-      // EMPIRICAL VERIFICATION: Check browser process running
-      const verified = await this.verifyBrowserRunning(usedExeName, 3000);
+      const verified = await this.verifyBrowserRunning(usedExeName, 2000);
       return {
         success: true,
         verified,
-        message: `Opened '${target}' directly in ${usedBrowserName}.`,
+        message: `Jo hukum, Boss. Opened '${target}' in ${usedBrowserName}.`,
       };
     } catch (err: any) {
-      return { success: false, verified: false, message: `Failed to open website: ${err?.message || err}` };
+      return { success: false, verified: false, message: `Failed to open browser: ${err?.message || err}` };
     }
   }
 
   /* ------------------- 2. Search Google ------------------- */
 
   public async searchGoogle(query: string): Promise<ActionResult> {
-    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+    const cleanQuery = (query || '').replace(/^(search|google|browse|look up|find)\s+/i, '').trim();
+    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(cleanQuery || query)}`;
     return await this.openWebsite(searchUrl);
   }
 
   /* ------------------- 3. Open YouTube & Search ------------------- */
 
   public async openYouTube(query?: string): Promise<ActionResult> {
-    const targetUrl = query
-      ? `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`
+    const cleanQuery = (query || '').replace(/^(search|find|play|watch|youtube|on youtube|for)\s+/i, '').trim();
+    const targetUrl = cleanQuery
+      ? `https://www.youtube.com/results?search_query=${encodeURIComponent(cleanQuery)}`
       : 'https://www.youtube.com';
     return await this.openWebsite(targetUrl);
   }
@@ -203,7 +210,6 @@ export class BrowserControllerEngine {
     const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(songOrArtist + ' music')}`;
     const res = await this.openWebsite(searchUrl);
 
-    // Send space key after 2s to auto-trigger playback if top result focuses
     setTimeout(() => {
       try {
         const psScript = `$wshell = New-Object -ComObject WScript.Shell; $wshell.SendKeys(' ')`;
@@ -214,7 +220,7 @@ export class BrowserControllerEngine {
     return {
       success: res.success,
       verified: res.verified,
-      message: `Playing music '${songOrArtist}' on YouTube in default browser.`,
+      message: `Playing music '${songOrArtist}' on YouTube in Google Chrome.`,
     };
   }
 
@@ -262,7 +268,7 @@ export class BrowserControllerEngine {
       return {
         success: true,
         verified: true,
-        message: `Executed tab action '${action}' in active browser window.`,
+        message: `Executed tab action '${action}' in active Chrome window.`,
       };
     } catch (err: any) {
       return { success: false, verified: false, message: `Tab action notice: ${err?.message || err}` };
@@ -302,7 +308,7 @@ export class BrowserControllerEngine {
     while (Date.now() - start < timeoutMs) {
       try {
         const out = execSync(`tasklist /FI "IMAGENAME eq ${cleanName}.exe"`, { stdio: 'pipe' }).toString();
-        if (out.toLowerCase().includes(cleanName) || out.toLowerCase().includes('explorer')) {
+        if (out.toLowerCase().includes(cleanName) || out.toLowerCase().includes('chrome') || out.toLowerCase().includes('explorer')) {
           return true;
         }
       } catch (_) {}
@@ -312,10 +318,9 @@ export class BrowserControllerEngine {
   }
 }
 
-/** Legacy & Central Tool Executor Export */
+/** Central Tool Executor Export */
 export async function executeBrowserAction(action: string, payload: any): Promise<any> {
   const engine = BrowserControllerEngine.getInstance();
-  const browser = engine.detectDefaultBrowser();
 
   switch (action) {
     case 'open_website':
@@ -324,23 +329,20 @@ export async function executeBrowserAction(action: string, payload: any): Promis
       const res = await engine.openWebsite(targetUrl);
       return {
         success: res.success,
-        detectedBrowser: browser.name,
         targetUrl,
         verificationMessage: res.message,
-        voiceConfirmation: `Opening ${targetUrl} in ${browser.name}`,
+        voiceConfirmation: `Jo hukum, Boss. Opening in Chrome.`,
       };
     }
     case 'search_google':
     case 'searchGoogle': {
       const query = String(payload || '');
-      const targetUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
       const res = await engine.searchGoogle(query);
       return {
         success: res.success,
-        detectedBrowser: browser.name,
-        targetUrl,
+        targetUrl: `https://www.google.com/search?q=${encodeURIComponent(query)}`,
         verificationMessage: res.message,
-        voiceConfirmation: `Searching Google for ${query}`,
+        voiceConfirmation: `Done, Boss. Searching Google for ${query}.`,
       };
     }
     case 'open_youtube':
@@ -349,10 +351,9 @@ export async function executeBrowserAction(action: string, payload: any): Promis
       const res = await engine.openYouTube(query);
       return {
         success: res.success,
-        detectedBrowser: browser.name,
         targetUrl: query ? `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}` : 'https://youtube.com',
         verificationMessage: res.message,
-        voiceConfirmation: query ? `Searching YouTube for ${query}` : 'Opening YouTube',
+        voiceConfirmation: query ? `Done, Boss. Searching YouTube for ${query}.` : 'Opening YouTube, Boss.',
       };
     }
     default: {
@@ -360,12 +361,10 @@ export async function executeBrowserAction(action: string, payload: any): Promis
       const res = await engine.openWebsite(targetUrl);
       return {
         success: res.success,
-        detectedBrowser: browser.name,
         targetUrl,
         verificationMessage: res.message,
-        voiceConfirmation: `Navigating in ${browser.name}`,
+        voiceConfirmation: `Opening in Chrome, Boss.`,
       };
     }
   }
 }
-

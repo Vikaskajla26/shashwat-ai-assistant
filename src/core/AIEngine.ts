@@ -108,12 +108,14 @@ export class AIEngine {
   private classifyIntent(text: string): string {
     const t = (text || '').toLowerCase().trim();
     if (t.includes('youtube')) return 'open_youtube';
-    if (t.includes('chrome')) return 'open_chrome';
+    if (t.includes('google') || t.startsWith('search') || t.startsWith('browse') || t.startsWith('look up')) return 'search_google';
+    if (t.includes('chrome') || t.includes('browser')) return 'open_chrome';
     if (t.includes('notepad')) return 'open_notepad';
-    if (t.includes('calculator')) return 'open_calculator';
-    if (t.includes('volume') || t.includes('mute')) return 'system_volume';
-    if (t.includes('pause') || t.includes('play') || t.includes('next')) return 'media_control';
-    if (t.includes('downloads')) return 'open_downloads';
+    if (t.includes('calculator') || t.includes('calc')) return 'open_calculator';
+    if (t.includes('volume') || t.includes('mute') || t.includes('unmute')) return 'system_volume';
+    if (t.includes('pause') || t.includes('play') || t.includes('next') || t.includes('previous')) return 'media_control';
+    if (t.includes('downloads') || t.includes('documents') || t.includes('explorer')) return 'open_downloads';
+    if (t.includes('vscode') || t.includes('vs code') || t.includes('code')) return 'open_vscode';
     return 'general_ai';
   }
 
@@ -125,12 +127,16 @@ export class AIEngine {
     try {
       if (typeof window !== 'undefined' && (window as any).electronAPI) {
         if (intent === 'open_youtube') {
-          await (window as any).electronAPI.browserOpenExternal('https://youtube.com');
-          return { success: true, message: 'Opening YouTube, Boss.' };
+          await (window as any).electronAPI.browserOpenExternal(query.includes('for') || query.includes('search') ? query : 'https://youtube.com');
+          return { success: true, message: 'Jo hukum, Boss. Opening YouTube.' };
+        }
+        if (intent === 'search_google') {
+          await (window as any).electronAPI.browserSearchGoogle(query);
+          return { success: true, message: 'Done, Boss. Searching Google.' };
         }
         if (intent === 'open_chrome') {
           await (window as any).electronAPI.desktopLaunchApp('chrome');
-          return { success: true, message: 'Jo hukum, Boss. Launching Chrome.' };
+          return { success: true, message: 'Right away, Boss. Launching Google Chrome.' };
         }
         if (intent === 'open_notepad') {
           await (window as any).electronAPI.desktopLaunchApp('notepad');
@@ -138,11 +144,15 @@ export class AIEngine {
         }
         if (intent === 'open_calculator') {
           await (window as any).electronAPI.desktopLaunchApp('calc');
-          return { success: true, message: 'Jo hukum, Boss. Opening Calculator.' };
+          return { success: true, message: 'Opening Calculator, Boss.' };
         }
         if (intent === 'open_downloads') {
-          await (window as any).electronAPI.desktopLaunchApp('downloads');
-          return { success: true, message: 'Opening Downloads folder, Boss.' };
+          await (window as any).electronAPI.desktopLaunchApp('explorer');
+          return { success: true, message: 'Opening File Explorer, Boss.' };
+        }
+        if (intent === 'open_vscode') {
+          await (window as any).electronAPI.desktopLaunchApp('code');
+          return { success: true, message: 'Opening VS Code, Boss.' };
         }
         if (intent === 'system_volume') {
           if (query.includes('mute')) {
@@ -150,7 +160,7 @@ export class AIEngine {
             return { success: true, message: 'Muted audio, Boss.' };
           }
           await (window as any).electronAPI.desktopMediaControl('volume_up');
-          return { success: true, message: 'Volume adjusted, Boss.' };
+          return { success: true, message: 'Adjusted volume, Boss.' };
         }
         if (intent === 'media_control') {
           if (query.includes('pause')) {

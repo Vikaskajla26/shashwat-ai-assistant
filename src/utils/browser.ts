@@ -7,13 +7,21 @@ declare global {
   }
 }
 
-export function openExternalUrl(url: string, targetName = '_blank'): boolean {
-  if (!url) return false;
+export function buildValidatedUrl(input: string): { type: 'URL' | 'SEARCH'; url: string } {
+  let target = (input || '').trim();
+  if (!target) return { type: 'SEARCH', url: 'https://www.google.com' };
+  if (/^(https?|file):\/\//i.test(target)) return { type: 'URL', url: target };
+  const isDomain = /^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(\/.*)?$/i.test(target) && !target.includes(' ');
+  const isLocalhost = /^localhost(:\d+)?(\/.*)?$/i.test(target);
+  if (isDomain || isLocalhost) return { type: 'URL', url: 'https://' + target };
+  return { type: 'SEARCH', url: `https://www.google.com/search?q=${encodeURIComponent(target)}` };
+}
 
-  let formattedUrl = url.trim();
-  if (!formattedUrl.startsWith('http://') && !formattedUrl.startsWith('https://') && !formattedUrl.startsWith('file://')) {
-    formattedUrl = 'https://' + formattedUrl;
-  }
+export function openExternalUrl(urlOrQuery: string, targetName = '_blank'): boolean {
+  if (!urlOrQuery) return false;
+
+  const validated = buildValidatedUrl(urlOrQuery);
+  const formattedUrl = validated.url;
 
   // 1. Native Electron Shell Handler (for .exe Desktop App)
   if (typeof window !== 'undefined' && window.electronAPI) {
