@@ -11,18 +11,38 @@ export interface WakeWordDetectorOptions {
 }
 
 const WAKE_PATTERNS = [
+  // Devanagari Variations
   /शाश्वत/i,
   /शश्वत/i,
   /शासवत/i,
+  /सास्वत/i,
+  /स्वासत/i,
+  /हे शाश्वत/i,
+  /हे शासवत/i,
+  /हे शश्वत/i,
+  /हाय शाश्वत/i,
+  /हेलो शाश्वत/i,
+  /नमस्ते शाश्वत/i,
+  /सुनो शाश्वत/i,
+  /सुनो/i,
+  // Latin / English Variations
   /shashwat/i,
   /shaashvat/i,
   /shaswat/i,
   /shashvat/i,
   /saswat/i,
+  /shasvat/i,
+  /swashwat/i,
+  /swaswat/i,
   /hey shashwat/i,
-  /ok shashwat/i,
+  /hey shaswat/i,
+  /hey saswat/i,
+  /hi shashwat/i,
+  /hi shaswat/i,
   /hello shashwat/i,
-  /सुनो/i,
+  /hello shaswat/i,
+  /ok shashwat/i,
+  /okay shashwat/i,
 ];
 
 export class WakeWordDetector {
@@ -33,6 +53,7 @@ export class WakeWordDetector {
   private restartTimer: any = null;
   private audioCtx: AudioContext | null = null;
   private _networkErrorCount = 0;
+  private currentLang: 'hi-IN' | 'en-IN' = 'hi-IN';
 
   constructor(options: WakeWordDetectorOptions) {
     this.options = options;
@@ -52,7 +73,7 @@ export class WakeWordDetector {
       this.recognition = new SpeechRecognition();
       this.recognition.continuous = true;
       this.recognition.interimResults = true;
-      this.recognition.lang = 'hi-IN'; // Default to Hindi, captures Hinglish & English phonemes well
+      this.recognition.lang = this.currentLang;
 
       this.recognition.onstart = () => {
         this.isListening = true;
@@ -63,19 +84,37 @@ export class WakeWordDetector {
 
       this.recognition.onresult = (event: any) => {
         for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript.trim().toLowerCase();
+          const rawTranscript = event.results[i][0].transcript.trim();
+          const transcript = rawTranscript.toLowerCase();
           console.log('[WakeWord check]', transcript);
 
-          for (const pattern of WAKE_PATTERNS) {
-            if (pattern.test(transcript)) {
-              console.log('✨ Wake word detected!', transcript);
-              this.playWakeSound();
-              this.options.onWakeWord(transcript);
+          // Check regex patterns
+          let matched = WAKE_PATTERNS.some((pattern) => pattern.test(transcript));
 
-              // Briefly stop to avoid rapid multi-triggering
-              this.stopTemporarily();
-              return;
+          // Substring fallback check for key roots
+          if (!matched) {
+            const lower = transcript.toLowerCase();
+            if (
+              lower.includes('shashwat') ||
+              lower.includes('shaswat') ||
+              lower.includes('shashvat') ||
+              lower.includes('saswat') ||
+              lower.includes('शाश्वत') ||
+              lower.includes('शासवत') ||
+              lower.includes('शश्वत')
+            ) {
+              matched = true;
             }
+          }
+
+          if (matched) {
+            console.log('✨ Wake word detected!', rawTranscript);
+            this.playWakeSound();
+            this.options.onWakeWord(rawTranscript);
+
+            // Briefly stop to avoid rapid multi-triggering
+            this.stopTemporarily();
+            return;
           }
         }
       };
@@ -87,7 +126,6 @@ export class WakeWordDetector {
         if (event.error === 'network') {
           this._networkErrorCount = (this._networkErrorCount || 0) + 1;
           if (this._networkErrorCount > 3) {
-            // After 3 network failures, disable wake word until manually re-enabled
             this.isEnabled = false;
             console.warn('[WakeWord] Network unavailable - wake word detection paused. Will retry on next Awaken click.');
             return;

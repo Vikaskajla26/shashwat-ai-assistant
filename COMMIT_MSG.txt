@@ -1,7 +1,4 @@
-fix(audit): resolve 5 static analysis & runtime crash issues
+fix(wakeword): expand wake word pattern matching and add substring fallback check
 
-1. Fixed Settings -> Memory tab crash: Exported MemoryCategory and MemoryFact from src/modules/MemoryManager.ts and added rememberFact(), forgetMemory(), clearAllMemory() methods matching SettingsModal.tsx UI calls.
-2. Fixed offline text chat crash: Added search(query, maxResults) method to KnowledgeIndex in server/docIntel/knowledgeIndex.ts matching server.ts call.
-3. Fixed Autonomous Sandbox Browser silent failure: Updated sandboxExec signature in server/tools/browser.ts and browserIntentRouter.ts to extract query from query || url || payload.
-4. Fixed broken imports in 5 hooks: Updated useAdaptiveQuality.ts, useGPUConfig.ts, useAudioSpectrum.ts, useResponsiveLayout.ts, and useFPSMonitor.ts to remove missing engine/ imports.
-5. Synchronized AIWorkspaceState interface with default state objects in server/tools/aiWorkspace.ts.
+- Added Devanagari variations ('हे शाश्वत', 'हे शासवत', 'हाय शाश्वत', 'हेलो शाश्वत', 'सुनो शाश्वत', 'नमस्ते शाश्वत') and English/Hinglish variations ('hey shashwat', 'hi shashwat', 'hello shashwat', 'ok shashwat', 'hey shaswat', 'hey saswat') to WAKE_PATTERNS in src/modules/WakeWordDetector.ts.
+- Added a fallback substring matching pass so any spoken input containing 'shashwat', 'shaswat', 'shashvat', 'saswat', 'शाश्वत', or 'शश्वत' triggers wake activation reliably.
