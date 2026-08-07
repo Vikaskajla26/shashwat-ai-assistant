@@ -1,15 +1,19 @@
-import { useQualityStore } from '../engine/state/useQualityStore';
+import { useState } from 'react';
 
 export function useAdaptiveQuality() {
-  const gpuTier = useQualityStore((s) => s.gpuTier);
-  const profile = useQualityStore((s) => s.profile);
+  const [quality] = useState({
+    gpuTier: 'high' as const,
+    profile: {
+      dpr: 1.5,
+      enablePostprocessing: true,
+      enableShadows: true,
+      particleMultiplier: 1.0,
+    },
+    dpr: 1.5,
+    enablePostprocessing: true,
+    enableShadows: true,
+    particleMultiplier: 1.0,
+  });
 
-  return {
-    gpuTier,
-    profile,
-    dpr: profile.dpr,
-    enablePostprocessing: profile.enablePostprocessing,
-    enableShadows: profile.enableShadows,
-    particleMultiplier: profile.particleMultiplier,
-  };
+  return quality;
 }

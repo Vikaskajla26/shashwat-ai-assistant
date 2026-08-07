@@ -1,11 +1,29 @@
 import { useState, useEffect } from 'react';
-import { ViewportEngine, ViewportState } from '../engine/rendering/ViewportEngine';
+
+export interface ViewportState {
+  width: number;
+  height: number;
+  isMobile: boolean;
+}
 
 export function useResponsiveLayout(): ViewportState {
-  const [state, setState] = useState<ViewportState>(() => ViewportEngine.getInstance().getState());
+  const [state, setState] = useState<ViewportState>(() => ({
+    width: typeof window !== 'undefined' ? window.innerWidth : 1280,
+    height: typeof window !== 'undefined' ? window.innerHeight : 800,
+    isMobile: typeof window !== 'undefined' ? window.innerWidth < 768 : false,
+  }));
 
   useEffect(() => {
-    return ViewportEngine.getInstance().subscribe(setState);
+    const handleResize = () => {
+      setState({
+        width: window.innerWidth,
+        height: window.innerHeight,
+        isMobile: window.innerWidth < 768,
+      });
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   return state;

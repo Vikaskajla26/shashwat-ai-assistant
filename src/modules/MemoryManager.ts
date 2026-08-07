@@ -5,16 +5,20 @@
  * Tier 3: Encrypted Long-Term Memory (AES-256-GCM SQLite storage for User, Preferences, Projects, Tasks, Browser History)
  */
 
+export type MemoryCategory = 'user' | 'preference' | 'project' | 'task' | 'browser' | 'system' | 'personal' | 'conversation';
+
 export interface MemoryItem {
   id: string;
   key: string;
   value: string;
-  category: 'user' | 'preference' | 'project' | 'task' | 'browser' | 'system';
+  category: MemoryCategory;
   isEncrypted: boolean;
   tags: string[];
-  importance: number; // 1 to 5
+  importance: number | string; // 1 to 5 or 'HIGH' | 'MEDIUM' | 'LOW'
   updatedAt: number;
 }
+
+export type MemoryFact = MemoryItem;
 
 export interface ConversationTurn {
   id: string;
@@ -179,7 +183,7 @@ export class MemoryManager {
     category: MemoryItem['category'] = 'user',
     isEncrypted = true,
     tags: string[] = [],
-    importance = 3
+    importance: number | string = 3
   ): Promise<boolean> {
     const item: MemoryItem = {
       id: key,
@@ -200,6 +204,15 @@ export class MemoryManager {
       : JSON.stringify(item);
 
     return await this.persistToDb(key, valToStore);
+  }
+
+  public async rememberFact(
+    category: MemoryCategory,
+    key: string,
+    value: string,
+    importance: number | string = 'HIGH'
+  ): Promise<boolean> {
+    return await this.addMemory(key, value, category, true, [], importance);
   }
 
   public async editMemory(key: string, newValue: string, category?: MemoryItem['category']): Promise<boolean> {
@@ -230,6 +243,19 @@ export class MemoryManager {
       try {
         await fetch(`/api/memory/${key}`, { method: 'DELETE' });
       } catch (_) {}
+    }
+    return true;
+  }
+
+  public async forgetMemory(key: string): Promise<boolean> {
+    return await this.deleteMemory(key);
+  }
+
+  public async clearAllMemory(): Promise<boolean> {
+    const keys = Array.from(this.longTermMemories.keys());
+    this.longTermMemories.clear();
+    for (const key of keys) {
+      await this.deleteMemory(key);
     }
     return true;
   }

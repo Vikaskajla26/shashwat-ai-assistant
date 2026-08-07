@@ -513,11 +513,14 @@ export async function browserNavigate(
 
 /** Multi-tab autonomous research task. */
 export async function sandboxExec(args: {
-  query: string;
+  query?: string;
+  action?: string;
+  url?: string;
   task_type?: string;
   mode?: string;
+  payload?: any;
 }): Promise<{ executed: boolean; message: string; data?: any }> {
-  const query = String(args.query || "");
+  const query = String(args.query || args.url || args.payload?.prompt || "");
   if (!query) return { executed: false, message: "No query provided." };
 
   const res = await browserNavigate({

@@ -137,6 +137,7 @@ export class BrowserIntentRouter {
     } else {
       // Sandbox Browser AI Execution
       return await sandboxExec({
+        query: promptOrUrl,
         action: route.action,
         url: promptOrUrl,
         payload,

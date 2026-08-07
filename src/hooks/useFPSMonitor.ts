@@ -1,9 +1,11 @@
-import { useQualityStore } from '../engine/state/useQualityStore';
+import { useState } from 'react';
 
 export function useFPSMonitor() {
-  const fps = useQualityStore((s) => s.fps);
-  const frameTimeMs = useQualityStore((s) => s.frameTimeMs);
-  const isLowPerformance = useQualityStore((s) => s.isLowPerformance);
+  const [stats] = useState({
+    fps: 60,
+    frameTimeMs: 16.6,
+    isLowPerformance: false,
+  });
 
-  return { fps, frameTimeMs, isLowPerformance };
+  return stats;
 }

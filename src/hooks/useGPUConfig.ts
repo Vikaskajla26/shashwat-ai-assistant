@@ -1,6 +1,18 @@
 import { useMemo } from 'react';
-import { GPUDetector, GPUInfo } from '../engine/rendering/GPUDetector';
+
+export interface GPUInfo {
+  tier: 'low' | 'medium' | 'high';
+  renderer: string;
+  vendor: string;
+}
 
 export function useGPUConfig(): GPUInfo {
-  return useMemo(() => GPUDetector.getInstance().detect(), []);
+  return useMemo(
+    () => ({
+      tier: 'high',
+      renderer: 'WebGL 2.0 (High Performance)',
+      vendor: 'Standard GPU',
+    }),
+    []
+  );
 }

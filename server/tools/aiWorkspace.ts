@@ -26,17 +26,48 @@ export interface BookmarkItem {
   createdAt: number;
 }
 
+export interface PinnedFileItem {
+  id: string;
+  name: string;
+  path: string;
+  type: string;
+}
+
+export interface RecentFileItem {
+  id: string;
+  name: string;
+  path: string;
+  accessedAt: number;
+}
+
+export interface ProjectItem {
+  id: string;
+  name: string;
+  description: string;
+  taskCount?: number;
+  path?: string;
+}
+
+export interface ChatHistoryItem {
+  id: string;
+  prompt: string;
+  response: string;
+  timestamp: number;
+}
+
 export interface KnowledgeGraphNode {
   id: string;
   label: string;
-  type: 'concept' | 'file' | 'project' | 'person';
+  category?: 'concept' | 'file' | 'project' | 'person' | 'memory' | 'topic' | string;
+  type?: 'concept' | 'file' | 'project' | 'person' | 'memory' | 'topic' | string;
   connections: string[];
 }
 
 export interface AIWorkspaceState {
-  pinnedFiles: string[];
-  recentFiles: string[];
-  projects: Array<{ id: string; name: string; description: string; path: string }>;
+  pinnedFiles: PinnedFileItem[];
+  recentFiles: RecentFileItem[];
+  projects: ProjectItem[];
+  chatHistory: ChatHistoryItem[];
   bookmarks: BookmarkItem[];
   scratchpad: string;
   clipboardHistory: string[];

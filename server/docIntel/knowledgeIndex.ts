@@ -225,4 +225,12 @@ export class KnowledgeIndex {
       synthesis: `Cross-document synthesis across ${docs.length} files successfully compiled. Information from all files has been integrated into the workspace knowledge model.`,
     };
   }
+
+  public search(query: string, maxResults = 3): Array<{ section: DocumentSection; score: number }> {
+    const res = this.queryKnowledgeBase(query);
+    return (res.relevantChunks || []).slice(0, maxResults).map((chunk) => ({
+      section: chunk,
+      score: 1.0,
+    }));
+  }
 }
